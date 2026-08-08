@@ -13,7 +13,7 @@ A project can also have an uploaded **client specification document** (PDF/Word)
 
 Full architecture, rationale, and open questions: see `PLANNING.md` in the repo root. Read it before making structural changes — it captures the reasoning behind the stack and pipeline design, not just the "what."
 
-**Implementation status: Stage 1 (PDF ingestion, PLANNING.md §9 step 1) is underway.** No check engines (§4/§5), API, DB, queue, or frontend yet — those are later stages. What exists now is extraction + normalization into the IR (§3) for a real sample PDF; see "Development setup" below for the actual layout and commands.
+**Implementation status: Stage 1 (PDF ingestion) is done; Stage 2 (drafting checks, PLANNING.md §9 step 2) is underway** — title block completeness, revision consistency, and spelling are implemented and running against the real sample. Not yet built: the cloud/triangle → revision-schedule-row check (§4's third revision cross-check — needs new geometric detection of revision clouds, not yet started), the cross-sheet reference graph, geometry checks (§5), the full project-config YAML schema (§4's consolidated schema — a small ad-hoc `RuleConfig` stands in for now), API/DB/queue/frontend. See "Development setup" below for the actual layout and commands.
 
 ## Development setup
 
@@ -29,8 +29,31 @@ pdfchecker/
       tables.py                    # pdfplumber ruled-table extraction + classification,
                                     # plus word-clustering revision-schedule extraction
       pipeline.py                  # ties the above into ingest_pdf(path) -> Project
-  scripts/ingest.py                # CLI: dumps a summary + sample IR for a given PDF
-  tests/test_ingest_sample.py      # pytest, run against the real sample (not synthetic fixtures)
+    checks/                        # Stage 2: the drafting check engine (§4)
+      issue.py                     # the Issue schema — location + suggested_fix from the first rule (§8)
+      catalog.py                   # @register decorator + RuleConfig + run_checks(project, config)
+      title_block.py               # required-field-presence rule
+      revisions.py                 # schedule<->title-block cross-check + sequential numbering
+                                    # (NOT the cloud/triangle check yet — needs revision-cloud detection)
+      spelling.py                  # en-GB spellcheck + glossary (see en_gb_variants.py's docstring
+                                    # for why: pyspellchecker + a curated variant list, not a real
+                                    # en-GB dictionary — LanguageTool needs a JVM not set up here)
+      en_gb_variants.py            # curated British<->American spelling-variant data
+      glossary.py                  # loads firm-wide/project glossary JSON files (§4)
+  config/
+    firm_glossary.json             # firm-wide glossary seed (§4) — real terms found flagged
+                                    # against the sample: qualifications, product trade names
+    project_glossary.json          # project-scoped glossary seed
+  scripts/
+    ingest.py                      # CLI: dumps a Stage-1 summary + sample IR for a given PDF
+    check.py                       # CLI: runs Stage 2 checks, prints an issue summary
+  tests/
+    conftest.py                    # session-scoped `project`/`real_issues` fixtures — ingesting
+                                    # the 37-page sample takes ~90s, share one run across test files
+    test_ingest_sample.py          # Stage 1, against the real sample
+    test_checks.py                 # Stage 2: real-sample assertions (this set is clean, so these
+                                    # cover the "correctly finds nothing" path) + synthetic minimal
+                                    # IR objects for the "fires when it should" path
   requirements.txt                 # frozen from .venv — see the Python 3.9 note below
 ```
 
@@ -39,14 +62,17 @@ pdfchecker/
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
-**Run ingestion against the sample:**
+**Run ingestion / checks against the sample:**
 ```
 python scripts/ingest.py "samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
+python scripts/check.py "samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
 ```
-**Run tests** (opens the 37-page sample repeatedly across test functions — genuinely takes a couple of minutes, prefer running in the background over waiting on it inline):
+**Run tests** (a full spelling pass over 37 pages is slow — `sc.correction()` does an edit-distance search per unknown word — genuinely takes a couple of minutes; prefer running in the background over waiting on it inline):
 ```
 python -m pytest tests/ -v
 ```
+
+**Spelling check limitation worth knowing:** the en-GB dictionary is `pyspellchecker`'s default (US-oriented) dictionary layered with a curated British/American variant list (`checks/en_gb_variants.py`) covering common cases — not an exhaustive or authoritative en-GB dictionary. Running it against the real sample surfaced two categories of noise, both expected rather than bugs: (1) missing inflected forms in the variant list (fixed as found, e.g. "millimetres" being flagged with "millimeters" suggested — the variant list only had base forms until this was caught), and (2) genuine domain vocabulary a general dictionary can't know (engineering qualifications, product trade names, construction terms) — this is exactly what the firm/project glossary files exist to absorb, and `config/firm_glossary.json` is seeded with real examples found this way, not meant to be exhaustive. Swapping to a proper en-GB dictionary (self-hosted LanguageTool, PLANNING.md §10's actual recommendation) is real follow-up work, not something this list tries to replace.
 
 **Environment quirk worth knowing:** the system Python here is 3.9.5, an x86_64 build running under Rosetta on an arm64 Mac (no Homebrew/pyenv available). `pip install pdfplumber` pulls in `cryptography` transitively (via `pdfminer.six`), and recent `cryptography` releases have no prebuilt wheel for this old interpreter/arch combo — building from source fails without a working Rust/OpenSSL toolchain. Fix: `pip install "cryptography<43" --only-binary=cryptography` before installing `pdfplumber`, which is what `requirements.txt` already pins. Don't `pip install --upgrade` blindly in this environment without re-checking that constraint.
 

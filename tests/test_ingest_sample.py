@@ -1,31 +1,9 @@
 """Stage 1 ingestion tests, run against the real sample per CLAUDE.md's
 rule: samples/ are the first real test fixtures, not synthetic ones.
 
-Ingestion of the full 37-page sample takes a couple of minutes (mostly
-pdfplumber's find_tables() across pages with dozens of tables) — the
-`project` fixture below is module-scoped specifically so the 7 tests here
-share one ingestion run instead of re-parsing the PDF from scratch 7 times.
+The `project` fixture is defined in conftest.py (session-scoped) so this
+file and test_checks.py share one ingestion run.
 """
-
-import sys
-from pathlib import Path
-
-import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
-from pdfchecker.extraction.pipeline import ingest_pdf  # noqa: E402
-
-SAMPLE = str(
-    Path(__file__).resolve().parent.parent
-    / "samples"
-    / "T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
-)
-
-
-@pytest.fixture(scope="module")
-def project():
-    return ingest_pdf(SAMPLE)
 
 
 def test_ingests_all_sheets(project):

@@ -6,6 +6,7 @@ requires-python = ">=3.9"
 dependencies = [
     "pymupdf",
     "pdfplumber",
+    "pyspellchecker",
 ]
 
 [project.optional-dependencies]
