@@ -1,0 +1,19 @@
+[project]
+name = "pdfchecker"
+version = "0.1.0"
+description = "PDF ingestion + IR for automated civil drawing review (Stage 1 — see PLANNING.md §9)"
+requires-python = ">=3.9"
+dependencies = [
+    "pymupdf",
+    "pdfplumber",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
