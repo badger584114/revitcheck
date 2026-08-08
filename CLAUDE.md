@@ -13,7 +13,7 @@ A project can also have an uploaded **client specification document** (PDF/Word)
 
 Full architecture, rationale, and open questions: see `PLANNING.md` in the repo root. Read it before making structural changes — it captures the reasoning behind the stack and pipeline design, not just the "what."
 
-**Implementation status: Stage 1 (PDF ingestion) is done; Stage 2 (drafting checks, PLANNING.md §9 step 2) is underway** — title block completeness, revision consistency, and spelling are implemented and running against the real sample. Not yet built: the cloud/triangle → revision-schedule-row check (§4's third revision cross-check — needs new geometric detection of revision clouds, not yet started), the cross-sheet reference graph, geometry checks (§5), the full project-config YAML schema (§4's consolidated schema — a small ad-hoc `RuleConfig` stands in for now), API/DB/queue/frontend. See "Development setup" below for the actual layout and commands.
+**Implementation status: Stage 1 (PDF ingestion) and Stage 2 (drafting checks) are done; Stage 3 (geometry checks, PLANNING.md §9 step 3) is starting.** Title block completeness, revision consistency, and spelling are implemented and running against the real sample. A real Stage 3 build attempt (single-sheet dimensional consistency) confirmed PDF-only dimension-line reconstruction is unreliable — see PLANNING.md §1/§5 — so geometry checks now require DXF input; that DXF ingestion work hasn't been built yet (no `ezdxf` code, no DXF sample in `samples/` yet either — check with the user before assuming one exists). Not yet built: the cloud/triangle → revision-schedule-row check (§4's third revision cross-check — needs new geometric detection of revision clouds), the cross-sheet reference graph, geometry checks (§5), the full project-config YAML schema (§4's consolidated schema — a small ad-hoc `RuleConfig` stands in for now), API/DB/queue/frontend. See "Development setup" below for the actual layout and commands.
 
 ## Development setup
 
@@ -85,7 +85,7 @@ python -m pytest tests/ -v
 ## Intended stack (see PLANNING.md §1 for rationale)
 
 - Backend: Python + FastAPI
-- CAD/PDF parsing: `PyMuPDF` (PDF vectors/text), `pdfplumber` (tables), `python-docx` (Word specs). `ezdxf` (DXF) + ODA File Converter for DWG→DXF are **conditional, not committed** — only build DXF/DWG input parsing if PDF-only extraction (source drawings are Revit-authored PDF exports) proves insufficient against real samples; see PLANNING.md §1
+- CAD/PDF parsing: `PyMuPDF` (PDF vectors/text), `pdfplumber` (tables), `python-docx` (Word specs) for drafting checks — confirmed sufficient against the real sample. `ezdxf` (DXF) + ODA File Converter for DWG→DXF are **committed, but scoped to geometry checks only** — PDF-only dimension-line reconstruction was tried and confirmed unreliable (repeated/stacked dimensions defeat spatial-proximity heuristics); DXF's native DIMENSION entity removes that ambiguity. Drafting checks stay on PDF. See PLANNING.md §1
 - Geometry: `shapely`, `numpy`
 - OCR: `pytesseract` or `paddleocr` (scanned/raster sheets)
 - Spelling: `pyspellchecker` or self-hosted LanguageTool, **en-GB base dictionary** (British spelling, e.g. "specialised" not "specialized" — never en-US), layered with a firm-wide + project-level custom glossary that engineers can add technical terms to directly from a flagged issue so they stop recurring
@@ -131,7 +131,7 @@ Engineers select which flagged issues to include, and the app burns them onto th
 
 ## Build order (see PLANNING.md §9)
 
-1. PDF ingestion first; DWG/ODA conversion is conditional on real PDF-extraction gaps, not planned-but-later (PLANNING.md §1)
+1. PDF ingestion first, for drafting checks (confirmed sufficient); DWG/ODA + `ezdxf` conversion is committed work for geometry checks specifically, once PDF-only dimension reconstruction was confirmed unreliable (PLANNING.md §1)
 2. Drafting checks: title block completeness, spelling, revision consistency (build first — clearest value, fastest to ship)
 3. Geometry checks: single-sheet dimensional consistency before multi-sheet structure reconstruction
 4. Prove the pipeline on one structure type (e.g., a single retaining wall run) before generalizing to bridges
