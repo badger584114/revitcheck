@@ -36,7 +36,7 @@ def main() -> None:
     for category, count in by_category.most_common():
         print(f"  {category}: {count}")
 
-    for category in ("title_block", "revision"):
+    for category in ("title_block", "revision", "cross_sheet"):
         cat_issues = [i for i in issues if i.category == category]
         if cat_issues:
             print(f"\n--- {category} issues ---")

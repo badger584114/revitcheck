@@ -13,7 +13,7 @@ A project can also have an uploaded **client specification document** (PDF/Word)
 
 Full architecture, rationale, and open questions: see `PLANNING.md` in the repo root. Read it before making structural changes — it captures the reasoning behind the stack and pipeline design, not just the "what."
 
-**Implementation status: Stage 1 (PDF ingestion) and Stage 2 (drafting checks) are done; Stage 3 (geometry checks, PLANNING.md §9 step 3) is starting.** Title block completeness, revision consistency, and spelling are implemented and running against the real sample. A real Stage 3 build attempt (single-sheet dimensional consistency) confirmed PDF-only dimension-line reconstruction is unreliable — see PLANNING.md §1/§5 — so geometry checks now require DXF input; that DXF ingestion work hasn't been built yet (no `ezdxf` code, no DXF sample in `samples/` yet either — check with the user before assuming one exists). Not yet built: the cloud/triangle → revision-schedule-row check (§4's third revision cross-check — needs new geometric detection of revision clouds), the cross-sheet reference graph, geometry checks (§5), the full project-config YAML schema (§4's consolidated schema — a small ad-hoc `RuleConfig` stands in for now), API/DB/queue/frontend. See "Development setup" below for the actual layout and commands.
+**Implementation status: Stage 1 (PDF ingestion) and Stage 2 (drafting checks) are done; Stage 3 (geometry checks, PLANNING.md §9 step 3) is deferred for now — PDF/drafting work continues instead (per-user decision, 2026-08-09).** Title block completeness, revision consistency, spelling, and cross-sheet reference resolution (§4's "Cross-sheet consistency" row — symbol-based section/detail callouts only, general free-text note references still deferred per §4's scoping note) are implemented and running against the real sample. A real Stage 3 build attempt (single-sheet dimensional consistency) confirmed PDF-only dimension-line reconstruction is unreliable — see PLANNING.md §1/§5 — so geometry checks now require DXF input; that DXF ingestion work hasn't been built yet (no `ezdxf` code, no DXF sample in `samples/` yet either — check with the user before assuming one exists). Not yet built: the cloud/triangle → revision-schedule-row check (§4's third revision cross-check — needs new geometric detection of revision clouds), general-note cross-sheet references (§4's deferred second half of the reference graph), geometry checks (§5), the full project-config YAML schema (§4's consolidated schema — a small ad-hoc `RuleConfig` stands in for now), API/DB/queue/frontend. See "Development setup" below for the actual layout and commands.
 
 ## Development setup
 
@@ -21,13 +21,17 @@ Full architecture, rationale, and open questions: see `PLANNING.md` in the repo 
 pdfchecker/
   src/pdfchecker/
     ir.py                        # IR dataclasses (§3): Project, Sheet, TitleBlock,
-                                  # RevisionEntry, Table, TextWord, PathEntity, BBox
+                                  # RevisionEntry, Table, TextWord, PathEntity, BBox, Reference
     extraction/
       pdf_source.py               # PyMuPDF: word-level text + vector paths per page
       titleblock.py                # label-anchored title-block field extraction
                                     # (project-extensible field list, §4)
       tables.py                    # pdfplumber ruled-table extraction + classification,
                                     # plus word-clustering revision-schedule extraction
+      references.py                # cross-sheet reference graph (§3/§4) — whole-project pass,
+                                    # symbol-based (section/detail marker) resolution only;
+                                    # see its docstring for the real marker convention found
+                                    # on the sample (text-adjacency, not vector shape)
       pipeline.py                  # ties the above into ingest_pdf(path) -> Project
     checks/                        # Stage 2: the drafting check engine (§4)
       issue.py                     # the Issue schema — location + suggested_fix from the first rule (§8)
@@ -35,6 +39,8 @@ pdfchecker/
       title_block.py               # required-field-presence rule
       revisions.py                 # schedule<->title-block cross-check + sequential numbering
                                     # (NOT the cloud/triangle check yet — needs revision-cloud detection)
+      cross_sheet.py                # unresolved-reference rule — thin wrapper over
+                                    # extraction/references.py's already-built graph
       spelling.py                  # en-GB spellcheck + glossary (see en_gb_variants.py's docstring
                                     # for why: pyspellchecker + a curated variant list, not a real
                                     # en-GB dictionary — LanguageTool needs a JVM not set up here)
@@ -50,7 +56,10 @@ pdfchecker/
   tests/
     conftest.py                    # session-scoped `project`/`real_issues` fixtures — ingesting
                                     # the 37-page sample takes ~90s, share one run across test files
-    test_ingest_sample.py          # Stage 1, against the real sample
+    test_ingest_sample.py          # Stage 1, against the real sample (incl. the reference graph)
+    test_references.py             # extraction/references.py's resolution algorithm, synthetic
+                                    # Sheets exercising each branch (self-marker, note-reference
+                                    # false positives, nonexistent-sheet vs. no-matching-tag)
     test_checks.py                 # Stage 2: real-sample assertions (this set is clean, so these
                                     # cover the "correctly finds nothing" path) + synthetic minimal
                                     # IR objects for the "fires when it should" path
@@ -76,7 +85,7 @@ python -m pytest tests/ -v
 
 **Environment quirk worth knowing:** the system Python here is 3.9.5, an x86_64 build running under Rosetta on an arm64 Mac (no Homebrew/pyenv available). `pip install pdfplumber` pulls in `cryptography` transitively (via `pdfminer.six`), and recent `cryptography` releases have no prebuilt wheel for this old interpreter/arch combo — building from source fails without a working Rust/OpenSSL toolchain. Fix: `pip install "cryptography<43" --only-binary=cryptography` before installing `pdfplumber`, which is what `requirements.txt` already pins. Don't `pip install --upgrade` blindly in this environment without re-checking that constraint.
 
-**What's calibrated against the real sample so far** (all title-block/table extraction is label-anchored / column-name-matched, not fixed-position — see the docstrings in `extraction/titleblock.py` and `extraction/tables.py` for the specific layout quirks this had to work around, e.g. large-font values overlapping their own label's bounding box, and a full-page border/grid fooling pdfplumber's default table detector into merging the whole sheet into one bogus table): title block fields (`drawing_no`, `sheet_no`, `amend_no`, `designed_by`, `drafted_by`, `accepted_by`, `sheet_latitude`, `sheet_longitude`), the bottom-left revision schedule (§4 "Revision consistency — mechanics"), and generic ruled tables (pile/setout schedules).
+**What's calibrated against the real sample so far** (all title-block/table extraction is label-anchored / column-name-matched, not fixed-position — see the docstrings in `extraction/titleblock.py` and `extraction/tables.py` for the specific layout quirks this had to work around, e.g. large-font values overlapping their own label's bounding box, and a full-page border/grid fooling pdfplumber's default table detector into merging the whole sheet into one bogus table): title block fields (`drawing_no`, `sheet_no`, `amend_no`, `designed_by`, `drafted_by`, `accepted_by`, `sheet_latitude`, `sheet_longitude`), the bottom-left revision schedule (§4 "Revision consistency — mechanics"), generic ruled tables (pile/setout schedules), and the cross-sheet reference graph (§4 "Cross-sheet reference graph — mechanics" — see `extraction/references.py`'s docstring for the real section/detail marker convention this sample uses, which differs from what PLANNING.md originally anticipated in two ways worth reading before touching that module).
 
 ## Sample drawings
 

@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from pdfchecker.checks import RuleConfig  # noqa: E402
+from pdfchecker.checks.cross_sheet import check_reference_resolves  # noqa: E402
 from pdfchecker.checks.en_gb_variants import AMERICAN_TO_BRITISH, BRITISH_TO_AMERICAN  # noqa: E402
 from pdfchecker.checks.revisions import (  # noqa: E402
     check_schedule_matches_title_block,
@@ -26,6 +27,7 @@ from pdfchecker.checks.title_block import check_required_fields  # noqa: E402
 from pdfchecker.ir import (  # noqa: E402
     BBox,
     Project,
+    Reference,
     RevisionEntry,
     Sheet,
     TextWord,
@@ -59,6 +61,15 @@ def test_no_title_block_issues_on_real_clean_set(real_issues):
 def test_no_revision_mismatches_on_real_clean_set(real_issues):
     revision_issues = [i for i in real_issues if i.category == "revision"]
     assert revision_issues == [], "every sheet's AMEND No. already matches its revision schedule in this set"
+
+
+def test_cross_sheet_issues_on_real_set_are_lower_confidence_only(real_issues):
+    # This set's few unresolved reference candidates all name a sheet that
+    # genuinely exists in the pack (extraction/references.py's confidence
+    # 0.3 case) — none reference a sheet missing from the set entirely, so
+    # none should surface at "high" severity.
+    cross_sheet_issues = [i for i in real_issues if i.category == "cross_sheet"]
+    assert all(i.severity == "medium" for i in cross_sheet_issues)
 
 
 def test_millimetres_not_flagged(real_issues):
@@ -143,6 +154,66 @@ def test_missing_revision_number_flagged():
     issues = check_sequential_numbering(project, RuleConfig())
     assert len(issues) == 1
     assert "[1]" in issues[0].description
+
+
+# --- synthetic: cross-sheet reference resolution -------------------------
+# (extraction/references.py's resolution algorithm itself is covered by
+# tests/test_references.py; these exercise only the thin rule wrapper —
+# does an unresolved Reference become the right Issue.)
+
+
+def test_unresolved_reference_to_missing_sheet_flagged_high():
+    sheet = _sheet()
+    ref = Reference(
+        ref_type="detail",
+        tag="4",
+        source_sheet_no="2871099",
+        source_page_index=0,
+        source_bbox=BBox(0, 0, 10, 10),
+        target_sheet_hint="2871404",
+        resolved=False,
+        confidence=0.0,
+    )
+    project = Project(source_path="synthetic", sheets=[sheet], references=[ref])
+    issues = check_reference_resolves(project, RuleConfig())
+    assert len(issues) == 1
+    assert issues[0].severity == "high"
+    assert issues[0].suggested_fix == {"ref": "Detail 4/2871404"}
+
+
+def test_unresolved_reference_to_existing_sheet_flagged_medium():
+    sheet = _sheet()
+    ref = Reference(
+        ref_type="unknown",
+        tag="5",
+        source_sheet_no="2871099",
+        source_page_index=0,
+        source_bbox=BBox(0, 0, 10, 10),
+        target_sheet_hint="2871100",
+        resolved=False,
+        confidence=0.3,
+    )
+    project = Project(source_path="synthetic", sheets=[sheet], references=[ref])
+    issues = check_reference_resolves(project, RuleConfig())
+    assert len(issues) == 1
+    assert issues[0].severity == "medium"
+
+
+def test_resolved_reference_not_flagged():
+    sheet = _sheet()
+    ref = Reference(
+        ref_type="section",
+        tag="1",
+        source_sheet_no="2871099",
+        source_page_index=0,
+        source_bbox=BBox(0, 0, 10, 10),
+        target_sheet_hint="2871100",
+        resolved=True,
+        target_sheet_no="2871100",
+        confidence=1.0,
+    )
+    project = Project(source_path="synthetic", sheets=[sheet], references=[ref])
+    assert check_reference_resolves(project, RuleConfig()) == []
 
 
 # --- synthetic: spelling ---------------------------------------------------
