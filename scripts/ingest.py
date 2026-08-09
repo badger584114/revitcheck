@@ -23,7 +23,7 @@ def main() -> None:
     path = sys.argv[1]
     project = ingest_pdf(path)
 
-    print(f"Ingested {path}: {len(project.sheets)} sheets\n")
+    print(f"Ingested {path}: {len(project.sheets)} sheets, {len(project.references)} cross-sheet references\n")
     for sheet in project.sheets:
         tb = sheet.title_block.fields
         rev = sheet.revision_schedule[-1] if sheet.revision_schedule else None

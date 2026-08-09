@@ -8,12 +8,13 @@ lines, blocks/inserts, per-layer attribution) comes with the check engines
 that consume it (§4, §5) — no point building it ahead of a consumer.
 
 Deliberately NOT included yet, per PLANNING.md:
-- References (§3's cross-sheet reference graph construct) — that's built by
-  a later pass over the whole extracted sheet set (§4), not by per-sheet
-  ingestion.
 - Layers — this sample PDF carries no OCGs (confirmed against samples/), so
   there is nothing to attribute entities to yet. Revisit if a future sample
   does carry layers.
+
+References (§3's cross-sheet reference graph construct) ARE included below
+(`Reference`) — built by extraction/references.py, a pass over the whole
+extracted sheet set run after per-sheet ingestion, not part of it.
 """
 
 from __future__ import annotations
@@ -174,11 +175,55 @@ class Sheet:
 
 
 @dataclass
+class Reference:
+    """One cross-sheet reference edge (PLANNING.md §3 "References" / §4
+    "Cross-sheet reference graph — mechanics"). Built by extraction/
+    references.py as a pass over the whole Project after every sheet's
+    words are extracted — not per-sheet ingestion, since resolution needs
+    every sheet's view titles indexed first (see that module's docstring
+    for the resolution algorithm and what this sample's real convention
+    turned out to need).
+
+    Scoped to symbol-based references only (section markers, detail
+    bubbles) for now — general free-text note references ("see Detail 4
+    on Dwg S-201") are explicitly deferred by PLANNING.md §4's scoping
+    note, so `ref_type` is "section" | "detail" | "unknown" (unresolved,
+    kind undetermined), not the full four-type list §3 lists as the
+    eventual target."""
+
+    ref_type: str  # "section" | "detail" | "unknown"
+    tag: str
+    source_sheet_no: Optional[str]
+    source_page_index: int
+    source_bbox: BBox
+    target_sheet_hint: str  # sheet number text printed on the marker itself, pre-resolution
+    resolved: bool
+    target_sheet_no: Optional[str] = None
+    target_bbox: Optional[BBox] = None
+    confidence: float = 1.0
+
+    def to_dict(self) -> dict:
+        return {
+            "ref_type": self.ref_type,
+            "tag": self.tag,
+            "source_sheet_no": self.source_sheet_no,
+            "source_page_index": self.source_page_index,
+            "source_bbox": self.source_bbox.to_dict(),
+            "target_sheet_hint": self.target_sheet_hint,
+            "resolved": self.resolved,
+            "target_sheet_no": self.target_sheet_no,
+            "target_bbox": self.target_bbox.to_dict() if self.target_bbox else None,
+            "confidence": self.confidence,
+        }
+
+
+@dataclass
 class Project:
     """Top-level IR container — PLANNING.md §3: Project -> Sheet."""
 
     source_path: str
     sheets: list[Sheet] = field(default_factory=list)
+    references: list[Reference] = field(default_factory=list)
 
     def sheet_by_no(self, sheet_no: str) -> Optional[Sheet]:
         """Look up a sheet by its printed Sheet No. — the identifier that
@@ -190,4 +235,8 @@ class Project:
         return None
 
     def to_dict(self) -> dict:
-        return {"source_path": self.source_path, "sheets": [s.to_dict() for s in self.sheets]}
+        return {
+            "source_path": self.source_path,
+            "sheets": [s.to_dict() for s in self.sheets],
+            "references": [r.to_dict() for r in self.references],
+        }

@@ -12,6 +12,7 @@ import fitz
 import pdfplumber
 
 from pdfchecker.extraction.pdf_source import extract_paths, extract_words
+from pdfchecker.extraction.references import build_references
 from pdfchecker.extraction.tables import extract_revision_schedule, extract_tables
 from pdfchecker.extraction.titleblock import extract_title_block
 from pdfchecker.ir import Project, Sheet
@@ -56,5 +57,10 @@ def ingest_pdf(path: str) -> Project:
                 raw_text=fitz_page.get_text("text"),
             )
             project.sheets.append(sheet)
+
+    # A whole-project pass, run after every sheet's words are in place —
+    # see extraction/references.py's docstring for why this can't be done
+    # per-sheet (resolution needs every sheet's view titles indexed first).
+    project.references = build_references(project)
 
     return project

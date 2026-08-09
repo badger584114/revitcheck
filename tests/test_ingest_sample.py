@@ -52,6 +52,35 @@ def test_revision_schedule_parsed(project):
     assert rev.date == "28.03.26"
 
 
+def test_references_built(project):
+    # PLANNING.md §3/§4's cross-sheet reference graph — a whole-project
+    # pass, so this exercises it end-to-end against the real 37-page set
+    # rather than a couple of synthetic sheets.
+    assert len(project.references) > 50, "expected the real sample's many section/detail callouts to be found"
+
+
+def test_known_section_reference_resolves(project):
+    # Spot-checked visually against the rendered pages before writing
+    # extraction code: sheet 2871023's plan view callout "3" points to
+    # "HEADSTOCK SECTION 3", actually drawn on sheet 2871024.
+    matches = [
+        r for r in project.references
+        if r.source_sheet_no == "2871023" and r.tag == "3" and r.resolved
+    ]
+    assert matches, "expected callout tag '3' on sheet 2871023 to resolve"
+    assert matches[0].target_sheet_no == "2871024"
+    assert matches[0].ref_type == "section"
+
+
+def test_no_reference_targets_a_nonexistent_sheet(project):
+    # Every callout in this set names a sheet number that's genuinely
+    # somewhere in the pack — a reference to a sheet outside the set
+    # (confidence 0.0, extraction/references.py) would mean a genuinely
+    # broken cross-reference, which this clean set shouldn't have.
+    dead = [r for r in project.references if not r.resolved and r.confidence == 0.0]
+    assert dead == []
+
+
 def test_pile_schedule_table_extracted(project):
     # Page 15's Abutment B pile schedule — a real setout/coordinate table
     # (PLANNING.md §3), confirms generic table extraction + the
