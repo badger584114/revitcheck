@@ -105,6 +105,7 @@ pip install -r requirements.txt
 python scripts/ingest.py "samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
 python scripts/check.py "samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
 ```
+No CLI wrapper for Stage 3 yet — `ingest.py`/`check.py` are PDF/drafting-only. Driving DXF ingestion + the geometry check today means calling `extraction.dxf_source.{convert_dwg_to_dxf,ingest_dxf,attach_dxf_sheets}` and `checks.geometry.check_dimension_consistency` directly (see `tests/test_geometry.py` for a working end-to-end example).
 **Run tests** (a full spelling pass over 37 pages is slow — `sc.correction()` does an edit-distance search per unknown word — genuinely takes a couple of minutes; the suite also now ingests a second 37-page sample (`amended_project`, ~90s) for revision-cloud tests, on top of the original `project` fixture; prefer running in the background over waiting on it inline):
 ```
 python -m pytest tests/ -v
@@ -159,7 +160,7 @@ Any new extractor (PDF or DXF) must normalize into this IR — don't build forma
 
 - Each check run has a **scope**: drafting-only, or drafting + geometry — selected per run, not fixed per project. IR extraction always runs (geometry depends on drafting-extracted entities as reconstruction input), but scope controls which engine(s) produce Issues. There is no geometry-only mode. See PLANNING.md §2.
 - **Drafting checks** are rule functions with signature `(IR, config) -> [Issue]`, registered in a catalog. A project's active rule set is a config (rule IDs + parameters), so adding a project-specific check should be a config change, not a code change. See PLANNING.md §4 for the rule categories.
-- **Geometry checks** reconstruct structure geometry from setout data and dimension chains, then cross-check computed coordinates against tabulated setout values, flagging discrepancies beyond tolerance. This is the highest-risk/highest-effort part of the system — see PLANNING.md §5 before extending it. Partial reconstruction should report a confidence/coverage indicator rather than failing silently.
+- **Geometry checks** have two parts (PLANNING.md §5): **(a) drawn-vs-stated dimensional consistency** — compare a DXF `DIMENSION`'s raw measurement against its manually-overridden stated text, within a rounding-grid tolerance; **built**, `checks/geometry.py`'s `geometry.dimension_consistency`. **(b) full structure reconstruction** from setout data and dimension chains, cross-checking computed coordinates against tabulated setout values — **not built**, the highest-risk/highest-effort part of the system, see PLANNING.md §5 before starting it. Partial reconstruction should report a confidence/coverage indicator rather than failing silently.
 - Every rule's `Issue` output must carry a precise location (point, bounding box, or entity handle — not just a sheet number) and an optional `suggested_fix`. This isn't optional polish: the markup export feature (PLANNING.md §8) depends on it, so build it into the Issue schema from the first rule written.
 
 ## Client specification check (see PLANNING.md §6)
