@@ -23,6 +23,16 @@ cross-check originally flagged as needing new geometric detection work,
 paused until a sample with real clouds existed to calibrate against; see
 that module's docstring for the real convention found on
 samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf.
+
+Stage 3 (geometry checks, §5) starts here too, 2026-08-10: `Point3D`,
+`DimensionEntity`, `ViewportEntity`, and `DxfSheet` are DXF-only
+constructs, built by extraction/dxf_source.py from real converted DXF
+(samples/dwg/ via ODA File Converter + `ezdxf`) — deliberately a separate
+container from `Project`/`Sheet` rather than merged into one PDF+DXF
+schema yet, since the check engine that needs both together doesn't
+exist yet either. See `DxfSheet`'s own docstring for why, and
+extraction/dxf_source.py's docstring for what real DXF structure
+confirmed vs. corrected from PLANNING.md's original plan.
 """
 
 from __future__ import annotations
@@ -94,6 +104,124 @@ class PathEntity:
             "stroke_width": self.stroke_width,
             "color": self.color,
             "curved": self.curved,
+        }
+
+
+@dataclass(frozen=True)
+class Point3D:
+    """A 3D point in DXF model or paper space — DXF entities carry real
+    3D coordinates even for nominally-2D civil drawings (elevation via Z),
+    unlike PDF's page-space `BBox` which has no third dimension. Added
+    for extraction/dxf_source.py; kept separate from `BBox` rather than
+    reusing it for a single point, matching how the rest of this IR keeps
+    distinct shapes for distinct things."""
+
+    x: float
+    y: float
+    z: float = 0.0
+
+    def to_dict(self) -> dict:
+        return {"x": self.x, "y": self.y, "z": self.z}
+
+
+@dataclass
+class DimensionEntity:
+    """A DXF `DIMENSION` entity — PLANNING.md §5's geometry-check input.
+    Confirmed 2026-08-10 against real converted DXF (see
+    extraction/dxf_source.py's docstring): carries its measured value and
+    both witness-line origins directly, no proximity inference needed,
+    exactly as §5 assumed. `stated_text` is the drafter's manual override
+    (confirmed common — 54% of real dimensions inspected carry one), the
+    actual "drawn vs. stated" comparison target; `None` means the sheet
+    displays the auto-computed `measurement` with no override, i.e.
+    nothing to disagree with, not a missing-data case."""
+
+    measurement: float  # raw geometric distance between the witness-line origins, in the sheet's real-world units (DxfSheet.units)
+    stated_text: Optional[str]  # manual text override, if any; None if none set
+    dim_line_point: Point3D  # DXF `defpoint` — where the dimension line/text sits
+    ext_line1_origin: Point3D  # DXF `defpoint2` — first witness line's origin on the dimensioned geometry
+    ext_line2_origin: Point3D  # DXF `defpoint3` — second witness line's origin
+    dimstyle: str
+    layer: str
+
+    def to_dict(self) -> dict:
+        return {
+            "measurement": self.measurement,
+            "stated_text": self.stated_text,
+            "dim_line_point": self.dim_line_point.to_dict(),
+            "ext_line1_origin": self.ext_line1_origin.to_dict(),
+            "ext_line2_origin": self.ext_line2_origin.to_dict(),
+            "dimstyle": self.dimstyle,
+            "layer": self.layer,
+        }
+
+
+@dataclass
+class ViewportEntity:
+    """A DXF paper-space `VIEWPORT` — a window into model space at its
+    own scale/center. Confirmed 2026-08-10 against real converted DXF: a
+    sheet's paper-space layout typically has *several* of these (4-11
+    seen across the real sample), not one — a sheet showing plan +
+    elevation + section views has one viewport per view, each its own
+    scale. This is why the PDF-markup coordinate transform (PLANNING.md
+    §8) has to be per-viewport, not per-sheet: `ps_center`/`ps_width`/
+    `ps_height` locate this viewport's window in paper space,
+    `view_center_point`/`view_height` say what model-space point/extent
+    it's showing — `ps_height / view_height` is the scale factor."""
+
+    id: int
+    ps_center: Point3D  # paper-space (page) location of this viewport's center
+    ps_width: float
+    ps_height: float
+    view_center_point: Point3D  # model-space point this viewport is centered on
+    view_height: float  # model-space vertical extent shown — scale = ps_height / view_height
+    view_twist_angle: float = 0.0  # rotation of the view within the viewport, degrees
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "ps_center": self.ps_center.to_dict(),
+            "ps_width": self.ps_width,
+            "ps_height": self.ps_height,
+            "view_center_point": self.view_center_point.to_dict(),
+            "view_height": self.view_height,
+            "view_twist_angle": self.view_twist_angle,
+        }
+
+
+@dataclass
+class DxfSheet:
+    """One DWG/DXF sheet's extracted geometry-check inputs — deliberately
+    a separate container from `Sheet` (PDF) rather than merged into one
+    schema yet. PLANNING.md §3 says PDF and DXF extraction should
+    eventually converge on one IR, but that merge (matching a `DxfSheet`
+    to its counterpart `Sheet` by sheet number — PLANNING.md §8 already
+    confirmed the real join: the DWG filename's/DXF's numeric suffix
+    matches the PDF's `sheet_no` on the last 4 digits) is work the
+    geometry check engine needs when it actually consumes both sources
+    together, not an ingestion concern yet — see CLAUDE.md's "no point
+    building it ahead of a consumer" convention. `source_path` is the
+    converted DXF's path, not the original DWG's.
+
+    Title-block extraction from DXF isn't attempted yet even though the
+    real geometry was inspected for it (see extraction/dxf_source.py's
+    docstring) — confirmed feasible via fixed paper-space text position
+    (no ATTRIB attributes exist to key off, unlike PLANNING.md §4
+    originally assumed) but not yet needed by the first geometry check
+    (single-sheet dimensional consistency, PLANNING.md §9 step 3), which
+    only needs `dimensions` and `units`."""
+
+    source_path: str
+    dimensions: list[DimensionEntity]
+    viewports: list[ViewportEntity]
+    units: str  # e.g. "m" — resolved from the DXF header's $INSUNITS
+
+    def to_dict(self) -> dict:
+        return {
+            "source_path": self.source_path,
+            "dimensions": [d.to_dict() for d in self.dimensions],
+            "viewports": [v.to_dict() for v in self.viewports],
+            "units": self.units,
         }
 
 
