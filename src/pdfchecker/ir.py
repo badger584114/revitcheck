@@ -15,6 +15,14 @@ Deliberately NOT included yet, per PLANNING.md:
 References (§3's cross-sheet reference graph construct) ARE included below
 (`Reference`) — built by extraction/references.py, a pass over the whole
 extracted sheet set run after per-sheet ingestion, not part of it.
+
+Revision clouds (`RevisionCloud`) are also included below — built by
+extraction/revision_clouds.py, a per-sheet pass (unlike References, this
+needs no cross-sheet data). This is the piece PLANNING.md §4's revision
+cross-check originally flagged as needing new geometric detection work,
+paused until a sample with real clouds existed to calibrate against; see
+that module's docstring for the real convention found on
+samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf.
 """
 
 from __future__ import annotations
@@ -63,14 +71,30 @@ class PathEntity:
     """A vector drawing (line/polyline/curve/rect) as PyMuPDF reports it.
     Kept generic in stage 1 — classifying paths into dimensions, witness
     lines, revision clouds, etc. is check-engine-specific work (§4, §5),
-    not an ingestion concern."""
+    not an ingestion concern.
+
+    `color` and `curved` were added once revision-cloud detection
+    (extraction/revision_clouds.py) needed them: a cloud's scalloped
+    outline is only distinguishable from ordinary drafting linework by
+    its stroke color and its curve/line shape, neither of which the
+    original bbox-only shape carried. Both are cheap to keep — PyMuPDF's
+    `get_drawings()` already reports them per path — so this isn't a new
+    extraction pass, just retaining more of what was already there."""
 
     bbox: BBox
     kind: str  # "s" (stroke), "f" (fill), "fs" (both) — from PyMuPDF's drawing type
     stroke_width: Optional[float] = None
+    color: Optional[tuple] = None  # stroke RGB, 0-1 per channel, as PyMuPDF reports it; None if none set
+    curved: bool = False  # True if any drawing item is a bezier curve ("c"), vs. straight lines only
 
     def to_dict(self) -> dict:
-        return {"bbox": self.bbox.to_dict(), "kind": self.kind, "stroke_width": self.stroke_width}
+        return {
+            "bbox": self.bbox.to_dict(),
+            "kind": self.kind,
+            "stroke_width": self.stroke_width,
+            "color": self.color,
+            "curved": self.curved,
+        }
 
 
 @dataclass
@@ -87,6 +111,34 @@ class Table:
 
     def to_dict(self) -> dict:
         return {"bbox": self.bbox.to_dict(), "kind": self.kind, "rows": self.rows}
+
+
+@dataclass
+class RevisionCloud:
+    """A drawn revision cloud (scalloped closed curve) on a sheet body,
+    paired with its triangle revision-tag symbol where one was found
+    nearby. Built by extraction/revision_clouds.py — see that module's
+    docstring for the real vector convention this was calibrated
+    against (samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf).
+
+    `tag` is None when a qualifying cloud cluster was found but no
+    matching triangle+digit could be paired with it — surfaced as its
+    own low-confidence case by the check that consumes this (PLANNING.md
+    §4's revision cross-check), not silently dropped, same "confidence,
+    not silent" principle as the cross-sheet reference graph."""
+
+    bbox: BBox  # union of the cloud's own scallop-arc bounding boxes
+    tag: Optional[str] = None  # revision number/letter read from the paired triangle, if found
+    triangle_bbox: Optional[BBox] = None
+    arc_count: int = 0  # number of scallop-arc path objects that made up this cloud
+
+    def to_dict(self) -> dict:
+        return {
+            "bbox": self.bbox.to_dict(),
+            "tag": self.tag,
+            "triangle_bbox": self.triangle_bbox.to_dict() if self.triangle_bbox else None,
+            "arc_count": self.arc_count,
+        }
 
 
 @dataclass
@@ -147,6 +199,7 @@ class Sheet:
     words: list[TextWord]
     paths: list[PathEntity]
     raw_text: str
+    revision_clouds: list[RevisionCloud] = field(default_factory=list)
 
     @property
     def drawing_no(self) -> Optional[str]:
@@ -166,6 +219,7 @@ class Sheet:
             "tables": [t.to_dict() for t in self.tables],
             "word_count": len(self.words),
             "path_count": len(self.paths),
+            "revision_clouds": [c.to_dict() for c in self.revision_clouds],
         }
         if include_words:
             d["words"] = [w.to_dict() for w in self.words]

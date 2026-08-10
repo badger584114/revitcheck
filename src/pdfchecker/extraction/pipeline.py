@@ -13,6 +13,7 @@ import pdfplumber
 
 from pdfchecker.extraction.pdf_source import extract_paths, extract_words
 from pdfchecker.extraction.references import build_references
+from pdfchecker.extraction.revision_clouds import detect_revision_clouds
 from pdfchecker.extraction.tables import extract_revision_schedule, extract_tables
 from pdfchecker.extraction.titleblock import extract_title_block
 from pdfchecker.ir import Project, Sheet
@@ -44,6 +45,12 @@ def ingest_pdf(path: str) -> Project:
                 words, fitz_page.rect.width, fitz_page.rect.height
             )
             tables = extract_tables(plumber_page)
+            # Per-sheet, unlike build_references() below — a cloud's tag
+            # only needs matching against its own sheet's revision
+            # schedule, no cross-sheet index required. See
+            # extraction/revision_clouds.py's docstring for the real
+            # vector convention this detects.
+            revision_clouds = detect_revision_clouds(words, paths)
 
             sheet = Sheet(
                 page_index=page_index,
@@ -55,6 +62,7 @@ def ingest_pdf(path: str) -> Project:
                 words=words,
                 paths=paths,
                 raw_text=fitz_page.get_text("text"),
+                revision_clouds=revision_clouds,
             )
             project.sheets.append(sheet)
 

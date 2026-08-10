@@ -13,7 +13,7 @@ A project can also have an uploaded **client specification document** (PDF/Word)
 
 Full architecture, rationale, and open questions: see `PLANNING.md` in the repo root. Read it before making structural changes — it captures the reasoning behind the stack and pipeline design, not just the "what."
 
-**Implementation status: Stage 1 (PDF ingestion) and Stage 2 (drafting checks) are done; Stage 3 (geometry checks, PLANNING.md §9 step 3) is deferred for now — PDF/drafting work continues instead (per-user decision, 2026-08-09).** Title block completeness, revision consistency, spelling, and cross-sheet reference resolution (§4's "Cross-sheet consistency" row — symbol-based section/detail callouts only, general free-text note references still deferred per §4's scoping note) are implemented, merged to `main`, and running against the real sample. A real Stage 3 build attempt (single-sheet dimensional consistency) confirmed PDF-only dimension-line reconstruction is unreliable — see PLANNING.md §1/§5 — so geometry checks now require DXF input; that DXF ingestion work hasn't been built yet (no `ezdxf` code, no DXF sample in `samples/` yet either — check with the user before assuming one exists). Not yet built: the cloud/triangle → revision-schedule-row check (§4's third revision cross-check — needs new geometric detection of revision clouds; **paused as of 2026-08-09** until the user adds sample drawings that actually contain revision clouds to `samples/` — the current sample has none to calibrate detection against, same "build against real geometry, not the planning doc's description" approach the reference graph used), general-note cross-sheet references (§4's deferred second half of the reference graph), geometry checks (§5), the full project-config YAML schema (§4's consolidated schema — a small ad-hoc `RuleConfig` stands in for now), API/DB/queue/frontend. See "Development setup" below for the actual layout and commands.
+**Implementation status: Stage 1 (PDF ingestion) and Stage 2 (drafting checks) are done; Stage 3 (geometry checks, PLANNING.md §9 step 3) is deferred for now — PDF/drafting work continues instead (per-user decision, 2026-08-09).** Title block completeness, revision consistency (all three cross-checks — schedule↔title-block, sequential numbering, and cloud/triangle↔schedule row), spelling, and cross-sheet reference resolution (§4's "Cross-sheet consistency" row — symbol-based section/detail callouts only, general free-text note references still deferred per §4's scoping note) are implemented, merged to `main`, and running against the real sample. A real Stage 3 build attempt (single-sheet dimensional consistency) confirmed PDF-only dimension-line reconstruction is unreliable — see PLANNING.md §1/§5 — so geometry checks now require DXF input; that DXF ingestion work hasn't been built yet (no `ezdxf` code yet — **`samples/dwg/` now has 31 real `.dwg` files (added 2026-08-10) that DXF/geometry work will build against once started, but they're raw DWG, not DXF — still need the ODA File Converter step first**). The cloud/triangle → revision-schedule-row check (§4's third revision cross-check) was unblocked 2026-08-10 once `samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf` (a second, later-revision export of the same drawing set, also added 2026-08-10) gave real revision-cloud geometry to calibrate against — see `extraction/revision_clouds.py`'s docstring for the real convention found (clouds are dozens of separate small red scallop-arc path objects, not one closed curve; paired with a same-colored 3-line triangle carrying the tag digit). Not yet built: general-note cross-sheet references (§4's deferred second half of the reference graph), geometry checks (§5), the full project-config YAML schema (§4's consolidated schema — a small ad-hoc `RuleConfig` stands in for now), API/DB/queue/frontend. See "Development setup" below for the actual layout and commands.
 
 ## Development setup
 
@@ -21,9 +21,12 @@ Full architecture, rationale, and open questions: see `PLANNING.md` in the repo 
 pdfchecker/
   src/pdfchecker/
     ir.py                        # IR dataclasses (§3): Project, Sheet, TitleBlock,
-                                  # RevisionEntry, Table, TextWord, PathEntity, BBox, Reference
+                                  # RevisionEntry, RevisionCloud, Table, TextWord, PathEntity,
+                                  # BBox, Reference
     extraction/
       pdf_source.py               # PyMuPDF: word-level text + vector paths per page
+                                    # (paths now carry stroke color + curve-vs-line shape too,
+                                    # added for revision_clouds.py below)
       titleblock.py                # label-anchored title-block field extraction
                                     # (project-extensible field list, §4)
       tables.py                    # pdfplumber ruled-table extraction + classification,
@@ -32,13 +35,19 @@ pdfchecker/
                                     # symbol-based (section/detail marker) resolution only;
                                     # see its docstring for the real marker convention found
                                     # on the sample (text-adjacency, not vector shape)
+      revision_clouds.py           # per-sheet revision-cloud/triangle detection (§4) — see its
+                                    # docstring for the real vector convention found on
+                                    # samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf (a cloud is
+                                    # dozens of separate small same-color scallop-arc path
+                                    # objects, not one closed curve; the triangle tag is a
+                                    # separate same-color 3-line cluster)
       pipeline.py                  # ties the above into ingest_pdf(path) -> Project
     checks/                        # Stage 2: the drafting check engine (§4)
       issue.py                     # the Issue schema — location + suggested_fix from the first rule (§8)
       catalog.py                   # @register decorator + RuleConfig + run_checks(project, config)
       title_block.py               # required-field-presence rule
-      revisions.py                 # schedule<->title-block cross-check + sequential numbering
-                                    # (NOT the cloud/triangle check yet — needs revision-cloud detection)
+      revisions.py                 # all three revision cross-checks: schedule<->title-block,
+                                    # sequential numbering, and cloud/triangle<->schedule row
       cross_sheet.py                # unresolved-reference rule — thin wrapper over
                                     # extraction/references.py's already-built graph
       spelling.py                  # en-GB spellcheck + glossary (see en_gb_variants.py's docstring
@@ -54,12 +63,16 @@ pdfchecker/
     ingest.py                      # CLI: dumps a Stage-1 summary + sample IR for a given PDF
     check.py                       # CLI: runs Stage 2 checks, prints an issue summary
   tests/
-    conftest.py                    # session-scoped `project`/`real_issues` fixtures — ingesting
-                                    # the 37-page sample takes ~90s, share one run across test files
+    conftest.py                    # session-scoped `project`/`real_issues` fixtures (clean
+                                    # sample, ~90s to ingest) plus `amended_project` (the second,
+                                    # later-revision sample with real clouds, also ~90s) —
+                                    # each shared across the test files that need it
     test_ingest_sample.py          # Stage 1, against the real sample (incl. the reference graph)
     test_references.py             # extraction/references.py's resolution algorithm, synthetic
                                     # Sheets exercising each branch (self-marker, note-reference
                                     # false positives, nonexistent-sheet vs. no-matching-tag)
+    test_revision_clouds.py        # extraction/revision_clouds.py's clustering/tag-resolution,
+                                    # synthetic PathEntity/TextWord objects + amended_project spot-checks
     test_checks.py                 # Stage 2: real-sample assertions (this set is clean, so these
                                     # cover the "correctly finds nothing" path) + synthetic minimal
                                     # IR objects for the "fires when it should" path
@@ -76,7 +89,7 @@ pip install -r requirements.txt
 python scripts/ingest.py "samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
 python scripts/check.py "samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
 ```
-**Run tests** (a full spelling pass over 37 pages is slow — `sc.correction()` does an edit-distance search per unknown word — genuinely takes a couple of minutes; prefer running in the background over waiting on it inline):
+**Run tests** (a full spelling pass over 37 pages is slow — `sc.correction()` does an edit-distance search per unknown word — genuinely takes a couple of minutes; the suite also now ingests a second 37-page sample (`amended_project`, ~90s) for revision-cloud tests, on top of the original `project` fixture; prefer running in the background over waiting on it inline):
 ```
 python -m pytest tests/ -v
 ```
@@ -87,7 +100,7 @@ python -m pytest tests/ -v
 
 **Git remote:** `origin` is `https://github.com/badger584114/pdf-dwg-checker.git` (private). Two things worth knowing if a push fails here: (1) this machine hits a GitHub HTTP/2 push bug (`RPC failed; HTTP 400`, `unexpected disconnect while reading sideband packet`) even with valid credentials — fixed locally via `git config http.version HTTP/1.1` + a larger `http.postBuffer`, already set in this repo's `.git/config`, so a fresh clone would need it re-applied; (2) GitHub only accepts a Personal Access Token as the HTTPS password, not an account password — a stale cached credential in macOS Keychain can produce a similar-looking HTTP 400 and needs `git credential-osxkeychain erase` (protocol=https, host=github.com) to force a fresh prompt. The `gh` CLI isn't installed here — PR creation/merge goes through the GitHub REST API with the Keychain-cached token instead.
 
-**What's calibrated against the real sample so far** (all title-block/table extraction is label-anchored / column-name-matched, not fixed-position — see the docstrings in `extraction/titleblock.py` and `extraction/tables.py` for the specific layout quirks this had to work around, e.g. large-font values overlapping their own label's bounding box, and a full-page border/grid fooling pdfplumber's default table detector into merging the whole sheet into one bogus table): title block fields (`drawing_no`, `sheet_no`, `amend_no`, `designed_by`, `drafted_by`, `accepted_by`, `sheet_latitude`, `sheet_longitude`), the bottom-left revision schedule (§4 "Revision consistency — mechanics"), generic ruled tables (pile/setout schedules), and the cross-sheet reference graph (§4 "Cross-sheet reference graph — mechanics" — see `extraction/references.py`'s docstring for the real section/detail marker convention this sample uses, which differs from what PLANNING.md originally anticipated in two ways worth reading before touching that module).
+**What's calibrated against the real sample so far** (all title-block/table extraction is label-anchored / column-name-matched, not fixed-position — see the docstrings in `extraction/titleblock.py` and `extraction/tables.py` for the specific layout quirks this had to work around, e.g. large-font values overlapping their own label's bounding box, and a full-page border/grid fooling pdfplumber's default table detector into merging the whole sheet into one bogus table): title block fields (`drawing_no`, `sheet_no`, `amend_no`, `designed_by`, `drafted_by`, `accepted_by`, `sheet_latitude`, `sheet_longitude`), the bottom-left revision schedule (§4 "Revision consistency — mechanics"), generic ruled tables (pile/setout schedules), and the cross-sheet reference graph (§4 "Cross-sheet reference graph — mechanics" — see `extraction/references.py`'s docstring for the real section/detail marker convention this sample uses, which differs from what PLANNING.md originally anticipated in two ways worth reading before touching that module). Revision-cloud/triangle detection (§4's third revision cross-check) is calibrated against `samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf` specifically — see `extraction/revision_clouds.py`'s docstring for the real vector convention (many separate small same-color scallop-arc objects, not one closed path; a same-color 3-line triangle for the tag, distinguished from unrelated 4-line highlight boxes found on the same sheets).
 
 ## Sample drawings
 
@@ -101,15 +114,17 @@ python -m pytest tests/ -v
 - OCR: `pytesseract` or `paddleocr` (scanned/raster sheets)
 - Spelling: `pyspellchecker` or self-hosted LanguageTool, **en-GB base dictionary** (British spelling, e.g. "specialised" not "specialized" — never en-US), layered with a firm-wide + project-level custom glossary that engineers can add technical terms to directly from a flagged issue so they stop recurring
 - Client spec extraction: self-hosted LLM (local Llama/Mistral-class model via vLLM or Ollama) for narrative clauses, deterministic parsing for structured numeric schedules — see PLANNING.md §6
-- DB: PostgreSQL + PostGIS
+- DB: PostgreSQL — narrow scope (see the stateless-by-design constraint below): auth accounts + firm-level config (glossary, standard rule bundles) only, not client drawing data
 - Queue: Redis + Celery (parsing/OCR/reconstruction are async worker jobs, not request/response)
-- Storage: S3-compatible object storage
-- Frontend: React + TypeScript (Next.js), PDF.js + custom DXF renderer, canvas/SVG overlay for issue markup
+- Storage: S3-compatible object storage — scratch space for one session's processing, purged after report delivery, not long-term drawing storage
+- Frontend: React + TypeScript (Next.js), PDF.js + custom DXF renderer, canvas/SVG overlay for issue markup. Upload UI: a workflow-scope selector (drafting-only vs. drafting + geometry) plus two dropzones — PDF (always shown) and CAD/DXF/DWG (appears only once "+ geometry" is selected)
 - Dev/deploy: Docker Compose locally; containerized services (api, worker, db, redis, object storage)
 
 Treat this as a starting recommendation. If the user specifies an existing internal stack, defer to that instead of the above.
 
 **Hard constraint: zero outbound internet access at runtime.** The whole stack must be deployable self-contained (Docker Compose/Kubernetes, even air-gapped) — no cloud OCR/spellcheck APIs, no cloud LLM APIs, no CDN-loaded frontend assets, no external identity providers by default. See PLANNING.md §10 for the specific self-hosted choice for each component (e.g. self-hosted LanguageTool not a cloud grammar API, MinIO not AWS S3, bundled PDF.js not a CDN reference, a local LLM not a cloud one for spec extraction).
+
+**Hard constraint: stateless by design, no persistent project/session data (decided 2026-08-10).** This is not a project-management tool with saved history — login, pick a workflow scope, upload drawings (+ optional spec), run checks, download the report/markup set, and the server clears that session's uploaded files, extracted IR, generated Issues, and rendered markups. The next login starts fully fresh; there's no list of past projects/runs. Only firm-level config (glossary, standard rule bundles) persists. This is a client-confidentiality decision, not just an architectural one — see PLANNING.md §2 "Stateless by design" and §10. Consequence worth knowing before extending anything: cross-run revision diffing (comparing this run to a previous one) was in the original plan but was **dropped**, not adapted, because it depended on server-stored run history that no longer exists — see PLANNING.md §7/§8 for what that section originally specified and the stateless-diff redesign sketched as the path back in if it's ever wanted.
 
 ## Core data model: the Intermediate Representation (IR)
 
@@ -139,7 +154,7 @@ A project can have an uploaded client spec (PDF/DOCX) alongside its drawings. Re
 
 ## Markup & redline export (see PLANNING.md §8)
 
-Engineers select which flagged issues to include, and the app burns them onto the sheets as redlines — output as a marked-up PDF and/or DXF/DWG ready to hand to the drafting team. Keep markups minimal: a tight box around the flagged content's bounding box (a point marker if the issue is an absence, e.g. a missing dimension), plus a leader to a single-line note in `Label: payload` form — no restated descriptions on the sheet. Each rule category has a fixed label and minimal payload, e.g. `Spelling: concrete`, `Missing: dimension`, `Setout Δ0.015`, `Spec: cover 42mm < 50mm` — see PLANNING.md §8 for the full table. Each note also carries a short reference tag (e.g. `#014`) matching an entry in the full exported report, so a drafter can look up complete detail if the terse note isn't enough — the markup set and the report are downloaded together. PDF markup uses native PDF annotations (PyMuPDF), not flattened rasters, so the drafting team can toggle/reply in Acrobat or Bluebeam. DXF/DWG markup goes on a dedicated redline layer so drafters can edit it natively in CAD. Sequence this after the check engines are reliable — it's a trust-dependent feature.
+Engineers select which flagged issues to include, and the app burns them onto the sheets as redlines — output as a marked-up PDF and/or DXF/DWG ready to hand to the drafting team. Keep markups minimal: a tight box around the flagged content's bounding box (a point marker if the issue is an absence, e.g. a missing dimension), plus a leader to a single-line note in `Label: payload` form — no restated descriptions on the sheet. Each rule category has a fixed label and minimal payload, e.g. `Spelling: concrete`, `Missing: dimension`, `Setout Δ0.015`, `Spec: cover 42mm < 50mm` — see PLANNING.md §8 for the full table. Each note also carries a short reference tag (e.g. `#014`) matching an entry in the full exported report, so a drafter can look up complete detail if the terse note isn't enough — the markup set and the report are downloaded together. PDF markup uses native PDF annotations (PyMuPDF), not flattened rasters, so the drafting team can toggle/reply in Acrobat or Bluebeam. DXF/DWG markup goes on a dedicated redline layer so drafters can edit it natively in CAD. **PDF is the primary markup target for every Issue, including geometry-check ones (decided 2026-08-10)** — opening a marked-up PDF beats opening each sheet's DWG in CAD just to see what's flagged; the DXF/DWG redline layer stays as a secondary CAD-native option. This needs a sheet-correspondence + DXF-space→PDF-page-space transform between the two formats — see PLANNING.md §8 for the mechanics and why it's low-risk here (this firm's Revit workflow exports both PDF and DWG from the same sheet view). Sequence this after the check engines are reliable — it's a trust-dependent feature.
 
 ## Build order (see PLANNING.md §9)
 

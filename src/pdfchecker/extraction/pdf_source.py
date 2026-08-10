@@ -32,18 +32,26 @@ def extract_paths(page: fitz.Page) -> list[PathEntity]:
     """Vector drawings (lines/curves/rects) on the page. Kept generic —
     classifying these into dimensions, witness lines, revision clouds, etc.
     is check-engine work (§4, §5), not ingestion. `page.get_drawings()`
-    already gives each path's own bounding rect, which is what we store."""
+    already gives each path's own bounding rect, stroke color, and item
+    list (line/curve segments), which is what we store — color and
+    curve-vs-line shape are what extraction/revision_clouds.py needs to
+    tell a cloud's scalloped outline apart from ordinary drafting
+    linework, and both were already sitting in PyMuPDF's drawing dict
+    unused."""
 
     paths = []
     for d in page.get_drawings():
         rect = d.get("rect")
         if rect is None:
             continue
+        items = d.get("items", [])
         paths.append(
             PathEntity(
                 bbox=BBox(x0=rect.x0, y0=rect.y0, x1=rect.x1, y1=rect.y1),
                 kind=d.get("type", "unknown"),
                 stroke_width=d.get("width"),
+                color=d.get("color"),
+                curved=any(item[0] == "c" for item in items),
             )
         )
     return paths
