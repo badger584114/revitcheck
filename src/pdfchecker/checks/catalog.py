@@ -54,6 +54,21 @@ class RuleConfig:
     project_glossary_path: str | None = None
     firm_glossary_path: str | None = None
 
+    # PLANNING.md §5 "Tolerance configuration" — drawn-vs-stated dimension
+    # tolerance is a rounding-grid, not a flat delta (see checks/geometry.py).
+    # Defaults are PLANNING.md's own placeholder figures, not confirmed
+    # against a real chain of setout-critical dimensions yet — never
+    # hardcoded into the check itself, per CLAUDE.md's tolerance rule.
+    rounding_grid_default_mm: float = 5.0
+    rounding_grid_setout_critical_mm: float = 1.0
+    measurement_epsilon_mm: float = 0.5
+    # Layer names treated as setout_critical (tighter tolerance) — a
+    # project config mapping, per PLANNING.md §5. Automatic promotion for
+    # any dimension that's an edge in the §5b reconstruction graph isn't
+    # possible yet (§5b isn't built), so this list is the only
+    # classification source for now — everything else gets the default tier.
+    setout_critical_layers: list[str] = field(default_factory=list)
+
     def is_enabled(self, rule_id: str) -> bool:
         return rule_id in self.enabled_rule_ids
 

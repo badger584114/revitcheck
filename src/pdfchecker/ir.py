@@ -134,7 +134,19 @@ class DimensionEntity:
     (confirmed common — 54% of real dimensions inspected carry one), the
     actual "drawn vs. stated" comparison target; `None` means the sheet
     displays the auto-computed `measurement` with no override, i.e.
-    nothing to disagree with, not a missing-data case."""
+    nothing to disagree with, not a missing-data case.
+
+    `dim_type` was added once checks/geometry.py needed to tell a real
+    length dimension apart from other DXF dimension kinds — confirmed
+    against a real sheet (101151) that not every dimension measures a
+    length or carries a numeric override: 46 of 49 dimensions there are
+    `dim_type=0` (linear/rotated) with an override that's a bare letter
+    ("A", "B", "C"...) keying into a separate bar-mark/schedule table
+    elsewhere on the sheet, not a rounded buildable length — a real,
+    legitimate drafting convention this check must skip rather than
+    misread as a numeric mismatch. Kept as the raw DXF code (not
+    interpreted at extraction time, matching `PathEntity.kind`'s
+    precedent) — the check engine decides what's in scope."""
 
     measurement: float  # raw geometric distance between the witness-line origins, in the sheet's real-world units (DxfSheet.units)
     stated_text: Optional[str]  # manual text override, if any; None if none set
@@ -143,6 +155,7 @@ class DimensionEntity:
     ext_line2_origin: Point3D  # DXF `defpoint3` — second witness line's origin
     dimstyle: str
     layer: str
+    dim_type: int = 0  # raw DXF dimtype code (0 = linear/rotated — the only kind this project's checks interpret so far)
 
     def to_dict(self) -> dict:
         return {
@@ -151,6 +164,7 @@ class DimensionEntity:
             "dim_line_point": self.dim_line_point.to_dict(),
             "ext_line1_origin": self.ext_line1_origin.to_dict(),
             "ext_line2_origin": self.ext_line2_origin.to_dict(),
+            "dim_type": self.dim_type,
             "dimstyle": self.dimstyle,
             "layer": self.layer,
         }
@@ -315,8 +329,17 @@ class Sheet:
     """One page of the source PDF. `page_index` is 0-based into the source
     document — NOT the same as the sheet's own printed Sheet No., which
     lives in title_block.fields['sheet_no'] once extraction succeeds and is
-    the identifier cross-sheet references (§4) and revision diffing (§7)
-    actually key off."""
+    the identifier cross-sheet references (§4) actually key off.
+
+    `dxf_sheet` is the merge point PLANNING.md §5's geometry checks need
+    between PDF-sourced drafting data and DXF-sourced geometry data —
+    `None` for a drafting-only run, or when this sheet has no DXF
+    counterpart. Populated by `extraction.dxf_source.attach_dxf_sheets`,
+    which matches by the numeric-suffix join PLANNING.md §8 confirmed
+    against the real sample (DWG filename ↔ this sheet's `sheet_no`, last
+    4 digits) — not merged into one shared PDF+DXF schema at the field
+    level, since a `DxfSheet`'s own fields (model-space coordinates, DXF
+    units) aren't meaningful in PDF page-space terms."""
 
     page_index: int
     page_width: float
@@ -328,6 +351,7 @@ class Sheet:
     paths: list[PathEntity]
     raw_text: str
     revision_clouds: list[RevisionCloud] = field(default_factory=list)
+    dxf_sheet: Optional[DxfSheet] = None
 
     @property
     def drawing_no(self) -> Optional[str]:
@@ -348,6 +372,7 @@ class Sheet:
             "word_count": len(self.words),
             "path_count": len(self.paths),
             "revision_clouds": [c.to_dict() for c in self.revision_clouds],
+            "dxf_sheet": self.dxf_sheet.to_dict() if self.dxf_sheet else None,
         }
         if include_words:
             d["words"] = [w.to_dict() for w in self.words]
