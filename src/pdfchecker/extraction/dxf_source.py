@@ -51,16 +51,27 @@ and one refined:
    `dimensions` and `units` do; sheet identity for that check comes from
    the DWG/DXF filename's numeric suffix (PLANNING.md §8's already-
    confirmed join against the PDF's `sheet_no`), not DXF-internal fields.
+4. **Not every `DIMENSION` measures a length, and not every override is
+   a numeric rounding — confirmed on sheet 101151 (49 dimensions, all
+   overridden).** 46 are `dim_type=0` (linear) but the override text is
+   a bare letter ("A", "B", "C"...) keying into a separate bar-mark/
+   schedule table elsewhere on the sheet — a legitimate drafting
+   convention, not a value to compare numerically. `checks/geometry.py`
+   (the actual drawn-vs-stated check) has to parse the override and skip
+   silently when it isn't a clean number, same "skip rather than guess"
+   principle as everywhere else in this codebase — see that module's
+   docstring for the actual comparison logic and tolerance handling.
 """
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
 import ezdxf
 
-from pdfchecker.ir import DimensionEntity, DxfSheet, Point3D, ViewportEntity
+from pdfchecker.ir import DimensionEntity, DxfSheet, Point3D, Project, ViewportEntity
 
 # AutoCAD $INSUNITS codes actually seen in practice on civil drawings —
 # not the full DXF spec table, just what's worth resolving to a readable
@@ -153,6 +164,7 @@ def extract_dimensions(doc) -> list[DimensionEntity]:
                     ext_line2_origin=_point(e.dxf.defpoint3),
                     dimstyle=e.dxf.dimstyle,
                     layer=e.dxf.layer,
+                    dim_type=e.dimtype,
                 )
             )
     return dimensions
@@ -192,3 +204,44 @@ def ingest_dxf(path: str) -> DxfSheet:
         viewports=extract_viewports(doc),
         units=extract_units(doc),
     )
+
+
+# Matches the DWG/DXF filename convention seen on the real sample —
+# "...-DRG-101032_0.dxf" — capturing the drawing-number-ish digit run
+# before the trailing "_<revision>" suffix. Only the last 4 digits of
+# that capture are actually used (see attach_dxf_sheets), so a firm with
+# a differently-shaped prefix would still join correctly as long as the
+# sheet-identifying digits are the last 4 before "_<n>.dxf".
+_DXF_FILENAME_NUMBER_RE = re.compile(r"-(\d+)_\d+\.dxf$", re.IGNORECASE)
+
+
+def attach_dxf_sheets(project: Project, dxf_sheets: list[DxfSheet]) -> int:
+    """Matches each `DxfSheet` to its counterpart `Sheet` in `project` and
+    sets `Sheet.dxf_sheet` — the numeric-suffix join PLANNING.md §8
+    confirmed against the real sample: a DWG/DXF filename's own numeric
+    suffix matches the PDF's `sheet_no` on the last 4 digits (e.g.
+    `...-101032_0.dxf` <-> `sheet_no` `"2871032"`), confirmed with no
+    exceptions across all 31 real sheets. Filename-based, not DXF-
+    internal-data-based — deliberately: it works even for sheets with
+    zero dimensions (nothing to read a sheet identifier out of via the
+    `DIMBLOCK` geometry-block-name trick used to spot-check this join
+    during development), and it doesn't depend on the title-block
+    extraction that isn't built yet (see this module's docstring, point
+    3). Returns the number matched, so a caller can tell "ran cleanly,
+    nothing matched" apart from silently doing nothing."""
+
+    by_last4: dict[str, object] = {}
+    for sheet in project.sheets:
+        if sheet.sheet_no and len(sheet.sheet_no) >= 4:
+            by_last4[sheet.sheet_no[-4:]] = sheet
+
+    matched = 0
+    for dxf_sheet in dxf_sheets:
+        m = _DXF_FILENAME_NUMBER_RE.search(Path(dxf_sheet.source_path).name)
+        if not m:
+            continue
+        sheet = by_last4.get(m.group(1)[-4:])
+        if sheet is not None:
+            sheet.dxf_sheet = dxf_sheet
+            matched += 1
+    return matched
