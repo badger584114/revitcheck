@@ -19,6 +19,7 @@ from pdfchecker.checks import RuleConfig  # noqa: E402
 from pdfchecker.checks.cross_sheet import check_reference_resolves  # noqa: E402
 from pdfchecker.checks.en_gb_variants import AMERICAN_TO_BRITISH, BRITISH_TO_AMERICAN  # noqa: E402
 from pdfchecker.checks.revisions import (  # noqa: E402
+    check_cloud_matches_schedule,
     check_schedule_matches_title_block,
     check_sequential_numbering,
 )
@@ -28,6 +29,7 @@ from pdfchecker.ir import (  # noqa: E402
     BBox,
     Project,
     Reference,
+    RevisionCloud,
     RevisionEntry,
     Sheet,
     TextWord,
@@ -154,6 +156,54 @@ def test_missing_revision_number_flagged():
     issues = check_sequential_numbering(project, RuleConfig())
     assert len(issues) == 1
     assert "[1]" in issues[0].description
+
+
+# --- synthetic: revision cloud -> schedule row ---------------------------
+# (extraction/revision_clouds.py's clustering/tag-resolution algorithm
+# itself is covered by tests/test_revision_clouds.py; these exercise only
+# the rule that consumes an already-built RevisionCloud list.)
+
+
+def test_cloud_tag_matches_schedule_no_issue():
+    sheet = _sheet(
+        revision_schedule=[RevisionEntry(rev_id="1", description="ISSUED FOR CONSTRUCTION")],
+        revision_clouds=[RevisionCloud(bbox=BBox(0, 0, 10, 10), tag="1", arc_count=8)],
+    )
+    project = Project(source_path="synthetic", sheets=[sheet])
+    assert check_cloud_matches_schedule(project, RuleConfig()) == []
+
+
+def test_cloud_tag_with_no_schedule_row_flagged_high():
+    sheet = _sheet(
+        revision_schedule=[RevisionEntry(rev_id="1", description="ISSUED FOR CONSTRUCTION")],
+        revision_clouds=[RevisionCloud(bbox=BBox(0, 0, 10, 10), tag="2", arc_count=8)],
+    )
+    project = Project(source_path="synthetic", sheets=[sheet])
+    issues = check_cloud_matches_schedule(project, RuleConfig())
+    assert len(issues) == 1
+    assert issues[0].severity == "high"
+    assert "'2'" in issues[0].description
+
+
+def test_cloud_with_no_resolvable_tag_flagged_low():
+    sheet = _sheet(
+        revision_schedule=[RevisionEntry(rev_id="1", description="ISSUED FOR CONSTRUCTION")],
+        revision_clouds=[RevisionCloud(bbox=BBox(0, 0, 10, 10), tag=None, arc_count=8)],
+    )
+    project = Project(source_path="synthetic", sheets=[sheet])
+    issues = check_cloud_matches_schedule(project, RuleConfig())
+    assert len(issues) == 1
+    assert issues[0].severity == "low"
+
+
+def test_no_clouds_on_amended_real_sample(amended_project):
+    # samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf's amended sheets are
+    # correctly drafted — every cloud tags the sheet's own AMEND No. 1,
+    # which is already a schedule row — so this exercises the "correctly
+    # finds nothing" path against real cloud geometry, not just synthetic
+    # sheets.
+    issues = check_cloud_matches_schedule(amended_project, RuleConfig())
+    assert issues == []
 
 
 # --- synthetic: cross-sheet reference resolution -------------------------

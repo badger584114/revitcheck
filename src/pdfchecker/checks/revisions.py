@@ -1,15 +1,13 @@
 """Revision consistency — PLANNING.md §4 "Revision consistency —
 mechanics", the three-way cross-check (schedule / title-block parameter /
-revision clouds). Two of the three are implemented here; the third
-(cloud/triangle -> schedule row) needs new geometric detection work
-(closed scalloped-curve + triangle/tag symbol recognition) not yet built,
-so it's deliberately out of scope for this pass — see the module docstring
-note below rather than a half-built detector.
+revision clouds). All three are implemented here.
 
 1. Schedule <-> current-revision title-block parameter (implemented)
-2. Cloud/triangle -> schedule row (NOT implemented — needs revision-cloud
-   detection, a real computer-vision-ish task on vector paths; §4 already
-   anticipated the label for this: `Rev: cloud has no table row`)
+2. Cloud/triangle -> schedule row (implemented — revision-cloud detection
+   lives in extraction/revision_clouds.py, built once
+   samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf gave real cloud geometry to
+   calibrate against; unresolved case uses §4/§8's `Rev: cloud has no
+   table row` framing)
 3. Sequential numbering within the schedule (implemented)
 """
 
@@ -96,4 +94,61 @@ def check_sequential_numbering(project: Project, config: RuleConfig) -> list[Iss
                     severity="medium",
                 )
             )
+    return issues
+
+
+@register("revision.cloud_matches_schedule")
+def check_cloud_matches_schedule(project: Project, config: RuleConfig) -> list[Issue]:
+    """PLANNING.md §4 point 2 of the three-way cross-check: every revision
+    cloud's tag must resolve to a matching schedule row. Two distinct
+    failure modes, kept as separate cases rather than one generic
+    mismatch — they mean different things to a reviewing engineer:
+
+    - A cloud with no tag at all (no triangle found nearby, or no
+      digit/letter readable inside it) — likely a drafting omission or an
+      extraction miss on an unusual symbol; flagged at lower severity
+      since it isn't yet confirmed as a real inconsistency, same
+      "confidence, not silent" treatment as the cross-sheet reference
+      graph's low-confidence case.
+    - A cloud with a tag that doesn't match any row in its own sheet's
+      revision schedule — an unambiguous drafting error, high severity.
+      This is §8's `Rev: cloud has no table row` case.
+    """
+
+    issues = []
+    for sheet in project.sheets:
+        schedule_ids = {r.rev_id.strip().upper() for r in sheet.revision_schedule if r.rev_id}
+        for cloud in sheet.revision_clouds:
+            if cloud.tag is None:
+                issues.append(
+                    Issue(
+                        rule_id="revision.cloud_matches_schedule",
+                        category="revision",
+                        sheet_no=sheet.sheet_no,
+                        page_index=sheet.page_index,
+                        description=(
+                            "A revision cloud was found with no adjacent revision-tag "
+                            "triangle/number that could be read"
+                        ),
+                        bbox=cloud.bbox,
+                        severity="low",
+                    )
+                )
+                continue
+            if cloud.tag.strip().upper() not in schedule_ids:
+                issues.append(
+                    Issue(
+                        rule_id="revision.cloud_matches_schedule",
+                        category="revision",
+                        sheet_no=sheet.sheet_no,
+                        page_index=sheet.page_index,
+                        description=(
+                            f"Revision cloud tagged '{cloud.tag}' has no matching row in this "
+                            f"sheet's revision schedule (schedule has: {sorted(schedule_ids) or 'none'})"
+                        ),
+                        bbox=cloud.bbox,
+                        severity="high",
+                        suggested_fix={"cloud_tag": cloud.tag, "schedule_rev_ids": sorted(schedule_ids)},
+                    )
+                )
     return issues

@@ -14,6 +14,18 @@ SAMPLE = str(
     / "T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
 )
 
+# A second real set — same drawings, later revision — added once amended
+# sheets with real revision clouds existed to calibrate
+# extraction/revision_clouds.py against (see that module's docstring).
+# Kept as its own fixture/file rather than replacing SAMPLE above: SAMPLE
+# is deliberately the clean "AMEND No. 0 everywhere" set other tests rely
+# on for their "correctly finds nothing" assertions.
+AMENDED_SAMPLE = str(
+    Path(__file__).resolve().parent.parent
+    / "samples"
+    / "T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf"
+)
+
 
 @pytest.fixture(scope="session")
 def project():
@@ -21,6 +33,11 @@ def project():
     # module that needs the real project shares this one run rather than
     # re-parsing per module.
     return ingest_pdf(SAMPLE)
+
+
+@pytest.fixture(scope="session")
+def amended_project():
+    return ingest_pdf(AMENDED_SAMPLE)
 
 
 @pytest.fixture(scope="session")
