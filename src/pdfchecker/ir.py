@@ -25,14 +25,21 @@ that module's docstring for the real convention found on
 samples/T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf.
 
 Stage 3 (geometry checks, §5) starts here too, 2026-08-10: `Point3D`,
-`DimensionEntity`, `ViewportEntity`, and `DxfSheet` are DXF-only
-constructs, built by extraction/dxf_source.py from real converted DXF
-(samples/dwg/ via ODA File Converter + `ezdxf`) — deliberately a separate
-container from `Project`/`Sheet` rather than merged into one PDF+DXF
-schema yet, since the check engine that needs both together doesn't
-exist yet either. See `DxfSheet`'s own docstring for why, and
-extraction/dxf_source.py's docstring for what real DXF structure
-confirmed vs. corrected from PLANNING.md's original plan.
+`DimensionEntity`, `ViewportEntity`, `DxfInsert`, `DxfText`, and
+`DxfSheet` are DXF-only constructs, built by extraction/dxf_source.py
+from real converted DXF (samples/dwg/ via ODA File Converter + `ezdxf`)
+— deliberately a separate container from `Project`/`Sheet` rather than
+merged into one PDF+DXF schema yet, since the check engine that needs
+both together doesn't exist yet either. See `DxfSheet`'s own docstring
+for why, and extraction/dxf_source.py's docstring for what real DXF
+structure confirmed vs. corrected from PLANNING.md's original plan.
+`DxfInsert`/`DxfText` were added 2026-08-11 for §5b
+(extraction/setout_reconstruction.py). `SetoutPoint` (also added
+2026-08-11) is format-agnostic, unlike the DXF-only constructs above —
+it's the typed form of a setout-schedule row, used both for the
+schedule's own stated points (parsed from a PDF `Table`) and a check's
+independently DXF-derived points, so it lives near `Table` rather than
+in the DXF-only group.
 """
 
 from __future__ import annotations
@@ -171,6 +178,47 @@ class DimensionEntity:
 
 
 @dataclass
+class DxfInsert:
+    """A DXF `INSERT` (block reference) — model-space block placement.
+    Added for extraction/setout_reconstruction.py (PLANNING.md §5b): DXF
+    block inserts on this firm's export carry zero `ATTRIB` attributes
+    (extraction/dxf_source.py's docstring, point 3), so identifying what
+    a block *is* means matching its `name` (Revit embeds the source
+    family/type in it, e.g. '...CAST-IN-PLACE PILE...' or 'CS_SYMB_SETOUT
+    POINT...') by substring, then reading nearby plain text (`DxfText`,
+    below) for identity/values a real ATTRIB would otherwise carry — the
+    same text-adjacency principle `titleblock.py`/`revision_clouds.py`
+    already use for PDF, applied here to DXF's block/text split instead."""
+
+    name: str
+    insert: Point3D
+    layer: str
+
+    def to_dict(self) -> dict:
+        return {"name": self.name, "insert": self.insert.to_dict(), "layer": self.layer}
+
+
+@dataclass
+class DxfText:
+    """A DXF `TEXT`/`MTEXT` entity — model-space annotation text. `text`
+    is the plain, formatting-code-stripped content (`MTEXT.plain_text()`,
+    not the raw `.text` — confirmed real MTEXT carries `\\P` paragraph-
+    break codes that `plain_text()` resolves into real newlines and raw
+    `.text` does not, e.g. a real control-point label's raw text is
+    `'E 278437.803\\PN 6130709.230'` vs. plain `'E 278437.803\\nN
+    6130709.230'`). Added for extraction/setout_reconstruction.py: this is
+    how pile IDs, bearing values, and setout-point coordinates are read
+    off a sheet with no ATTRIB attributes to key off (see `DxfInsert`)."""
+
+    text: str
+    insert: Point3D
+    layer: str
+
+    def to_dict(self) -> dict:
+        return {"text": self.text, "insert": self.insert.to_dict(), "layer": self.layer}
+
+
+@dataclass
 class ViewportEntity:
     """A DXF paper-space `VIEWPORT` — a window into model space at its
     own scale/center. Confirmed 2026-08-10 against real converted DXF: a
@@ -223,12 +271,18 @@ class DxfSheet:
     (no ATTRIB attributes exist to key off, unlike PLANNING.md §4
     originally assumed) but not yet needed by the first geometry check
     (single-sheet dimensional consistency, PLANNING.md §9 step 3), which
-    only needs `dimensions` and `units`."""
+    only needs `dimensions` and `units`.
+
+    `inserts`/`texts` were added for §5b (extraction/setout_reconstruction.py)
+    — modelspace `INSERT`/`TEXT`/`MTEXT` entities, the same "no ATTRIB,
+    match by name + nearby text" approach `DxfInsert`/`DxfText` describe."""
 
     source_path: str
     dimensions: list[DimensionEntity]
     viewports: list[ViewportEntity]
     units: str  # e.g. "m" — resolved from the DXF header's $INSUNITS
+    inserts: list[DxfInsert] = field(default_factory=list)
+    texts: list[DxfText] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -236,6 +290,8 @@ class DxfSheet:
             "dimensions": [d.to_dict() for d in self.dimensions],
             "viewports": [v.to_dict() for v in self.viewports],
             "units": self.units,
+            "inserts": [i.to_dict() for i in self.inserts],
+            "texts": [t.to_dict() for t in self.texts],
         }
 
 
@@ -253,6 +309,25 @@ class Table:
 
     def to_dict(self) -> dict:
         return {"bbox": self.bbox.to_dict(), "kind": self.kind, "rows": self.rows}
+
+
+@dataclass(frozen=True)
+class SetoutPoint:
+    """A single named setout/coordinate point — PLANNING.md §5b's typed
+    form of a setout-schedule row (e.g. a pile schedule's SITE ID/EASTING/
+    NORTHING columns, `extraction/tables.py`'s `parse_pile_schedule`).
+    Reused for both the schedule's *stated* points and a check's
+    independently *derived* points (extraction/setout_reconstruction.py),
+    so the two are directly comparable — the same
+    "typed value, not raw table cells" step `RevisionEntry` already does
+    for the revision schedule, applied here to setout data."""
+
+    point_id: str
+    easting: float
+    northing: float
+
+    def to_dict(self) -> dict:
+        return {"point_id": self.point_id, "easting": self.easting, "northing": self.northing}
 
 
 @dataclass

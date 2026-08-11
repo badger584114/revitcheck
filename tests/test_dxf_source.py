@@ -81,6 +81,26 @@ def test_viewports_carry_scale_inputs():
         assert vp.view_height > 0  # both needed to compute the paper-space/model-space scale factor
 
 
+def test_inserts_extracted_with_name_and_position():
+    # PLANNING.md §5b (extraction/setout_reconstruction.py) — confirmed
+    # real counts on this sheet, 2026-08-11.
+    sheet = ingest_dxf(DIMENSIONED_SHEET)
+    assert len(sheet.inserts) == 42
+    setout_points = [i for i in sheet.inserts if "SETOUT POINT" in i.name.upper()]
+    assert len(setout_points) == 2  # one per abutment
+
+
+def test_texts_extracted_as_plain_text():
+    # `.plain_text()`, not raw `.text` — confirmed the real control-point
+    # label's raw text carries a literal "\P" the raw attribute leaves
+    # unresolved (see extraction/dxf_source.py's docstring).
+    sheet = ingest_dxf(DIMENSIONED_SHEET)
+    assert len(sheet.texts) == 67
+    control_points = [t for t in sheet.texts if t.text.startswith("E ") and "\n" in t.text]
+    assert len(control_points) == 2
+    assert control_points[0].text == "E 278437.803\nN 6130709.230"
+
+
 def test_convert_missing_oda_raises_clear_error():
     with pytest.raises(FileNotFoundError, match="ODA File Converter not found"):
         convert_dwg_to_dxf("/tmp", "/tmp/dxf_out_nonexistent", oda_path="/nonexistent/ODAFileConverter")

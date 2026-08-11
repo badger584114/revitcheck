@@ -14,9 +14,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+import pdfplumber  # noqa: E402
+
 from pdfchecker.checks.catalog import RuleConfig  # noqa: E402
-from pdfchecker.checks.geometry import _parse_stated_mm, check_dimension_consistency  # noqa: E402
+from pdfchecker.checks.geometry import (  # noqa: E402
+    _parse_stated_mm,
+    check_dimension_consistency,
+    check_setout_reconstruction,
+)
 from pdfchecker.extraction.dxf_source import attach_dxf_sheets, ingest_dxf  # noqa: E402
+from pdfchecker.extraction.tables import extract_tables  # noqa: E402
 from pdfchecker.ir import (  # noqa: E402
     DimensionEntity,
     DxfSheet,
@@ -25,6 +32,8 @@ from pdfchecker.ir import (  # noqa: E402
     Sheet,
     TitleBlock,
 )
+
+SAMPLE_PDF = str(Path(__file__).resolve().parent.parent / "samples" / "T2DPAA-T2D-C3S-BR-DRG-101000.pdf")
 
 SAMPLE_DXF = str(
     Path(__file__).resolve().parent.parent / "samples" / "dxf" / "T2DPAA-T2D-C3S-BR-DRG-101051_0.dxf"
@@ -204,3 +213,70 @@ def test_no_issues_on_real_clean_sheet():
     assert matched == 1
     assert sheet.dxf_sheet is dxf_sheet
     assert check_dimension_consistency(project, RuleConfig()) == []
+
+
+# --- geometry.setout_reconstruction (§5b) -----------------------------------
+# extraction/setout_reconstruction.py's mechanics are covered in depth by
+# tests/test_setout_reconstruction.py; these just check the thin rule
+# wrapper turns a real reconstruction result into the right Issues.
+
+
+def test_no_issues_on_real_sample_within_tolerance():
+    # samples/dxf/101051's 24 real piles all reconstruct within ~7mm of
+    # their schedule row (test_setout_reconstruction.py has the per-pile
+    # figures) — well inside the 10mm default survey_tolerance_mm, so the
+    # only Issues should be the four "OFF STRUCTURE BARRIER" piles that
+    # have no dimension chain of their own on this sheet (low severity,
+    # informational — not a geometric mismatch).
+    with pdfplumber.open(SAMPLE_PDF) as pdf:
+        tables = extract_tables(pdf.pages[14])
+    sheet = Sheet(
+        page_index=14,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "2871051"}),
+        revision_schedule=[],
+        tables=tables,
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=ingest_dxf(SAMPLE_DXF),
+    )
+    project = Project(source_path="synthetic", sheets=[sheet])
+
+    issues = check_setout_reconstruction(project, RuleConfig())
+    assert len(issues) == 4
+    assert all(i.severity == "low" for i in issues)
+    assert all(i.category == "geometry" for i in issues)
+
+
+def test_mismatch_beyond_survey_tolerance_flagged_high():
+    # Same shape as test_mismatch_beyond_tolerance_flagged above, one
+    # level up: a schedule row whose stated coordinate disagrees with the
+    # sheet's own bearing + dimension chain reconstruction.
+    with pdfplumber.open(SAMPLE_PDF) as pdf:
+        tables = extract_tables(pdf.pages[14])
+    for table in tables:
+        for row in table.rows:
+            if row and row[0] == "PIL234301":
+                # Real stated Easting is 278435.835 — push it 50mm off.
+                row[7] = "278435.885"
+    sheet = Sheet(
+        page_index=14,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "2871051"}),
+        revision_schedule=[],
+        tables=tables,
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=ingest_dxf(SAMPLE_DXF),
+    )
+    project = Project(source_path="synthetic", sheets=[sheet])
+
+    issues = check_setout_reconstruction(project, RuleConfig())
+    mismatch = [i for i in issues if "PIL234301" in i.description and "schedule states" in i.description]
+    assert len(mismatch) == 1
+    assert mismatch[0].severity == "high"
+    assert mismatch[0].suggested_fix["delta_mm"] > 40

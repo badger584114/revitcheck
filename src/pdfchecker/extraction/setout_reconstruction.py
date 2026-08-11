@@ -1,0 +1,649 @@
+"""Setout reconstruction — PLANNING.md §5b, Stage 3. Independently derives
+each setout point's real-world position from the sheet's own printed
+bearing + chained dimension spacing, anchored to a known-coordinate setout
+point, and hands the result to `checks/geometry.py`'s
+`geometry.setout_reconstruction` rule to compare against the schedule.
+
+**Why this doesn't just compare DXF model geometry to the schedule** (a
+simpler design considered and rejected before any code was written — see
+CLAUDE.md's Stage 3 status paragraph for the short version): the
+schedule's Easting/Northing columns are NOT live/parametric — they're
+produced by a separate script/manual process from the same bearing +
+dimension inputs a drafter types onto the sheet. The two real failure
+modes this check exists to catch are (1) a manual entry mistake in the
+bearing or a dimension override, and (2) the schedule going stale because
+a dimension changed but the E/N-generating script wasn't rerun. Comparing
+DXF model geometry to the schedule wouldn't reliably catch either — the
+model can be internally correct while the *printed, manually-entered*
+numbers and the *schedule* have drifted apart. So reconstruction has to
+walk the same inputs a human/script would: origin (setout point, known
+real E/N) -> bearing (printed, manually-entered direction) -> chained
+dimension spacing (printed/stated values, same "what a human reading the
+sheet would compute" principle as §5a's drawn-vs-stated check) -> an
+independently-derived E/N per point.
+
+**Confirmed 2026-08-11 against the real sample** (sheet `2871051` / DXF
+`T2DPAA-T2D-C3S-BR-DRG-101051_0.dxf`, the "FOUNDATION LAYOUT" sheet
+already calibrated for §5a):
+
+1. **A real setout-point origin with known real coordinates.** An
+   `INSERT` named `CS_SYMB_SETOUT POINT...` sits at a local model-space
+   position; a nearby `MTEXT` (read via `.plain_text()`, which cleanly
+   resolves the `\\P` paragraph-break code the raw `.text` leaves broken)
+   reads e.g. `"E 278437.803\\nN 6130709.230"`. One such pair per
+   abutment (two found on this sheet).
+2. **A real printed bearing per row** — plain `MTEXT`, not an angular
+   `DIMENSION` entity: `"BEARING"` labels sit beside DMS-format value
+   text (confirmed real values `"175° 08' 40\""`, `"90° 35' 22\""`,
+   `"85° 08' 40\""`). One placeholder `"BEARING x° xx' xx\""` also exists
+   elsewhere on the sheet — `_parse_bearing_dms` must return `None` for
+   this rather than raise, same "skip rather than guess" convention as
+   everywhere else in this codebase. Matching a bearing to a chain is by
+   nearest DMS-text to the chain's nodes (not by finding the "BEARING"
+   label first and reading rightward) — the wrong-row DMS texts are 7-37m
+   away on the real sample, comfortably farther than the correct one
+   (~1.5m), so nearest-match alone is unambiguous here.
+3. **A real, literal dimension chain.** Dumping every `DIMENSION` in one
+   abutment's column and sorting by witness-point position shows each
+   dimension's `ext_line2_origin` (`defpoint3`) equals the next
+   dimension's `ext_line1_origin` (`defpoint2`), to the mm — a genuine
+   chained-dimension convention, not something to infer from proximity.
+   One extra link branches off partway along the chain to a point very
+   near the setout-point `INSERT` (0.19m away — an annotation/leader
+   offset, not the same point exactly) — this is how the chain is
+   anchored to the known-coordinate origin: `walk_chain` below finds the
+   graph node nearest the origin `INSERT` (within
+   `origin_pair_max_distance_m`) and treats *that* node, not the origin's
+   own exact position, as the zero-point of the walk.
+4. **Sign/direction handling.** The chain graph is a simple path with one
+   short side-branch (the anchor leaf described above) — never a real
+   multi-way branching graph on this sample — so cumulative distance from
+   the anchor is unambiguous per node. Which side of the anchor is
+   "positive" (matches the bearing's forward direction) is resolved
+   without knowing the local-to-real rotation at all: every edge's local
+   displacement vector is dot-producted against the chain's own overall
+   span vector (its two most-distant nodes) to get a consistent +/- sign,
+   then that sign is applied to real-world distance walked along the
+   bearing unit vector. This relies on the chain being genuinely
+   collinear in local space, which the real sample is (a few cm of
+   wiggle over a 34m run) — worth re-confirming if a future sample shows
+   a curved/kinked setout line.
+
+**Explicitly not built here** (left for when a sample demands it): a real
+multi-branch dimension graph (PLANNING.md §5b's fuller traversal, needed
+for structures without a single straight chained row), structures without
+a printed bearing/chained-dimension convention at all, and multi-hop
+survey-tolerance scaling (`checks/geometry.py`'s `survey_tolerance_mm` is
+a flat value for now — every point here is one hop from its anchor in
+spirit even though several dimension links are walked to reach it, so
+PLANNING.md §5's `base + per_hop×√hops` formula doesn't have a real
+multi-hop case to calibrate against yet).
+"""
+
+from __future__ import annotations
+
+import math
+import re
+from dataclasses import dataclass
+
+from pdfchecker.ir import DimensionEntity, DxfSheet, Point3D, Sheet, SetoutPoint, Table
+
+# extraction/dxf_source.py's _INSUNITS-resolved unit strings, to meters —
+# schedule Easting/Northing columns are always in meters on the real
+# sample (column header literally says "(m)"), while a DimensionEntity's
+# `measurement` is in the sheet's own real-world unit (DxfSheet.units).
+_METERS_PER_UNIT = {
+    "mm": 0.001,
+    "cm": 0.01,
+    "m": 1.0,
+    "km": 1000.0,
+    "in": 0.0254,
+    "ft": 0.3048,
+}
+
+# AutoCAD/Revit trailing format characters — same set checks/geometry.py's
+# `_parse_stated_mm` strips before parsing an override as a number.
+_FORMAT_CHARS_RE = re.compile(r"[​-‏‪-‮]")
+
+# A control-point label's plain text, confirmed on the real sample as
+# "E <easting>\nN <northing>" (MTEXT.plain_text() resolves the \P
+# paragraph break into a real newline — see this module's docstring).
+_CONTROL_POINT_RE = re.compile(
+    r"E\s*([\d.]+)\s*\n\s*N\s*([\d.]+)", re.IGNORECASE
+)
+
+# A bearing value, confirmed on the real sample as degrees-minutes-seconds
+# text like "175° 08' 40\"" — deliberately requires all three numeric
+# groups so the real placeholder text ("BEARING x° xx' xx\"") doesn't
+# parse as zero degrees, which would be a silent wrong answer rather than
+# the "skip, don't guess" this should be.
+_BEARING_DMS_RE = re.compile(r"(\d+)\s*°\s*(\d+)\s*'\s*(\d+)\s*\"")
+
+
+def _find_header_col(header_row: list[str | None], *substrings: str) -> int | None:
+    header = [(c or "").strip().upper() for c in header_row]
+    for i, cell in enumerate(header):
+        if all(s in cell for s in substrings):
+            return i
+    return None
+
+
+def parse_pile_locations(table: Table) -> dict[str, str]:
+    """Reads the `LOCATION` column (e.g. `"ABUTMENT A"`, `"OFF STRUCTURE
+    BARRIER"`) keyed by `SITE ID` — same header-scanning approach as
+    `parse_pile_schedule`, kept separate since not every caller needs it.
+    Used by `reconstruct_sheet` to scope which schedule rows a given
+    dimension chain is even allowed to match against (see its docstring
+    for why pure spatial nearest-match isn't reliable enough on its own)."""
+
+    for row_idx, header_row in enumerate(table.rows):
+        id_col = _find_header_col(header_row, "SITE ID")
+        location_col = _find_header_col(header_row, "LOCATION")
+        if id_col is None or location_col is None:
+            continue
+        locations = {}
+        for row in table.rows[row_idx + 1 :]:
+            if id_col >= len(row) or location_col >= len(row):
+                continue
+            point_id = (row[id_col] or "").strip()
+            location = (row[location_col] or "").strip()
+            if point_id and location:
+                locations[point_id] = location
+        return locations
+    return {}
+
+
+def parse_pile_schedule(table: Table) -> list[SetoutPoint]:
+    """Reads `SITE ID`/`EASTING (m)`/`NORTHING (m)` columns from any
+    `Table` that has them — pdfplumber's ruled-table rows are already
+    clean per-column cells (unlike the revision schedule's word-clustered
+    extraction), so this just locates the header row and its relevant
+    cells by substring match and reads the corresponding cell per data
+    row. Returns `[]`, not an error, for a table that isn't a pile
+    schedule at all.
+
+    Deliberately does NOT require `table.kind == "schedule"` — confirmed
+    on the real sample that `extraction/tables.py`'s classifier only
+    catches one of a page's several real pile schedules: a schedule's
+    title (e.g. "ABUTMENT A PILE SCHEDULE") sometimes lands in the same
+    pdfplumber table as its header row, sometimes in the same table as
+    the *previous* schedule's last row — an artifact of how the page's
+    ruling lines happen to group rows, not something `_classify`'s
+    row[0]-only check can see past. Scanning every row of every table for
+    the real header (`SITE ID`/`EASTING`/`NORTHING` cells, wherever they
+    land) is what actually finds all of a page's schedules; the resulting
+    matched points come out identical for the parts `_classify` does get
+    right, and the required substrings are specific enough that a
+    non-schedule table (revision schedule, title block fragments) simply
+    never matches, so scanning broadly is safe, not just permissive."""
+
+    points = []
+    for row_idx, header_row in enumerate(table.rows):
+        id_col = _find_header_col(header_row, "SITE ID")
+        easting_col = _find_header_col(header_row, "EASTING")
+        northing_col = _find_header_col(header_row, "NORTHING")
+        if id_col is None or easting_col is None or northing_col is None:
+            continue
+        for row in table.rows[row_idx + 1 :]:
+            if id_col >= len(row) or easting_col >= len(row) or northing_col >= len(row):
+                continue
+            point_id = (row[id_col] or "").strip()
+            try:
+                easting = float((row[easting_col] or "").strip())
+                northing = float((row[northing_col] or "").strip())
+            except ValueError:
+                continue
+            if not point_id:
+                continue
+            points.append(SetoutPoint(point_id=point_id, easting=easting, northing=northing))
+        break  # only one header row expected per table
+    return points
+
+
+def _xy_dist(a: Point3D, b: Point3D) -> float:
+    return math.hypot(a.x - b.x, a.y - b.y)
+
+
+def _chain_nodes(chain: list[DimensionEntity], tolerance_m: float) -> list[Point3D]:
+    """Deduped witness-point node list for a chain — shared by
+    `find_bearing_for_chain`/`match_chain_points_to_piles` (which only
+    need node *positions*) and `walk_chain` (which additionally needs the
+    dimension values between them)."""
+
+    nodes: list[Point3D] = []
+    for d in chain:
+        for p in (d.ext_line1_origin, d.ext_line2_origin):
+            if not any(_xy_dist(p, q) <= tolerance_m for q in nodes):
+                nodes.append(p)
+    return nodes
+
+
+def find_dimension_chains(
+    dimensions: list[DimensionEntity], link_tolerance_m: float = 0.01
+) -> list[list[DimensionEntity]]:
+    """Groups dimensions into connected components by shared witness
+    points (`ext_line1_origin`/`ext_line2_origin` within
+    `link_tolerance_m` of each other) — the real chained-dimension
+    convention confirmed on the sample (module docstring, point 3).
+    General graph-connectivity logic, not pile-specific; O(n^2) pairwise
+    comparison, which is fine at the real scale here (tens of dimensions
+    per sheet, not thousands)."""
+
+    n = len(dimensions)
+    parent = list(range(n))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    endpoints = [(d.ext_line1_origin, d.ext_line2_origin) for d in dimensions]
+    for i in range(n):
+        for j in range(i + 1, n):
+            if any(_xy_dist(a, b) <= link_tolerance_m for a in endpoints[i] for b in endpoints[j]):
+                union(i, j)
+
+    groups: dict[int, list[DimensionEntity]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(dimensions[i])
+    return list(groups.values())
+
+
+def find_location_for_chain(
+    chain_local_points: list[Point3D],
+    texts: list,
+    known_locations: set[str],
+    max_pair_distance_m: float = 10.0,
+) -> str | None:
+    """Finds which schedule `LOCATION` value (e.g. `"ABUTMENT A"`) this
+    chain belongs to, via the nearest `DxfText` whose content exactly
+    matches one of `known_locations` (case/whitespace-insensitive).
+    Confirmed necessary on the real sample, not a nice-to-have: a nearby
+    but unrelated structure's pile-ID label (`"OFF STRUCTURE BARRIER"`
+    piles, no chain of their own on this sheet) can sit geometrically
+    *closer* to an abutment chain's end node than that abutment's own
+    label does — plain nearest-node matching alone let a barrier pile
+    silently steal an abutment pile's chain node (same derived position
+    assigned to two different schedule rows). Real `"ABUTMENT A"`/
+    `"ABUTMENT B"` DXF text labels sit ~4-5m from their own chain and
+    are unambiguously nearest to it (the *other* abutment's label is
+    always much farther, being in a different column entirely) — using
+    them to scope `match_chain_points_to_piles`'s candidate schedule IDs
+    per chain resolves the ambiguity that pure distance can't."""
+
+    normalized = {loc.strip().upper(): loc for loc in known_locations}
+    candidates = [
+        (min(_xy_dist(t.insert, p) for p in chain_local_points), normalized[key])
+        for t in texts
+        if (key := t.text.strip().upper()) in normalized
+    ]
+    if not candidates:
+        return None
+    distance, location = min(candidates, key=lambda c: c[0])
+    return location if distance <= max_pair_distance_m else None
+
+
+def find_control_points(
+    dxf_sheet: DxfSheet,
+    insert_substring: str = "SETOUT POINT",
+    max_pair_distance_m: float = 5.0,
+) -> list[tuple[Point3D, SetoutPoint]]:
+    """Pairs each `insert_substring`-named `DxfInsert` (a setout-point
+    symbol) to the nearest control-point-coordinate `DxfText` within
+    range — module docstring point 1. A `DxfText`/`DxfInsert` pair
+    farther apart than `max_pair_distance_m` is not paired (skip, don't
+    guess); an unmatched insert produces no entry rather than a wrong one."""
+
+    origins = []
+    control_texts = []
+    for t in dxf_sheet.texts:
+        m = _CONTROL_POINT_RE.search(t.text)
+        if m:
+            control_texts.append((t, float(m.group(1)), float(m.group(2))))
+
+    for ins in dxf_sheet.inserts:
+        if insert_substring.upper() not in ins.name.upper():
+            continue
+        if not control_texts:
+            continue
+        nearest = min(control_texts, key=lambda ct: _xy_dist(ins.insert, ct[0].insert))
+        text_obj, easting, northing = nearest
+        if _xy_dist(ins.insert, text_obj.insert) > max_pair_distance_m:
+            continue
+        origins.append((ins.insert, SetoutPoint(point_id="", easting=easting, northing=northing)))
+    return origins
+
+
+def _parse_bearing_dms(text: str) -> float | None:
+    """Parses a `"175° 08' 40\""`-style bearing into decimal degrees,
+    clockwise from north (standard survey bearing convention — confirmed
+    consistent with the real sample's rotation, module docstring). `None`
+    for anything that doesn't match all three DMS components, including
+    the real placeholder text `"BEARING x° xx' xx\""`."""
+
+    cleaned = _FORMAT_CHARS_RE.sub("", text)
+    m = _BEARING_DMS_RE.search(cleaned)
+    if not m:
+        return None
+    deg, minute, sec = (float(g) for g in m.groups())
+    return deg + minute / 60 + sec / 3600
+
+
+def find_bearing_for_chain(
+    chain_local_points: list[Point3D],
+    texts: list,
+    max_pair_distance_m: float = 30.0,
+) -> float | None:
+    """Finds the bearing value text nearest this chain's nodes and parses
+    it. Matching is purely nearest-DMS-text-to-chain — module docstring
+    point 2 explains why that's unambiguous on the real sample without
+    needing to first locate the "BEARING" label itself."""
+
+    candidates = []
+    for t in texts:
+        deg = _parse_bearing_dms(t.text)
+        if deg is None:
+            continue
+        nearest_dist = min(_xy_dist(t.insert, p) for p in chain_local_points)
+        candidates.append((nearest_dist, deg))
+    if not candidates:
+        return None
+    nearest_dist, deg = min(candidates, key=lambda c: c[0])
+    if nearest_dist > max_pair_distance_m:
+        return None
+    return deg
+
+
+def _effective_value_m(dim: DimensionEntity, meters_per_unit: float) -> float | None:
+    """The value a human reading the sheet would use for this link: the
+    manually-entered `stated_text` override if present and numeric
+    (module docstring's "check the manual entry, not the model"
+    principle — same rule §5a's `_parse_stated_mm` applies), else the raw
+    measurement. `None` only for a non-numeric override (e.g. a bar-mark
+    letter tag, per checks/geometry.py's docstring) — skip that link
+    rather than guess."""
+
+    if dim.stated_text is not None:
+        cleaned = _FORMAT_CHARS_RE.sub("", dim.stated_text).strip()
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+    return dim.measurement * meters_per_unit
+
+
+@dataclass
+class ChainWalkResult:
+    """One node's outcome from walking a chain — mirrors §5b step 6's
+    "partial reconstruction is expected, report status per point" rule."""
+
+    local_point: Point3D
+    derived: SetoutPoint | None  # None if this node couldn't be reached from the anchor
+    signed_distance_m: float = 0.0
+
+
+def walk_chain(
+    chain: list[DimensionEntity],
+    origin_local: Point3D,
+    origin_real: SetoutPoint,
+    bearing_deg: float,
+    units: str,
+    origin_pair_max_distance_m: float = 5.0,
+    snap_tolerance_m: float = 0.01,
+) -> list[ChainWalkResult] | None:
+    """Walks the chain's graph from whichever node is nearest
+    `origin_local` (module docstring point 3 — that node is not
+    necessarily the origin's own exact position, just the nearest
+    dimension witness point to it), accumulating signed real-world
+    distance along the bearing unit vector. Returns `None` if no node is
+    within `origin_pair_max_distance_m` of the origin — this chain can't
+    be anchored, so nothing in it can be reconstructed (report as
+    `no_origin`, not a silent empty result, at the call site)."""
+
+    meters_per_unit = _METERS_PER_UNIT.get(units)
+    if meters_per_unit is None:
+        return None
+
+    nodes: list[Point3D] = []
+
+    def node_index(p: Point3D) -> int:
+        for idx, q in enumerate(nodes):
+            if _xy_dist(p, q) <= snap_tolerance_m:
+                return idx
+        nodes.append(p)
+        return len(nodes) - 1
+
+    adjacency: dict[int, list[tuple[int, float]]] = {}
+    for dim in chain:
+        value_m = _effective_value_m(dim, meters_per_unit)
+        if value_m is None:
+            continue
+        i = node_index(dim.ext_line1_origin)
+        j = node_index(dim.ext_line2_origin)
+        adjacency.setdefault(i, []).append((j, value_m))
+        adjacency.setdefault(j, []).append((i, value_m))
+
+    if not nodes:
+        return None
+
+    anchor = min(range(len(nodes)), key=lambda i: _xy_dist(nodes[i], origin_local))
+    if _xy_dist(nodes[anchor], origin_local) > origin_pair_max_distance_m:
+        return None
+
+    # Overall span vector — the chain's two most-distant nodes — used to
+    # give every edge a consistent +/- sign without knowing the local-to-
+    # real rotation (module docstring point 4).
+    far_a, far_b = 0, 0
+    best = 0.0
+    for i in range(len(nodes)):
+        for j in range(i + 1, len(nodes)):
+            d = _xy_dist(nodes[i], nodes[j])
+            if d > best:
+                best, far_a, far_b = d, i, j
+    span = (nodes[far_b].x - nodes[far_a].x, nodes[far_b].y - nodes[far_a].y)
+
+    bearing_rad = math.radians(bearing_deg)
+    unit_vec = (math.sin(bearing_rad), math.cos(bearing_rad))  # (dE, dN) per survey convention
+
+    results: dict[int, float] = {anchor: 0.0}
+    frontier = [anchor]
+    while frontier:
+        node = frontier.pop()
+        for neighbor, value_m in adjacency.get(node, []):
+            if neighbor in results:
+                continue
+            edge_vec = (nodes[neighbor].x - nodes[node].x, nodes[neighbor].y - nodes[node].y)
+            sign = 1.0 if (edge_vec[0] * span[0] + edge_vec[1] * span[1]) >= 0 else -1.0
+            results[neighbor] = results[node] + sign * value_m
+            frontier.append(neighbor)
+
+    out = []
+    for idx, p in enumerate(nodes):
+        signed_distance = results.get(idx)
+        if signed_distance is None:
+            out.append(ChainWalkResult(local_point=p, derived=None))
+            continue
+        derived = SetoutPoint(
+            point_id="",
+            easting=origin_real.easting + signed_distance * unit_vec[0],
+            northing=origin_real.northing + signed_distance * unit_vec[1],
+        )
+        out.append(ChainWalkResult(local_point=p, derived=derived, signed_distance_m=signed_distance))
+    return out
+
+
+def match_chain_points_to_piles(
+    local_points: list[Point3D],
+    texts: list,
+    schedule_ids: set[str],
+    max_pair_distance_m: float = 5.0,
+) -> dict[str, Point3D]:
+    """Pairs each chain node position to a pile-ID `DxfText` (restricted
+    to text matching a real schedule row's `point_id`) — positively
+    identifies which schedule row a point belongs to rather than trusting
+    chain order alone, per this codebase's standing "skip rather than
+    guess" convention. Works on plain local positions (not a `walk_chain`
+    result) so it can be reused before a chain has an origin/bearing to
+    walk with — see `reconstruct_sheet`, which needs pile identity even
+    when reconstruction itself fails, to report *which* schedule points a
+    failure affects rather than a bare count.
+
+    Matching is one-to-one (greedy nearest-distance-first assignment, not
+    each label independently grabbing its own nearest node) — confirmed
+    necessary on the real sample: labels for the sheet's "OFF STRUCTURE
+    BARRIER" piles (a separate, undimensioned structure on this same
+    sheet, no chain of their own here) sit close enough to an abutment
+    chain's end node (0.85-2.49m) to independently "win" a naive nearest-
+    node match despite not actually being on that chain — and since two
+    different pile IDs would then both resolve to the identical chain
+    node/position, that's not just a wrong match, it's a silently
+    duplicated one. Greedy exclusive assignment lets the genuinely close
+    real matches (the abutment piles this chain is actually for, typically
+    well under 2m) claim their node first, leaving a barrier-pile label
+    with no remaining node in range — correctly unmatched, not guessed."""
+
+    id_texts_by_id: dict[str, list] = {}
+    for t in texts:
+        point_id = t.text.strip()
+        if point_id in schedule_ids:
+            id_texts_by_id.setdefault(point_id, []).append(t)
+
+    candidates = []  # (distance, point_id, node_index)
+    for point_id, id_texts in id_texts_by_id.items():
+        for node_idx, node in enumerate(local_points):
+            distance = min(_xy_dist(node, t.insert) for t in id_texts)
+            if distance <= max_pair_distance_m:
+                candidates.append((distance, point_id, node_idx))
+    candidates.sort(key=lambda c: c[0])
+
+    matched: dict[str, Point3D] = {}
+    used_nodes: set[int] = set()
+    for distance, point_id, node_idx in candidates:
+        if point_id in matched or node_idx in used_nodes:
+            continue
+        matched[point_id] = local_points[node_idx]
+        used_nodes.add(node_idx)
+    return matched
+
+
+@dataclass
+class SetoutReconstructionPoint:
+    """One schedule point's reconstruction outcome — §5b step 6's
+    "partial reconstruction is expected, report status per point, not
+    pass/fail" rule, applied at the check-rule level (checks/geometry.py)."""
+
+    point_id: str
+    stated: SetoutPoint
+    derived: SetoutPoint | None
+    status: str  # "reconstructed" | "unmatched_pile" | "no_bearing" | "no_origin"
+
+
+def reconstruct_sheet(sheet: Sheet, config) -> list[SetoutReconstructionPoint]:
+    """Ties the module together for one sheet: parse the schedule,
+    find every dimension chain + origin, walk each chain that can be
+    anchored and has a nearby bearing, and match walked points back to
+    schedule rows by pile-ID label. A schedule point never silently
+    disappears — every row ends up in the result with a status explaining
+    why it couldn't be reconstructed, if it couldn't."""
+
+    dxf_sheet = sheet.dxf_sheet
+    if dxf_sheet is None:
+        return []
+
+    schedule_points: list[SetoutPoint] = []
+    locations_by_id: dict[str, str] = {}
+    for table in sheet.tables:
+        schedule_points.extend(parse_pile_schedule(table))
+        locations_by_id.update(parse_pile_locations(table))
+    if not schedule_points:
+        return []
+    schedule_by_id = {p.point_id: p for p in schedule_points}
+    schedule_ids = set(schedule_by_id)
+    known_locations = set(locations_by_id.values())
+
+    origins = find_control_points(
+        dxf_sheet, config.setout_point_insert_substring, config.origin_pair_max_distance_m
+    )
+
+    results: dict[str, SetoutReconstructionPoint] = {}
+
+    def record(point_id: str, derived: SetoutPoint | None, status: str) -> None:
+        if point_id in results:
+            return
+        results[point_id] = SetoutReconstructionPoint(
+            point_id=point_id, stated=schedule_by_id[point_id], derived=derived, status=status
+        )
+
+    for chain in find_dimension_chains(dxf_sheet.dimensions, config.chain_link_tolerance_m):
+        if len(chain) < 2:
+            continue  # a lone dimension, not a real setout chain
+        nodes = _chain_nodes(chain, config.chain_link_tolerance_m)
+
+        # Scope candidate schedule IDs to this chain's own LOCATION where
+        # one can be identified (module docstring / find_location_for_chain
+        # — pure spatial nearest-match alone can't reliably tell this
+        # chain's piles apart from an unrelated nearby structure's).
+        # Falls back to the full schedule if no location label is found
+        # nearby — best-effort, not a hard failure.
+        location = find_location_for_chain(
+            nodes, dxf_sheet.texts, known_locations, config.bearing_pair_max_distance_m
+        )
+        candidate_ids = (
+            {pid for pid in schedule_ids if locations_by_id.get(pid) == location}
+            if location is not None
+            else schedule_ids
+        )
+
+        matched_local = match_chain_points_to_piles(
+            nodes, dxf_sheet.texts, candidate_ids, config.pile_label_pair_max_distance_m
+        )
+        if not matched_local:
+            continue  # this chain isn't a pile row on the schedule at all
+
+        if not origins:
+            for point_id in matched_local:
+                record(point_id, None, "no_origin")
+            continue
+        origin_local, origin_real = min(
+            origins, key=lambda o: min(_xy_dist(o[0], p) for p in nodes)
+        )
+
+        bearing_deg = find_bearing_for_chain(nodes, dxf_sheet.texts, config.bearing_pair_max_distance_m)
+        if bearing_deg is None:
+            for point_id in matched_local:
+                record(point_id, None, "no_bearing")
+            continue
+
+        walk = walk_chain(
+            chain,
+            origin_local,
+            origin_real,
+            bearing_deg,
+            dxf_sheet.units,
+            config.origin_pair_max_distance_m,
+            config.chain_link_tolerance_m,
+        )
+        if walk is None:
+            for point_id in matched_local:
+                record(point_id, None, "no_origin")
+            continue
+
+        for point_id, local_point in matched_local.items():
+            walked = min(walk, key=lambda r: _xy_dist(r.local_point, local_point))
+            if walked.derived is None:
+                record(point_id, None, "no_origin")
+            else:
+                record(point_id, walked.derived, "reconstructed")
+
+    for point_id in schedule_ids - set(results):
+        results[point_id] = SetoutReconstructionPoint(
+            point_id=point_id, stated=schedule_by_id[point_id], derived=None, status="unmatched_pile"
+        )
+
+    return list(results.values())
