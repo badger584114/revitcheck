@@ -61,6 +61,17 @@ and one refined:
    silently when it isn't a clean number, same "skip rather than guess"
    principle as everywhere else in this codebase — see that module's
    docstring for the actual comparison logic and tolerance handling.
+
+`extract_inserts`/`extract_texts` (`DxfSheet.inserts`/`.texts`) were added
+2026-08-11 for §5b (extraction/setout_reconstruction.py) — modelspace
+`INSERT`/`TEXT`/`MTEXT` entities, read the same way `extract_dimensions`
+reads `DIMENSION`s. `MTEXT` content is read via `.plain_text()`, not raw
+`.text` — confirmed real MTEXT carries `\P` paragraph-break codes
+`plain_text()` resolves into real newlines that raw `.text` leaves as a
+literal backslash-P, which breaks any multi-line regex parse downstream.
+See extraction/setout_reconstruction.py's docstring for what these feed:
+a real setout-point/bearing/dimension-chain convention confirmed on this
+same sheet (101051).
 """
 
 from __future__ import annotations
@@ -71,7 +82,15 @@ from pathlib import Path
 
 import ezdxf
 
-from pdfchecker.ir import DimensionEntity, DxfSheet, Point3D, Project, ViewportEntity
+from pdfchecker.ir import (
+    DimensionEntity,
+    DxfInsert,
+    DxfSheet,
+    DxfText,
+    Point3D,
+    Project,
+    ViewportEntity,
+)
 
 # AutoCAD $INSUNITS codes actually seen in practice on civil drawings —
 # not the full DXF spec table, just what's worth resolving to a readable
@@ -196,6 +215,36 @@ def extract_viewports(doc) -> list[ViewportEntity]:
     return viewports
 
 
+def extract_inserts(doc) -> list[DxfInsert]:
+    """`INSERT` (block reference) entities, modelspace only — paper-space
+    inserts are the title-block/viewport furniture, not the model
+    geometry §5b's setout reconstruction needs (piles, setout-point
+    symbols). See `DxfInsert`'s docstring (ir.py) for why matching is by
+    block-name substring: this firm's export carries no `ATTRIB`
+    attributes to key off directly."""
+
+    return [
+        DxfInsert(name=e.dxf.name, insert=_point(e.dxf.insert), layer=e.dxf.layer)
+        for e in doc.modelspace()
+        if e.dxftype() == "INSERT"
+    ]
+
+
+def extract_texts(doc) -> list[DxfText]:
+    """`TEXT`/`MTEXT` entities, modelspace only (same paper-space
+    exclusion reasoning as `extract_inserts`). `MTEXT.plain_text()` is
+    used, not raw `.text` — see this module's docstring for why (the
+    `\\P` paragraph-break formatting code)."""
+
+    texts = []
+    for e in doc.modelspace():
+        if e.dxftype() == "MTEXT":
+            texts.append(DxfText(text=e.plain_text(), insert=_point(e.dxf.insert), layer=e.dxf.layer))
+        elif e.dxftype() == "TEXT":
+            texts.append(DxfText(text=e.dxf.text, insert=_point(e.dxf.insert), layer=e.dxf.layer))
+    return texts
+
+
 def ingest_dxf(path: str) -> DxfSheet:
     doc = ezdxf.readfile(path)
     return DxfSheet(
@@ -203,6 +252,8 @@ def ingest_dxf(path: str) -> DxfSheet:
         dimensions=extract_dimensions(doc),
         viewports=extract_viewports(doc),
         units=extract_units(doc),
+        inserts=extract_inserts(doc),
+        texts=extract_texts(doc),
     )
 
 

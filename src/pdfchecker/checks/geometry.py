@@ -1,7 +1,10 @@
-"""Geometry check engine — PLANNING.md §5, Stage 3. First (and so far
-only) check built: §5a's drawn-vs-stated dimensional consistency. §5b
-(structure reconstruction from setout data + cross-check) isn't
-attempted yet.
+"""Geometry check engine — PLANNING.md §5, Stage 3. §5a's drawn-vs-stated
+dimensional consistency (`geometry.dimension_consistency`) and a first
+slice of §5b's structure reconstruction (`geometry.setout_reconstruction`
+— bearing + dimension-chain pile setout reconstruction, see
+extraction/setout_reconstruction.py's docstring for the real convention
+this is calibrated against and why it doesn't just compare DXF model
+geometry to the schedule) are built.
 
 Consumes `Sheet.dxf_sheet` (extraction/dxf_source.py's `DxfSheet`,
 attached via `attach_dxf_sheets` — see that module's docstring for the
@@ -28,6 +31,7 @@ import re
 
 from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
+from pdfchecker.extraction.setout_reconstruction import reconstruct_sheet
 from pdfchecker.ir import DimensionEntity, Project
 
 # extraction/dxf_source.py's _INSUNITS-resolved unit strings, converted
@@ -136,6 +140,77 @@ def check_dimension_consistency(project: Project, config: RuleConfig) -> list[Is
                         "stated_mm": stated_mm,
                         "delta_mm": round(delta_mm, 3),
                         "dxf_location": dim.dim_line_point.to_dict(),
+                    },
+                )
+            )
+    return issues
+
+
+# Human-readable notes for the non-"reconstructed" statuses
+# extraction/setout_reconstruction.py's `reconstruct_sheet` reports —
+# every schedule point ends up with *some* status (never silently
+# dropped, per §5b step 6), so each needs a message even when it isn't a
+# geometric mismatch.
+_STATUS_DESCRIPTIONS = {
+    "unmatched_pile": "in the schedule but not identified in the DXF drawing",
+    "no_bearing": "no readable bearing found for its setout chain",
+    "no_origin": "its setout chain could not be anchored to a known-coordinate setout point",
+}
+
+
+@register("geometry.setout_reconstruction")
+def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Issue]:
+    issues = []
+    for sheet in project.sheets:
+        if sheet.dxf_sheet is None:
+            continue  # no DXF counterpart for this sheet
+
+        for point in reconstruct_sheet(sheet, config):
+            if point.status != "reconstructed":
+                issues.append(
+                    Issue(
+                        rule_id="geometry.setout_reconstruction",
+                        category="geometry",
+                        sheet_no=sheet.sheet_no,
+                        page_index=sheet.page_index,
+                        description=(
+                            f"Setout point {point.point_id}: "
+                            f"{_STATUS_DESCRIPTIONS[point.status]}"
+                        ),
+                        bbox=None,
+                        severity="low",
+                        suggested_fix={"status": point.status},
+                    )
+                )
+                continue
+
+            delta_e = point.derived.easting - point.stated.easting
+            delta_n = point.derived.northing - point.stated.northing
+            delta_mm = (delta_e**2 + delta_n**2) ** 0.5 * 1000
+            if delta_mm <= config.survey_tolerance_mm:
+                continue
+
+            issues.append(
+                Issue(
+                    rule_id="geometry.setout_reconstruction",
+                    category="geometry",
+                    sheet_no=sheet.sheet_no,
+                    page_index=sheet.page_index,
+                    description=(
+                        f"Setout point {point.point_id}: schedule states E {point.stated.easting:.3f} "
+                        f"N {point.stated.northing:.3f}, but reconstructing from the sheet's setout "
+                        f"point + bearing + dimension chain gives E {point.derived.easting:.3f} "
+                        f"N {point.derived.northing:.3f} ({delta_mm:.1f}mm, tolerance "
+                        f"{config.survey_tolerance_mm:.1f}mm) — check the manually-entered bearing/"
+                        f"dimension overrides and whether the schedule was regenerated after the "
+                        f"last drawing change"
+                    ),
+                    bbox=None,
+                    severity="high",
+                    suggested_fix={
+                        "stated": point.stated.to_dict(),
+                        "derived": point.derived.to_dict(),
+                        "delta_mm": round(delta_mm, 1),
                     },
                 )
             )

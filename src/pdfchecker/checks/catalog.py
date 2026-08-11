@@ -69,6 +69,24 @@ class RuleConfig:
     # classification source for now — everything else gets the default tier.
     setout_critical_layers: list[str] = field(default_factory=list)
 
+    # PLANNING.md §5b "Structure reconstruction from setout data" —
+    # extraction/setout_reconstruction.py's bearing + dimension-chain
+    # walk, consumed by checks/geometry.py's geometry.setout_reconstruction
+    # rule. Defaults are calibrated against the real sample (see that
+    # module's docstring); the two "*_insert_substring" values are a DXF
+    # block-naming convention this firm's export happens to use, not a
+    # DXF standard, so they're config, not code, per CLAUDE.md.
+    setout_point_insert_substring: str = "SETOUT POINT"
+    chain_link_tolerance_m: float = 0.01
+    origin_pair_max_distance_m: float = 5.0
+    bearing_pair_max_distance_m: float = 30.0
+    pile_label_pair_max_distance_m: float = 5.0
+    # Flat for now, not PLANNING.md §5's base + per_hop×√hops scaling —
+    # see extraction/setout_reconstruction.py's docstring for why: this
+    # MVP has no real multi-hop-from-different-origins case to calibrate
+    # that formula against yet.
+    survey_tolerance_mm: float = 10.0
+
     def is_enabled(self, rule_id: str) -> bool:
         return rule_id in self.enabled_rule_ids
 
