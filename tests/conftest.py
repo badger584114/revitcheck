@@ -11,6 +11,7 @@ from pdfchecker.extraction.pipeline import ingest_pdf  # noqa: E402
 SAMPLE = str(
     Path(__file__).resolve().parent.parent
     / "samples"
+    / "BR06"
     / "T2DPAA-T2D-C3S-BR-DRG-101000.pdf"
 )
 
@@ -23,6 +24,7 @@ SAMPLE = str(
 AMENDED_SAMPLE = str(
     Path(__file__).resolve().parent.parent
     / "samples"
+    / "BR06"
     / "T2DPAA-T2D-C3S-BR-DRG-101000_1.pdf"
 )
 

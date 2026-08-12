@@ -1,10 +1,16 @@
 """Geometry check engine — PLANNING.md §5, Stage 3. §5a's drawn-vs-stated
-dimensional consistency (`geometry.dimension_consistency`) and a first
+dimensional consistency (`geometry.dimension_consistency`), a first
 slice of §5b's structure reconstruction (`geometry.setout_reconstruction`
 — bearing + dimension-chain pile setout reconstruction, see
 extraction/setout_reconstruction.py's docstring for the real convention
 this is calibrated against and why it doesn't just compare DXF model
-geometry to the schedule) are built.
+geometry to the schedule), and a first slice of §5's proposed third
+geometry source (`geometry.ifc_setout_consistency`, added 2026-08-12 —
+cross-checks each sheet's reconstructed setout point against the
+project's uploaded IFC model, via a schema-general pile-shape heuristic
+rather than this firm's Revit naming; see this file's own docstring on
+that rule, and extraction/ifc_source.py's docstring for the real IFC
+findings it's built on) are built.
 
 Consumes `Sheet.dxf_sheet` (extraction/dxf_source.py's `DxfSheet`,
 attached via `attach_dxf_sheets` — see that module's docstring for the
@@ -32,7 +38,7 @@ import re
 from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
 from pdfchecker.extraction.setout_reconstruction import reconstruct_sheet
-from pdfchecker.ir import DimensionEntity, Project
+from pdfchecker.ir import DimensionEntity, IfcElement, Project
 
 # extraction/dxf_source.py's _INSUNITS-resolved unit strings, converted
 # to a millimeter multiplier — tolerances are specified in mm
@@ -210,6 +216,144 @@ def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Is
                     suggested_fix={
                         "stated": point.stated.to_dict(),
                         "derived": point.derived.to_dict(),
+                        "delta_mm": round(delta_mm, 1),
+                    },
+                )
+            )
+    return issues
+
+
+def _is_slender_vertical(element: IfcElement, config: RuleConfig) -> bool:
+    """A schema-general shape heuristic — small horizontal footprint,
+    tall — that identifies pile-like elements from world-space geometry
+    alone, no `Name`/`PredefinedType` involved. Deliberately built this
+    way after an early mistake: an earlier pass on this project assumed
+    BR06's IFC model had no piles at all, because it only sampled a few
+    `IfcSlab` elements and missed the real ones (the user caught this,
+    they could see the piles in Navisworks). All 28 real piles on that
+    sample are `IfcSlab`/`PredefinedType='BASESLAB'` with "PILE" in
+    their Revit `Name` — but confirmed this geometry-only check finds
+    exactly the same 28 elements, zero mismatches against the Name-text
+    search, with no reliance on this firm's class/naming choice for
+    piles. See extraction/ifc_source.py's docstring for the full
+    account, including the real pile geometry this was calibrated
+    against (0.75m x 0.75m footprint, 10.55m tall)."""
+
+    dx = element.bbox_max.x - element.bbox_min.x
+    dy = element.bbox_max.y - element.bbox_min.y
+    dz = element.bbox_max.z - element.bbox_min.z
+    footprint = max(dx, dy)
+    if footprint <= 0 or footprint >= config.ifc_pile_footprint_max_m:
+        return False
+    return dz / footprint >= config.ifc_pile_aspect_ratio_min
+
+
+def _horizontal_centroid(element: IfcElement) -> tuple[float, float]:
+    return (
+        (element.bbox_min.x + element.bbox_max.x) / 2,
+        (element.bbox_min.y + element.bbox_max.y) / 2,
+    )
+
+
+@register("geometry.ifc_setout_consistency")
+def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[Issue]:
+    """Cross-checks each sheet's independently-*reconstructed* setout
+    point (extraction/setout_reconstruction.py's `reconstruct_sheet` —
+    derived from the sheet's own printed setout-point origin + bearing +
+    dimension chain, already in real Easting/Northing) against the
+    nearest pile-like element in the project's uploaded IFC model.
+
+    Deliberately NOT a DXF-vs-IFC coordinate-space comparison — a DWG/DXF
+    export is one sheet's paper-space view, not model space, so there is
+    no single fixed transform between a sheet's local drafting
+    coordinates and the IFC's world coordinates for this (or generally
+    any) project to rely on (confirmed by the user; see
+    extraction/ifc_source.py's docstring). Comparing the already-
+    reconstructed real-world point instead sidesteps that entirely: both
+    sides of this comparison are already expressed in real Easting/
+    Northing, independently arrived at (one from the sheet's printed
+    bearing/dimension inputs, the other from the coordinated 3D model),
+    which is also a stronger check than comparing to the *schedule* —
+    the schedule is itself a separate generated artifact that can go
+    stale (see `geometry.setout_reconstruction`'s docstring), while a
+    live IFC model reflects the current coordinated design.
+
+    Only points with `status == "reconstructed"` are checked — a point
+    that couldn't be reconstructed at all is already `geometry.
+    setout_reconstruction`'s concern, not repeated here. A sheet with no
+    IFC model attached (`project.ifc_model is None` — a drafting-only
+    run, or no IFC uploaded) is silently skipped, same "Issues just
+    don't appear" scope model as `dxf_sheet is None` above."""
+
+    if project.ifc_model is None:
+        return []
+
+    candidates = [e for e in project.ifc_model.elements if _is_slender_vertical(e, config)]
+    if not candidates:
+        return []
+    candidate_positions = [(_horizontal_centroid(e), e) for e in candidates]
+
+    issues = []
+    for sheet in project.sheets:
+        if sheet.dxf_sheet is None:
+            continue
+
+        for point in reconstruct_sheet(sheet, config):
+            if point.status != "reconstructed":
+                continue  # geometry.setout_reconstruction already reports this
+
+            (px, py) = (point.derived.easting, point.derived.northing)
+            nearest_elem, nearest_dist = None, None
+            for (cx, cy), elem in candidate_positions:
+                dist = ((cx - px) ** 2 + (cy - py) ** 2) ** 0.5
+                if nearest_dist is None or dist < nearest_dist:
+                    nearest_elem, nearest_dist = elem, dist
+
+            if nearest_dist > config.ifc_match_max_distance_m:
+                issues.append(
+                    Issue(
+                        rule_id="geometry.ifc_setout_consistency",
+                        category="geometry",
+                        sheet_no=sheet.sheet_no,
+                        page_index=sheet.page_index,
+                        description=(
+                            f"Setout point {point.point_id}: reconstructed position has no "
+                            f"matching pile-like element in the IFC model within "
+                            f"{config.ifc_match_max_distance_m:.1f}m (nearest is "
+                            f"{nearest_dist:.1f}m away) — may be unmodeled, or modeled with a "
+                            f"different shape this heuristic doesn't recognize"
+                        ),
+                        bbox=None,
+                        severity="low",
+                        suggested_fix={"nearest_distance_m": round(nearest_dist, 2)},
+                    )
+                )
+                continue
+
+            delta_mm = nearest_dist * 1000
+            if delta_mm <= config.ifc_setout_tolerance_mm:
+                continue
+
+            issues.append(
+                Issue(
+                    rule_id="geometry.ifc_setout_consistency",
+                    category="geometry",
+                    sheet_no=sheet.sheet_no,
+                    page_index=sheet.page_index,
+                    description=(
+                        f"Setout point {point.point_id}: reconstructing from the sheet's setout "
+                        f"point + bearing + dimension chain gives E {px:.3f} N {py:.3f}, but the "
+                        f"nearest pile-like element in the IFC model ({nearest_elem.global_id}) "
+                        f"sits {delta_mm:.1f}mm away (tolerance {config.ifc_setout_tolerance_mm:.1f}mm) "
+                        f"— check whether the issued drawing and the coordinated 3D model have "
+                        f"diverged"
+                    ),
+                    bbox=None,
+                    severity="high",
+                    suggested_fix={
+                        "derived": point.derived.to_dict(),
+                        "ifc_global_id": nearest_elem.global_id,
+                        "ifc_display_name": nearest_elem.display_name,
                         "delta_mm": round(delta_mm, 1),
                     },
                 )

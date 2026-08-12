@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run Stage 2 drafting checks against a PDF and print a summary.
 
-Usage: python scripts/check.py samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf
+Usage: python scripts/check.py samples/BR06/T2DPAA-T2D-C3S-BR-DRG-101000.pdf
 """
 
 from __future__ import annotations

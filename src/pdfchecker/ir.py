@@ -40,6 +40,14 @@ it's the typed form of a setout-schedule row, used both for the
 schedule's own stated points (parsed from a PDF `Table`) and a check's
 independently DXF-derived points, so it lives near `Table` rather than
 in the DXF-only group.
+
+`IfcElement`/`IfcModel` were added 2026-08-12 for §5's proposed third
+geometry-check source (extraction/ifc_source.py, IFC 3D-model export) —
+project-level constructs, not per-sheet, and not yet joined to
+`Project`/`Sheet`/`DxfSheet` (no check consumes them yet). See that
+module's docstring for the real findings this is deliberately built
+around being schema-general rather than tied to this sample's specific
+client/Revit-export conventions.
 """
 
 from __future__ import annotations
@@ -296,6 +304,94 @@ class DxfSheet:
 
 
 @dataclass
+class IfcElement:
+    """One physical IFC element (any entity with both `ObjectPlacement`
+    and `Representation` — a beam, slab, member, wall, whatever the
+    project's Revit export happens to contain) — PLANNING.md §5's
+    proposed third geometry-check source, extraction/ifc_source.py.
+
+    Deliberately schema-general, not project-specific — see that
+    module's docstring for the real findings this is built from (raised
+    by the user 2026-08-12, calibrated against samples/BR06's and
+    samples/BR08's real `.ifc` files, confirmed to be the same client
+    project so their metadata conventions match each other but are NOT
+    assumed to generalize to a different client). `ifc_class` (e.g.
+    `"IfcBeam"`) and `predefined_type` (e.g. `"BEAM"`) are both IFC4
+    schema-standard — portable to any IFC file regardless of authoring
+    tool. `global_id` is the schema-standard GUID. `display_name` is the
+    Revit family/type string (e.g. `"03_SFR_ACS_Abutment_CS: ABUTMENT
+    EAST_BR06_3"`) — confirmed real but firm-specific naming, kept ONLY
+    for human-readable labeling (Issue payloads, audit trail), never as
+    a matching/lookup key. `bbox_min`/`bbox_max` are the element's
+    world-space axis-aligned bounding box in real metres — confirmed
+    `ifcopenshell.geom`'s default (`CONVERT_BACK_UNITS` left `False`)
+    always normalizes to metres regardless of a file's declared length
+    unit (both real files declare millimetres; geometry output still
+    comes out already-in-metres), so this is a general property of the
+    library, not a project-specific assumption."""
+
+    global_id: str
+    ifc_class: str
+    predefined_type: Optional[str]
+    display_name: Optional[str]
+    bbox_min: Point3D
+    bbox_max: Point3D
+
+    def to_dict(self) -> dict:
+        return {
+            "global_id": self.global_id,
+            "ifc_class": self.ifc_class,
+            "predefined_type": self.predefined_type,
+            "display_name": self.display_name,
+            "bbox_min": self.bbox_min.to_dict(),
+            "bbox_max": self.bbox_max.to_dict(),
+        }
+
+
+@dataclass
+class IfcModel:
+    """One project's IFC 3D-model export — extraction/ifc_source.py's
+    `ingest_ifc(path) -> IfcModel`. Project-level, not per-sheet, unlike
+    `DxfSheet` — an IFC export represents the whole model, not one
+    sheet's view of it, so there's no per-sheet join at ingestion time
+    (matching `DxfSheet`'s "no point building it ahead of a consumer"
+    precedent: how an `IfcModel` corresponds to `Sheet`/`DxfSheet` data
+    is check-engine work, not resolved yet — see this module's
+    docstring for why that correspondence isn't even a coordinate-frame
+    match for free, despite same-Revit-model provenance).
+
+    `has_map_conversion` records whether the file carries IFC4's
+    schema-standard `IfcMapConversion`/`IfcProjectedCRS` georeferencing
+    entities — confirmed `False` on both real files inspected so far;
+    `site_ref_lat`/`site_ref_long` fall back to `IfcSite.RefLatitude`/
+    `RefLongitude` (also schema-standard, present on every `IfcSite`
+    regardless of author, but coarse — confirmed ~1.7km off a real
+    sheet's title-block lat/long, a project-wide site reference rather
+    than per-element precision) as a portable, if rougher, real-world
+    anchor. Neither is a substitute for a verified per-project
+    coordinate transform — see extraction/ifc_source.py's docstring."""
+
+    source_path: str
+    schema: str  # e.g. "IFC4"
+    length_unit: str  # the file's own declared unit, e.g. "MILLI.METRE" — informational only; geometry is always exposed in metres regardless (see IfcElement)
+    has_map_conversion: bool
+    site_ref_lat: Optional[float]  # decimal degrees, from IfcSite.RefLatitude
+    site_ref_long: Optional[float]  # decimal degrees, from IfcSite.RefLongitude
+    elements: list[IfcElement] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "source_path": self.source_path,
+            "schema": self.schema,
+            "length_unit": self.length_unit,
+            "has_map_conversion": self.has_map_conversion,
+            "site_ref_lat": self.site_ref_lat,
+            "site_ref_long": self.site_ref_long,
+            "elements": [e.to_dict() for e in self.elements],
+        }
+
+
+@dataclass
 class Table:
     """A generic extracted table — pdfplumber's row/column output plus a
     location and a best-effort classification. Distinguishing "this is the
@@ -506,6 +602,13 @@ class Project:
     source_path: str
     sheets: list[Sheet] = field(default_factory=list)
     references: list[Reference] = field(default_factory=list)
+    # PLANNING.md §5's proposed third geometry source, added 2026-08-12 —
+    # project-level (one IFC model covers every sheet), attached via
+    # extraction.ifc_source.attach_ifc_model, same "no point building it
+    # ahead of a consumer" precedent as DxfSheet. None on a drafting-only
+    # run, or a geometry run with no IFC uploaded — checks must treat that
+    # as "nothing to cross-check," not an error.
+    ifc_model: Optional[IfcModel] = None
 
     def sheet_by_no(self, sheet_no: str) -> Optional[Sheet]:
         """Look up a sheet by its printed Sheet No. — the identifier that
@@ -521,4 +624,5 @@ class Project:
             "source_path": self.source_path,
             "sheets": [s.to_dict() for s in self.sheets],
             "references": [r.to_dict() for r in self.references],
+            "ifc_model": self.ifc_model.to_dict() if self.ifc_model else None,
         }
