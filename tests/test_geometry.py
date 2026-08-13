@@ -27,8 +27,10 @@ import pdfplumber  # noqa: E402
 
 from pdfchecker.checks.catalog import RuleConfig  # noqa: E402
 from pdfchecker.checks.geometry import (  # noqa: E402
+    _cached_reconstruct_sheet,
     _is_slender_vertical,
     _parse_stated_mm,
+    _reconstruction_cache,
     check_dimension_consistency,
     check_ifc_setout_consistency,
     check_setout_reconstruction,
@@ -403,10 +405,13 @@ def test_no_ifc_model_no_issues():
     assert check_ifc_setout_consistency(project, RuleConfig()) == []
 
 
-def test_no_slender_candidates_in_model_no_issues():
+def test_no_slender_candidates_in_model_reports_coverage_gap():
     # A model with elements but none pile-shaped (e.g. piles genuinely
-    # weren't modeled) — silently skipped, same "nothing to check against"
-    # scope model as no ifc_model at all, not 24 false "missing pile" Issues.
+    # weren't modeled) — this must NOT read as "checked, all clean" in the
+    # output (CLAUDE.md: "partial reconstruction should report a
+    # confidence/coverage indicator rather than failing silently"), so
+    # it's one low-severity Issue per sheet that had points to check, not
+    # a silent [] the same as "no IFC model attached at all".
     sheet = _real_sheet_101051()
     slab = IfcElement(
         global_id="g1",
@@ -421,7 +426,11 @@ def test_no_slender_candidates_in_model_no_issues():
         sheets=[sheet],
         ifc_model=IfcModel(source_path="x.ifc", schema="IFC4", length_unit="METRE", has_map_conversion=False, site_ref_lat=None, site_ref_long=None, elements=[slab]),
     )
-    assert check_ifc_setout_consistency(project, RuleConfig()) == []
+    issues = check_ifc_setout_consistency(project, RuleConfig())
+    assert len(issues) == 1
+    assert issues[0].severity == "low"
+    assert "none match the pile-shape heuristic" in issues[0].description
+    assert issues[0].suggested_fix["candidate_count"] == 0
 
 
 def test_ifc_pile_within_tolerance_no_issue():
@@ -496,3 +505,74 @@ def test_unreconstructed_points_never_checked_against_ifc():
 
     issues = check_ifc_setout_consistency(project, RuleConfig())
     assert all("PIL234341" not in i.description for i in issues)
+
+
+def test_one_to_one_assignment_no_double_claiming():
+    # Real fix, 2026-08-12: the original version matched every point
+    # independently against the same global "nearest" element, so two
+    # points near each other could both claim it. PIL234301 and PIL234302
+    # are real, consecutive piles on this sheet (~3.02m apart) — a single
+    # synthetic candidate placed at their midpoint sits ~1.51m from each,
+    # within the default 2m ifc_match_max_distance_m for BOTH. Before the
+    # fix, both would independently report a ~1512mm "mismatch" against
+    # this one element. After the fix, exactly one of them claims it
+    # (mismatch, since 1512mm is well beyond the 10mm tolerance) and the
+    # other reports "already matched to a different, closer point" instead
+    # of a second, misleading mismatch against the same global_id.
+    sheet = _real_sheet_101051()
+    midpoint_easting = (278435.835 + 278436.09) / 2
+    midpoint_northing = (6130732.397 + 6130729.383) / 2
+    ifc_model = IfcModel(
+        source_path="x.ifc", schema="IFC4", length_unit="METRE", has_map_conversion=False,
+        site_ref_lat=None, site_ref_long=None,
+        elements=[_ifc_pile("mid-candidate", midpoint_easting, midpoint_northing)],
+    )
+    project = Project(source_path="synthetic", sheets=[sheet], ifc_model=ifc_model)
+
+    issues = check_ifc_setout_consistency(project, RuleConfig())
+    own_issues = [i for i in issues if "PIL234301" in i.description or "PIL234302" in i.description]
+
+    mismatches = [i for i in own_issues if i.suggested_fix.get("ifc_global_id") == "mid-candidate"]
+    already_claimed = [i for i in own_issues if "already matched to a different" in i.description]
+    assert len(mismatches) == 1  # never both, unlike before the fix
+    assert mismatches[0].severity == "high"
+    assert len(already_claimed) == 1
+    assert already_claimed[0].severity == "low"
+    assert already_claimed[0].suggested_fix["derived"] is not None
+
+
+def test_reconstruction_cache_shared_across_both_rules():
+    # Real fix, 2026-08-12: geometry.setout_reconstruction and
+    # geometry.ifc_setout_consistency each independently called
+    # extraction/setout_reconstruction.py's reconstruct_sheet per sheet —
+    # a normal run has both enabled together (RuleConfig.enabled_rule_ids
+    # defaults to every registered rule), so the whole schedule-parse +
+    # dimension-chain-walk pipeline ran twice per sheet with the second
+    # pass's result discarded. Whitebox check that the cache is actually
+    # populated and reused, not just that both checks still produce
+    # correct results (covered by the other real-sample tests here).
+    sheet = _real_sheet_101051()
+    config = RuleConfig()
+
+    _reconstruction_cache.clear()
+    result_a = _cached_reconstruct_sheet(sheet, config)
+    result_b = _cached_reconstruct_sheet(sheet, config)
+    assert result_a is result_b  # same cached list object, not recomputed
+    assert len(_reconstruction_cache) == 1
+
+
+def test_reconstruction_cache_entry_freed_with_its_sheet():
+    # The cache is keyed by id(sheet), not the (unhashable) Sheet object
+    # itself — safe only because a weakref finalizer removes the entry
+    # the moment that Sheet is garbage-collected, so a later object
+    # reusing the same freed id can never see a stale cached result.
+    import gc
+
+    _reconstruction_cache.clear()
+    sheet = _real_sheet_101051()
+    _cached_reconstruct_sheet(sheet, RuleConfig())
+    assert len(_reconstruction_cache) == 1
+
+    del sheet
+    gc.collect()
+    assert len(_reconstruction_cache) == 0

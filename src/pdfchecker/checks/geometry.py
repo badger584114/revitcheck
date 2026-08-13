@@ -33,12 +33,14 @@ this codebase.
 
 from __future__ import annotations
 
+import math
 import re
+import weakref
 
 from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
 from pdfchecker.extraction.setout_reconstruction import reconstruct_sheet
-from pdfchecker.ir import DimensionEntity, IfcElement, Project
+from pdfchecker.ir import DimensionEntity, IfcElement, Project, Sheet
 
 # extraction/dxf_source.py's _INSUNITS-resolved unit strings, converted
 # to a millimeter multiplier — tolerances are specified in mm
@@ -152,6 +154,52 @@ def check_dimension_consistency(project: Project, config: RuleConfig) -> list[Is
     return issues
 
 
+# geometry.setout_reconstruction and geometry.ifc_setout_consistency both
+# need the same per-sheet extraction/setout_reconstruction.py
+# reconstruct_sheet() result. A normal run has both rules enabled
+# together (RuleConfig.enabled_rule_ids defaults to every registered
+# rule, checks/catalog.py), which was recomputing the whole schedule-
+# parse + dimension-chain-walk pipeline twice per sheet with the second
+# pass's result discarded — fixed 2026-08-12 with the cache below.
+#
+# `Sheet` is a plain (non-frozen) dataclass, so it's unhashable — can't
+# key a dict or WeakKeyDictionary on it directly (confirmed: `hash(sheet)`
+# raises `TypeError`). Keyed on `id(sheet)` instead, with a `weakref.ref`
+# finalizer that proactively removes the entry the moment that `Sheet` is
+# garbage-collected — this is what actually makes an id-keyed cache safe:
+# without it, a freed sheet's id could later be reused by an unrelated
+# object and silently return someone else's cached reconstruction.
+# Nested per-`id(config)` since reconstruction genuinely depends on
+# config's tolerance/matching parameters, not just the sheet.
+#
+# `_reconstruction_refs` exists only to keep each `weakref.ref` itself
+# alive — a real bug caught while testing this fix: a bare
+# `weakref.ref(sheet, callback)` with no Python-level reference to the
+# returned `ref` object gets garbage-collected right away (nothing else
+# points to it), and once the `ref` object itself is gone its callback
+# can never fire, silently defeating the whole cleanup mechanism. Keeping
+# it in this dict, popped by the same callback that pops the cache entry,
+# ties its lifetime to the cache entry it's cleaning up.
+_reconstruction_cache: dict[int, dict[int, list]] = {}
+_reconstruction_refs: dict[int, weakref.ref] = {}
+
+
+def _cached_reconstruct_sheet(sheet: Sheet, config: RuleConfig) -> list:
+    sheet_id = id(sheet)
+    if sheet_id not in _reconstruction_cache:
+        def _cleanup(_ref, sid=sheet_id):
+            _reconstruction_cache.pop(sid, None)
+            _reconstruction_refs.pop(sid, None)
+
+        _reconstruction_refs[sheet_id] = weakref.ref(sheet, _cleanup)
+        _reconstruction_cache[sheet_id] = {}
+    by_config = _reconstruction_cache[sheet_id]
+    config_key = id(config)
+    if config_key not in by_config:
+        by_config[config_key] = reconstruct_sheet(sheet, config)
+    return by_config[config_key]
+
+
 # Human-readable notes for the non-"reconstructed" statuses
 # extraction/setout_reconstruction.py's `reconstruct_sheet` reports —
 # every schedule point ends up with *some* status (never silently
@@ -171,7 +219,7 @@ def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Is
         if sheet.dxf_sheet is None:
             continue  # no DXF counterpart for this sheet
 
-        for point in reconstruct_sheet(sheet, config):
+        for point in _cached_reconstruct_sheet(sheet, config):
             if point.status != "reconstructed":
                 issues.append(
                     Issue(
@@ -255,13 +303,31 @@ def _horizontal_centroid(element: IfcElement) -> tuple[float, float]:
     )
 
 
+def _ifc_issue(sheet: Sheet, description: str, severity: str, suggested_fix: dict) -> Issue:
+    """Shared Issue-construction for `check_ifc_setout_consistency`'s
+    outcome branches below — they'd otherwise copy-paste the same
+    rule_id/category/sheet_no/page_index/bbox=None quintet three times."""
+
+    return Issue(
+        rule_id="geometry.ifc_setout_consistency",
+        category="geometry",
+        sheet_no=sheet.sheet_no,
+        page_index=sheet.page_index,
+        description=description,
+        bbox=None,
+        severity=severity,
+        suggested_fix=suggested_fix,
+    )
+
+
 @register("geometry.ifc_setout_consistency")
 def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[Issue]:
     """Cross-checks each sheet's independently-*reconstructed* setout
     point (extraction/setout_reconstruction.py's `reconstruct_sheet` —
     derived from the sheet's own printed setout-point origin + bearing +
     dimension chain, already in real Easting/Northing) against the
-    nearest pile-like element in the project's uploaded IFC model.
+    nearest available pile-like element in the project's uploaded IFC
+    model.
 
     Deliberately NOT a DXF-vs-IFC coordinate-space comparison — a DWG/DXF
     export is one sheet's paper-space view, not model space, so there is
@@ -278,84 +344,174 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
     stale (see `geometry.setout_reconstruction`'s docstring), while a
     live IFC model reflects the current coordinated design.
 
+    Matching is **one-to-one across the whole project**, not each
+    reconstructed point matched to its own independent "nearest" —
+    fixed 2026-08-12 after real review: the original version let two
+    different points both claim the same IFC element, or a point snap to
+    a neighboring structure's pile, since nothing removed a matched
+    element from the pool. Greedy nearest-pair-first assignment (below)
+    fixes double-claiming; it does NOT fix "matched the wrong structure's
+    pile" in general, because there's no confirmed IFC-side signal to
+    scope by. `extraction/setout_reconstruction.py`'s DXF-side matching
+    solves that same class of ambiguity by reading nearby sheet text
+    (`"ABUTMENT A"`/`"ABUTMENT B"`) near the schedule's own `LOCATION`
+    column — but this firm's real IFC pile `Name` text
+    (`"...CAST-IN-PLACE PILE - 0750:<tag>"`) carries no comparable
+    structure/location information to key off (confirmed on the only
+    real IFC sample calibrated against). Real pile spacing on that
+    sample (~8m between abutments) is comfortably outside the default
+    `ifc_match_max_distance_m` (2.0m), so this gap isn't live there —
+    flagged as a known limitation for a tighter-spaced project, not
+    solved.
+
     Only points with `status == "reconstructed"` are checked — a point
     that couldn't be reconstructed at all is already `geometry.
     setout_reconstruction`'s concern, not repeated here. A sheet with no
     IFC model attached (`project.ifc_model is None` — a drafting-only
     run, or no IFC uploaded) is silently skipped, same "Issues just
-    don't appear" scope model as `dxf_sheet is None` above."""
+    don't appear" scope model as `dxf_sheet is None` above — but an IFC
+    model that *is* attached and simply has no pile-shaped elements at
+    all is NOT silently skipped (see the empty-`candidate_positions`
+    branch below): those are different situations an engineer needs to
+    tell apart, per CLAUDE.md's "partial reconstruction should report a
+    confidence/coverage indicator rather than failing silently.\""""
 
     if project.ifc_model is None:
         return []
 
     candidates = [e for e in project.ifc_model.elements if _is_slender_vertical(e, config)]
-    if not candidates:
-        return []
     candidate_positions = [(_horizontal_centroid(e), e) for e in candidates]
 
-    issues = []
+    sheet_points: list[tuple[Sheet, object]] = []
     for sheet in project.sheets:
         if sheet.dxf_sheet is None:
             continue
+        for point in _cached_reconstruct_sheet(sheet, config):
+            if point.status == "reconstructed":
+                sheet_points.append((sheet, point))
 
-        for point in reconstruct_sheet(sheet, config):
-            if point.status != "reconstructed":
-                continue  # geometry.setout_reconstruction already reports this
+    if not sheet_points:
+        return []
 
-            (px, py) = (point.derived.easting, point.derived.northing)
-            nearest_elem, nearest_dist = None, None
-            for (cx, cy), elem in candidate_positions:
-                dist = ((cx - px) ** 2 + (cy - py) ** 2) ** 0.5
-                if nearest_dist is None or dist < nearest_dist:
-                    nearest_elem, nearest_dist = elem, dist
+    if not candidate_positions:
+        # Real, not hypothetical: BR06's own IFC model needed sampling all
+        # 45 IfcSlab elements to find its 28 piles (see
+        # extraction/ifc_source.py's docstring for that mistake) — a
+        # project whose piles this shape heuristic genuinely can't find
+        # shouldn't read in the output as "checked, all clean." One Issue
+        # per sheet that had something to check, not per point. `Sheet` is
+        # unhashable (a plain, non-frozen dataclass — see
+        # _cached_reconstruct_sheet's comment above), so this counts by
+        # page_index, not by using `Sheet` as a dict key directly.
+        counts: dict[int, tuple[Sheet, int]] = {}
+        for sheet, _ in sheet_points:
+            prior = counts.get(sheet.page_index)
+            counts[sheet.page_index] = (sheet, (prior[1] if prior else 0) + 1)
+        return [
+            _ifc_issue(
+                sheet,
+                (
+                    f"The attached IFC model has {len(project.ifc_model.elements)} elements but "
+                    f"none match the pile-shape heuristic (footprint < "
+                    f"{config.ifc_pile_footprint_max_m}m, height/footprint > "
+                    f"{config.ifc_pile_aspect_ratio_min}) — this check found nothing to cross-check "
+                    f"this sheet's {count} reconstructed setout point(s) against, not a confirmation "
+                    f"that they match"
+                ),
+                "low",
+                {"ifc_element_count": len(project.ifc_model.elements), "candidate_count": 0},
+            )
+            for sheet, count in counts.values()
+        ]
 
-            if nearest_dist > config.ifc_match_max_distance_m:
-                issues.append(
-                    Issue(
-                        rule_id="geometry.ifc_setout_consistency",
-                        category="geometry",
-                        sheet_no=sheet.sheet_no,
-                        page_index=sheet.page_index,
-                        description=(
-                            f"Setout point {point.point_id}: reconstructed position has no "
-                            f"matching pile-like element in the IFC model within "
-                            f"{config.ifc_match_max_distance_m:.1f}m (nearest is "
-                            f"{nearest_dist:.1f}m away) — may be unmodeled, or modeled with a "
-                            f"different shape this heuristic doesn't recognize"
-                        ),
-                        bbox=None,
-                        severity="low",
-                        suggested_fix={"nearest_distance_m": round(nearest_dist, 2)},
-                    )
-                )
-                continue
+    # Nearest-available one-to-one assignment: every (point, candidate)
+    # pair, closest first, each point/element claimed at most once. Not
+    # globally distance-optimal (a true min-cost assignment would be), but
+    # simple, auditable, and — the actual bug this replaces — never lets
+    # two points share one IFC element.
+    pairs = []
+    for sheet, point in sheet_points:
+        px, py = point.derived.easting, point.derived.northing
+        for (cx, cy), elem in candidate_positions:
+            pairs.append((math.hypot(cx - px, cy - py), sheet, point, elem))
+    pairs.sort(key=lambda p: p[0])
 
-            delta_mm = nearest_dist * 1000
-            if delta_mm <= config.ifc_setout_tolerance_mm:
-                continue
+    claimed_points: set[tuple[int, str]] = set()
+    claimed_elems: set[str] = set()
+    assignment: dict[tuple[int, str], tuple[float, IfcElement]] = {}
+    for dist, sheet, point, elem in pairs:
+        key = (sheet.page_index, point.point_id)
+        if key in claimed_points or elem.global_id in claimed_elems:
+            continue
+        claimed_points.add(key)
+        claimed_elems.add(elem.global_id)
+        assignment[key] = (dist, elem)
 
+    issues = []
+    for sheet, point in sheet_points:
+        key = (sheet.page_index, point.point_id)
+        px, py = point.derived.easting, point.derived.northing
+
+        result = assignment.get(key)
+        if result is None:
+            # Every candidate this point could reach was claimed by a
+            # closer point first — fewer pile-shaped IFC elements than
+            # reconstructable schedule points, a distinct real case from
+            # "no candidates in the whole model" above.
+            nearest_dist = min(math.hypot(cx - px, cy - py) for (cx, cy), _ in candidate_positions)
             issues.append(
-                Issue(
-                    rule_id="geometry.ifc_setout_consistency",
-                    category="geometry",
-                    sheet_no=sheet.sheet_no,
-                    page_index=sheet.page_index,
-                    description=(
-                        f"Setout point {point.point_id}: reconstructing from the sheet's setout "
-                        f"point + bearing + dimension chain gives E {px:.3f} N {py:.3f}, but the "
-                        f"nearest pile-like element in the IFC model ({nearest_elem.global_id}) "
-                        f"sits {delta_mm:.1f}mm away (tolerance {config.ifc_setout_tolerance_mm:.1f}mm) "
-                        f"— check whether the issued drawing and the coordinated 3D model have "
-                        f"diverged"
+                _ifc_issue(
+                    sheet,
+                    (
+                        f"Setout point {point.point_id}: every pile-like IFC element was already "
+                        f"matched to a different, closer setout point — this project has fewer "
+                        f"pile-shaped IFC elements than reconstructable schedule points"
                     ),
-                    bbox=None,
-                    severity="high",
-                    suggested_fix={
-                        "derived": point.derived.to_dict(),
-                        "ifc_global_id": nearest_elem.global_id,
-                        "ifc_display_name": nearest_elem.display_name,
-                        "delta_mm": round(delta_mm, 1),
-                    },
+                    "low",
+                    {"derived": point.derived.to_dict(), "nearest_distance_m": round(nearest_dist, 2)},
                 )
             )
+            continue
+
+        dist, elem = result
+        if dist > config.ifc_match_max_distance_m:
+            issues.append(
+                _ifc_issue(
+                    sheet,
+                    (
+                        f"Setout point {point.point_id}: reconstructed position has no matching "
+                        f"pile-like element in the IFC model within "
+                        f"{config.ifc_match_max_distance_m:.1f}m (nearest available is "
+                        f"{dist:.1f}m away) — may be unmodeled, or modeled with a different shape "
+                        f"this heuristic doesn't recognize"
+                    ),
+                    "low",
+                    {"derived": point.derived.to_dict(), "nearest_distance_m": round(dist, 2)},
+                )
+            )
+            continue
+
+        delta_mm = dist * 1000
+        if delta_mm <= config.ifc_setout_tolerance_mm:
+            continue
+
+        issues.append(
+            _ifc_issue(
+                sheet,
+                (
+                    f"Setout point {point.point_id}: reconstructing from the sheet's setout point + "
+                    f"bearing + dimension chain gives E {px:.3f} N {py:.3f}, but the nearest available "
+                    f"pile-like element in the IFC model ({elem.global_id}) sits {delta_mm:.1f}mm away "
+                    f"(tolerance {config.ifc_setout_tolerance_mm:.1f}mm) — check whether the issued "
+                    f"drawing and the coordinated 3D model have diverged"
+                ),
+                "high",
+                {
+                    "derived": point.derived.to_dict(),
+                    "ifc_global_id": elem.global_id,
+                    "ifc_display_name": elem.display_name,
+                    "delta_mm": round(delta_mm, 1),
+                },
+            )
+        )
     return issues

@@ -192,11 +192,19 @@ def _dms_to_decimal(value) -> float | None:
     minutes, seconds, [microseconds])` tuple, sign carried on every
     component — to decimal degrees. `None` in, `None` out (an `IfcSite`
     with no `RefLatitude`/`RefLongitude` set at all is real and
-    legitimate, not an extraction failure)."""
+    legitimate, not an extraction failure).
+
+    Bug fixed 2026-08-12: sign was read from `value[0]` alone, which is
+    wrong whenever degrees is exactly 0 but minutes/seconds carry the
+    sign instead (e.g. `(0, -30, 0)`, a real, schema-legal encoding for a
+    site near the equator or prime meridian) — `0 < 0` is `False`, so
+    that case silently came back positive. Sign is now taken from
+    whichever component is first non-zero, matching the docstring's own
+    "carried on every component" claim instead of contradicting it."""
 
     if not value:
         return None
-    sign = -1.0 if value[0] < 0 else 1.0
+    sign = -1.0 if any(c < 0 for c in value) else 1.0
     deg, minute, sec = abs(value[0]), abs(value[1]), abs(value[2])
     microsec = abs(value[3]) if len(value) > 3 else 0
     return sign * (deg + minute / 60 + sec / 3600 + microsec / (3600 * 1_000_000))

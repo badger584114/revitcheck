@@ -53,6 +53,16 @@ def test_dms_to_decimal_handles_missing_value():
     assert _dms_to_decimal(()) is None
 
 
+def test_dms_to_decimal_sign_when_degrees_is_zero():
+    # Bug fixed 2026-08-12: sign was read from the degrees component
+    # alone (`value[0] < 0`), which is wrong whenever degrees is exactly
+    # 0 but minutes/seconds carry the sign instead — `0 < 0` is False, so
+    # this silently came back positive. A real, schema-legal encoding for
+    # a site within the first degree of the equator/prime meridian.
+    assert _dms_to_decimal((0, -30, 0)) == pytest.approx(-0.5, abs=1e-9)
+    assert _dms_to_decimal((0, 0, -30)) == pytest.approx(-30 / 3600, abs=1e-9)
+
+
 def test_br06_schema_and_units(br06_model):
     assert br06_model.schema == "IFC4"
     # The file declares millimetres (confirmed via IfcProject.UnitsInContext,

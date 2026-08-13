@@ -43,11 +43,13 @@ in the DXF-only group.
 
 `IfcElement`/`IfcModel` were added 2026-08-12 for §5's proposed third
 geometry-check source (extraction/ifc_source.py, IFC 3D-model export) —
-project-level constructs, not per-sheet, and not yet joined to
-`Project`/`Sheet`/`DxfSheet` (no check consumes them yet). See that
-module's docstring for the real findings this is deliberately built
-around being schema-general rather than tied to this sample's specific
-client/Revit-export conventions.
+project-level constructs, not per-sheet, attached to `Project.ifc_model`
+(not `Sheet`/`DxfSheet` — one IFC export covers the whole model, no
+per-sheet join the way `DxfSheet` needs). `checks/geometry.py`'s
+`geometry.ifc_setout_consistency` is the first real consumer. See
+extraction/ifc_source.py's docstring for the real findings this is
+deliberately built around being schema-general rather than tied to this
+sample's specific client/Revit-export conventions.
 """
 
 from __future__ import annotations
