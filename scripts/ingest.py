@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run Stage 1 ingestion against a PDF and print a summary.
 
-Usage: python scripts/ingest.py samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf
+Usage: python scripts/ingest.py samples/BR06/T2DPAA-T2D-C3S-BR-DRG-101000.pdf
 """
 
 from __future__ import annotations

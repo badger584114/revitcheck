@@ -78,6 +78,19 @@ a flat value for now — every point here is one hop from its anchor in
 spirit even though several dimension links are walked to reach it, so
 PLANNING.md §5's `base + per_hop×√hops` formula doesn't have a real
 multi-hop case to calibrate against yet).
+
+**Confirmed 2026-08-11: there's currently no more real data in this
+sample to push on the above with.** Ran `reconstruct_sheet` against every
+sheet in the full 37-page PDF, attached to all 31 real DWGs (converted
+via ODA, not just the two committed to `samples/dxf/`) — sheet 2871051 is
+the *only* sheet carrying a setout/coordinate schedule at all; every
+other sheet has no `SITE ID`/`EASTING`/`NORTHING`-style table for
+`parse_pile_schedule` to find. So the items above would currently be
+built against synthetic cases only, not real drafting conventions this
+codebase hasn't seen yet — worth a new/different real sample (a retaining
+wall, a second bridge, anything with more or differently-shaped setout
+schedules) before investing further here, per this codebase's own
+"confirm against real data first" convention.
 """
 
 from __future__ import annotations

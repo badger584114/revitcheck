@@ -87,6 +87,27 @@ class RuleConfig:
     # that formula against yet.
     survey_tolerance_mm: float = 10.0
 
+    # PLANNING.md §5's proposed third geometry source (IFC), added
+    # 2026-08-12 — checks/geometry.py's geometry.ifc_setout_consistency.
+    # `ifc_pile_footprint_max_m`/`ifc_pile_aspect_ratio_min` are the
+    # bounding-box shape heuristic ("small footprint, tall") that
+    # identifies pile-like IFC elements without reading Name/
+    # PredefinedType — confirmed on the real sample (28 real piles,
+    # 0 false positives/negatives against a Name-text search) but this
+    # firm's actual pile geometry (0.75m x 0.75m x 10.55m), so it's
+    # config, not a hardcoded assumption another project's pile
+    # dimensions would have to match exactly.
+    ifc_pile_footprint_max_m: float = 2.0
+    ifc_pile_aspect_ratio_min: float = 3.0
+    # How far a reconstructed point may be from its nearest candidate IFC
+    # element before treating it as "no IFC counterpart found" rather
+    # than "found, but too far off" — distinct from
+    # ifc_setout_tolerance_mm (the actual pass/fail delta) so a genuinely
+    # missing/unmodeled pile doesn't get reported with a nonsense delta
+    # to whatever unrelated element happened to be nearest.
+    ifc_match_max_distance_m: float = 2.0
+    ifc_setout_tolerance_mm: float = 10.0
+
     def is_enabled(self, rule_id: str) -> bool:
         return rule_id in self.enabled_rule_ids
 

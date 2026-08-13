@@ -41,7 +41,7 @@ from pdfchecker.ir import (  # noqa: E402
     TitleBlock,
 )
 
-SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
+SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples" / "BR06"
 SAMPLE_DXF = str(SAMPLES_DIR / "dxf" / "T2DPAA-T2D-C3S-BR-DRG-101051_0.dxf")
 SAMPLE_PDF = str(SAMPLES_DIR / "T2DPAA-T2D-C3S-BR-DRG-101000.pdf")
 

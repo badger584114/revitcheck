@@ -25,7 +25,7 @@ from pdfchecker.extraction.dxf_source import (  # noqa: E402
     ingest_dxf,
 )
 
-SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
+SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples" / "BR06"
 DIMENSIONED_SHEET = str(SAMPLES_DIR / "dxf" / "T2DPAA-T2D-C3S-BR-DRG-101051_0.dxf")
 ZERO_DIMENSION_SHEET = str(SAMPLES_DIR / "dxf" / "T2DPAA-T2D-C3S-BR-DRG-101032_0.dxf")
 
