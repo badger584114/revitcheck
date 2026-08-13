@@ -29,6 +29,16 @@ bar-mark/schedule table rather than a rounded buildable length. Both are
 skipped, not guessed at — same "skip rather than guess" principle as the
 cross-sheet reference graph and revision-cloud detection elsewhere in
 this codebase.
+
+`geometry.setout_reconstruction` and `geometry.ifc_setout_consistency`
+both resolve each schedule sheet's geometry source via `_resolve_geometry_
+sheet` (added 2026-08-14, the real BR08 cross-sheet case — see
+extraction/setout_reconstruction.py's docstring) before calling
+`reconstruct_sheet` — usually the schedule sheet's own DXF, but a printed
+cross-reference note can point at a different sheet entirely. Every Issue
+either rule produces carries `geometry_sheet_no` in `suggested_fix` so
+which sheet's dimension chain actually drove the result stays auditable
+even when it isn't the schedule sheet's own.
 """
 
 from __future__ import annotations
@@ -39,7 +49,7 @@ import weakref
 
 from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
-from pdfchecker.extraction.setout_reconstruction import reconstruct_sheet
+from pdfchecker.extraction.setout_reconstruction import find_geometry_sheet_no, reconstruct_sheet
 from pdfchecker.ir import DimensionEntity, IfcElement, Project, Sheet
 
 # extraction/dxf_source.py's _INSUNITS-resolved unit strings, converted
@@ -180,24 +190,68 @@ def check_dimension_consistency(project: Project, config: RuleConfig) -> list[Is
 # can never fire, silently defeating the whole cleanup mechanism. Keeping
 # it in this dict, popped by the same callback that pops the cache entry,
 # ties its lifetime to the cache entry it's cleaning up.
-_reconstruction_cache: dict[int, dict[int, list]] = {}
+#
+# Cache key is `(id(schedule_sheet), id(geometry_sheet))`, not just
+# `id(sheet)` — added 2026-08-14 for the real BR08 cross-sheet case
+# (extraction/setout_reconstruction.py's docstring): the schedule and
+# geometry can now be two different `Sheet`s, and two different geometry
+# sources for the same schedule sheet must not collide in the cache. The
+# single-sheet case (BR06) naturally becomes `(id(sheet), id(sheet))` —
+# no behavior change there. Both ids in the pair need their own weakref
+# guard, since either sheet could independently be freed.
+_reconstruction_cache: dict[tuple[int, int], dict[int, list]] = {}
 _reconstruction_refs: dict[int, weakref.ref] = {}
 
 
-def _cached_reconstruct_sheet(sheet: Sheet, config: RuleConfig) -> list:
-    sheet_id = id(sheet)
-    if sheet_id not in _reconstruction_cache:
-        def _cleanup(_ref, sid=sheet_id):
-            _reconstruction_cache.pop(sid, None)
-            _reconstruction_refs.pop(sid, None)
+def _cached_reconstruct_sheet(
+    sheet: Sheet, config: RuleConfig, geometry_sheet: Sheet | None = None
+) -> list:
+    geom = geometry_sheet or sheet
+    key = (id(sheet), id(geom))
 
-        _reconstruction_refs[sheet_id] = weakref.ref(sheet, _cleanup)
-        _reconstruction_cache[sheet_id] = {}
-    by_config = _reconstruction_cache[sheet_id]
+    def _register(obj: Sheet) -> None:
+        obj_id = id(obj)
+        if obj_id in _reconstruction_refs:
+            return
+
+        def _cleanup(_ref, freed_id=obj_id):
+            _reconstruction_refs.pop(freed_id, None)
+            for stale_key in [k for k in _reconstruction_cache if freed_id in k]:
+                _reconstruction_cache.pop(stale_key, None)
+
+        _reconstruction_refs[obj_id] = weakref.ref(obj, _cleanup)
+
+    if key not in _reconstruction_cache:
+        _register(sheet)
+        if geom is not sheet:
+            _register(geom)
+        _reconstruction_cache[key] = {}
+    by_config = _reconstruction_cache[key]
     config_key = id(config)
     if config_key not in by_config:
-        by_config[config_key] = reconstruct_sheet(sheet, config)
+        by_config[config_key] = reconstruct_sheet(sheet, config, geom if geom is not sheet else None)
     return by_config[config_key]
+
+
+def _resolve_geometry_sheet(schedule_sheet: Sheet, project: Project) -> Sheet:
+    """Schedule sheet -> the `Sheet` whose DXF geometry should actually be
+    used for reconstruction: the cross-referenced sheet named in a real
+    setout-precedence note (extraction/setout_reconstruction.py's
+    `find_geometry_sheet_no` — the real BR08 2873042->2873041 case, see
+    that module's docstring), if one exists, resolves via
+    `project.sheet_by_no`, and itself carries DXF data — else falls back
+    to `schedule_sheet` itself. Coverage, not silence: a schedule sheet
+    with no note, or a note pointing at a sheet missing from the project
+    or without DXF, still gets a best-effort attempt against its own DXF
+    (which may be `None`, same as before this function existed) rather
+    than being skipped outright before that's even checked."""
+
+    target_no = find_geometry_sheet_no(schedule_sheet.raw_text)
+    if target_no is not None:
+        target = project.sheet_by_no(target_no)
+        if target is not None and target.dxf_sheet is not None:
+            return target
+    return schedule_sheet
 
 
 # Human-readable notes for the non-"reconstructed" statuses
@@ -216,10 +270,18 @@ _STATUS_DESCRIPTIONS = {
 def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Issue]:
     issues = []
     for sheet in project.sheets:
-        if sheet.dxf_sheet is None:
-            continue  # no DXF counterpart for this sheet
+        geometry_sheet = _resolve_geometry_sheet(sheet, project)
+        if geometry_sheet.dxf_sheet is None:
+            continue  # no DXF counterpart for this sheet, directly or via a cross-reference
 
-        for point in _cached_reconstruct_sheet(sheet, config):
+        cross_sheet_note = (
+            f" (geometry reconstructed from sheet {geometry_sheet.sheet_no}'s dimension chain, "
+            f"per its setout-precedence note)"
+            if geometry_sheet.sheet_no != sheet.sheet_no
+            else ""
+        )
+
+        for point in _cached_reconstruct_sheet(sheet, config, geometry_sheet):
             if point.status != "reconstructed":
                 issues.append(
                     Issue(
@@ -229,11 +291,14 @@ def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Is
                         page_index=sheet.page_index,
                         description=(
                             f"Setout point {point.point_id}: "
-                            f"{_STATUS_DESCRIPTIONS[point.status]}"
+                            f"{_STATUS_DESCRIPTIONS[point.status]}{cross_sheet_note}"
                         ),
                         bbox=None,
                         severity="low",
-                        suggested_fix={"status": point.status},
+                        suggested_fix={
+                            "status": point.status,
+                            "geometry_sheet_no": point.geometry_sheet_no,
+                        },
                     )
                 )
                 continue
@@ -257,7 +322,7 @@ def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Is
                         f"N {point.derived.northing:.3f} ({delta_mm:.1f}mm, tolerance "
                         f"{config.survey_tolerance_mm:.1f}mm) — check the manually-entered bearing/"
                         f"dimension overrides and whether the schedule was regenerated after the "
-                        f"last drawing change"
+                        f"last drawing change{cross_sheet_note}"
                     ),
                     bbox=None,
                     severity="high",
@@ -265,6 +330,7 @@ def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Is
                         "stated": point.stated.to_dict(),
                         "derived": point.derived.to_dict(),
                         "delta_mm": round(delta_mm, 1),
+                        "geometry_sheet_no": point.geometry_sheet_no,
                     },
                 )
             )
@@ -384,9 +450,10 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
 
     sheet_points: list[tuple[Sheet, object]] = []
     for sheet in project.sheets:
-        if sheet.dxf_sheet is None:
+        geometry_sheet = _resolve_geometry_sheet(sheet, project)
+        if geometry_sheet.dxf_sheet is None:
             continue
-        for point in _cached_reconstruct_sheet(sheet, config):
+        for point in _cached_reconstruct_sheet(sheet, config, geometry_sheet):
             if point.status == "reconstructed":
                 sheet_points.append((sheet, point))
 
@@ -419,7 +486,11 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                     f"that they match"
                 ),
                 "low",
-                {"ifc_element_count": len(project.ifc_model.elements), "candidate_count": 0},
+                {
+                    "ifc_element_count": len(project.ifc_model.elements),
+                    "candidate_count": 0,
+                    "geometry_sheet_no": _resolve_geometry_sheet(sheet, project).sheet_no,
+                },
             )
             for sheet, count in counts.values()
         ]
@@ -468,7 +539,11 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                         f"pile-shaped IFC elements than reconstructable schedule points"
                     ),
                     "low",
-                    {"derived": point.derived.to_dict(), "nearest_distance_m": round(nearest_dist, 2)},
+                    {
+                        "derived": point.derived.to_dict(),
+                        "nearest_distance_m": round(nearest_dist, 2),
+                        "geometry_sheet_no": point.geometry_sheet_no,
+                    },
                 )
             )
             continue
@@ -486,7 +561,11 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                         f"this heuristic doesn't recognize"
                     ),
                     "low",
-                    {"derived": point.derived.to_dict(), "nearest_distance_m": round(dist, 2)},
+                    {
+                        "derived": point.derived.to_dict(),
+                        "nearest_distance_m": round(dist, 2),
+                        "geometry_sheet_no": point.geometry_sheet_no,
+                    },
                 )
             )
             continue
@@ -511,6 +590,7 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                     "ifc_global_id": elem.global_id,
                     "ifc_display_name": elem.display_name,
                     "delta_mm": round(delta_mm, 1),
+                    "geometry_sheet_no": point.geometry_sheet_no,
                 },
             )
         )

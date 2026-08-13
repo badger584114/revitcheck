@@ -18,11 +18,13 @@ rule's own matching/tolerance logic once `reconstruct_sheet`'s real
 output is available).
 """
 
+import math
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+import fitz  # noqa: E402
 import pdfplumber  # noqa: E402
 
 from pdfchecker.checks.catalog import RuleConfig  # noqa: E402
@@ -31,6 +33,7 @@ from pdfchecker.checks.geometry import (  # noqa: E402
     _is_slender_vertical,
     _parse_stated_mm,
     _reconstruction_cache,
+    _resolve_geometry_sheet,
     check_dimension_consistency,
     check_ifc_setout_consistency,
     check_setout_reconstruction,
@@ -38,13 +41,17 @@ from pdfchecker.checks.geometry import (  # noqa: E402
 from pdfchecker.extraction.dxf_source import attach_dxf_sheets, ingest_dxf  # noqa: E402
 from pdfchecker.extraction.tables import extract_tables  # noqa: E402
 from pdfchecker.ir import (  # noqa: E402
+    BBox,
     DimensionEntity,
+    DxfInsert,
     DxfSheet,
+    DxfText,
     IfcElement,
     IfcModel,
     Point3D,
     Project,
     Sheet,
+    Table,
     TitleBlock,
 )
 
@@ -58,6 +65,22 @@ SAMPLE_DXF = str(
     / "BR06"
     / "dxf"
     / "T2DPAA-T2D-C3S-BR-DRG-101051_0.dxf"
+)
+
+# BR08 — the real multi-sheet cross-sheet case (checks/geometry.py's
+# module docstring, extraction/setout_reconstruction.py's docstring's
+# 2026-08-14 section): schedule sheet 2873042 has no DXF geometry of its
+# own and instead carries a printed note pointing at sheet 2873041.
+BR08_DIR = Path(__file__).resolve().parent.parent / "samples" / "BR08"
+BR08_SAMPLE_PDF = str(BR08_DIR / "T2DPAA-T2D-C3S-BR-DRG-103000.pdf")
+BR08_GEOMETRY_DXF = str(BR08_DIR / "dxf" / "T2DPAA-T2D-C3S-BR-DRG-103041_0.dxf")
+
+# The real setout-precedence note's calibrated phrase (module docstring's
+# `_SETOUT_PRECEDENCE_NOTE_RE`), parameterized by sheet number for
+# synthetic tests.
+_PRECEDENCE_NOTE = (
+    "THE SETOUT DIMENSIONS/DETAILS GIVEN ON THE FOUNDATION LAYOUT SHEET NO. "
+    "{sheet_no} TAKE PRECEDENCE OVER THE SET-OUT COORDINATES IN THE TABLES."
 )
 
 
@@ -75,6 +98,21 @@ def _sheet(sheet_no: str, dxf_sheet: DxfSheet) -> Sheet:
     )
     s.dxf_sheet = dxf_sheet
     return s
+
+
+def _synthetic_sheet(sheet_no: str, *, raw_text: str = "", tables=None, dxf_sheet=None) -> Sheet:
+    return Sheet(
+        page_index=0,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": sheet_no}),
+        revision_schedule=[],
+        tables=tables or [],
+        words=[],
+        paths=[],
+        raw_text=raw_text,
+        dxf_sheet=dxf_sheet,
+    )
 
 
 def _real_sheet_101051() -> Sheet:
@@ -576,3 +614,205 @@ def test_reconstruction_cache_entry_freed_with_its_sheet():
     del sheet
     gc.collect()
     assert len(_reconstruction_cache) == 0
+
+
+# --- _resolve_geometry_sheet -----------------------------------------------
+
+
+def test_resolve_geometry_sheet_returns_self_when_no_note():
+    schedule_sheet = _synthetic_sheet("1000001", raw_text="No special note on this sheet.")
+    project = Project(source_path="synthetic", sheets=[schedule_sheet])
+    assert _resolve_geometry_sheet(schedule_sheet, project) is schedule_sheet
+
+
+def test_resolve_geometry_sheet_follows_precedence_note():
+    geometry_dxf = DxfSheet(source_path="geom.dxf", dimensions=[], viewports=[], units="m")
+    geometry_sheet = _synthetic_sheet("1000002", dxf_sheet=geometry_dxf)
+    schedule_sheet = _synthetic_sheet(
+        "1000001", raw_text=_PRECEDENCE_NOTE.format(sheet_no="1000002")
+    )
+    project = Project(source_path="synthetic", sheets=[schedule_sheet, geometry_sheet])
+    assert _resolve_geometry_sheet(schedule_sheet, project) is geometry_sheet
+
+
+def test_resolve_geometry_sheet_falls_back_when_referenced_sheet_missing():
+    schedule_sheet = _synthetic_sheet(
+        "1000001", raw_text=_PRECEDENCE_NOTE.format(sheet_no="9999999")
+    )
+    project = Project(source_path="synthetic", sheets=[schedule_sheet])
+    assert _resolve_geometry_sheet(schedule_sheet, project) is schedule_sheet
+
+
+def test_resolve_geometry_sheet_falls_back_when_referenced_sheet_has_no_dxf():
+    geometry_sheet = _synthetic_sheet("1000002", dxf_sheet=None)
+    schedule_sheet = _synthetic_sheet(
+        "1000001", raw_text=_PRECEDENCE_NOTE.format(sheet_no="1000002")
+    )
+    project = Project(source_path="synthetic", sheets=[schedule_sheet, geometry_sheet])
+    assert _resolve_geometry_sheet(schedule_sheet, project) is schedule_sheet
+
+
+# --- check_setout_reconstruction: cross-sheet ------------------------------
+
+
+def test_check_setout_reconstruction_skips_schedule_sheet_with_no_dxf_and_no_note():
+    # Regression for the loop-guard fix: a schedule sheet with no DXF of
+    # its own and no cross-reference note must not crash, and produces no
+    # Issues (nothing to check against) — same as before this feature.
+    schedule_sheet = _synthetic_sheet("1000001", raw_text="", dxf_sheet=None)
+    project = Project(source_path="synthetic", sheets=[schedule_sheet])
+    assert check_setout_reconstruction(project, RuleConfig()) == []
+
+
+def _chain_dim(p1: Point3D, p2: Point3D, measurement: float) -> DimensionEntity:
+    return DimensionEntity(
+        measurement=measurement,
+        stated_text=None,
+        dim_line_point=p1,
+        ext_line1_origin=p1,
+        ext_line2_origin=p2,
+        dimstyle="Dimension_Standard_O__mm_",
+        layer="D-ENHA-TEXT-DIMS",
+        dim_type=0,
+    )
+
+
+def _cross_sheet_synthetic_project(stated_easting: float, stated_northing: float) -> Project:
+    # A schedule sheet with no DXF of its own, a precedence note pointing
+    # at a second sheet, and that second sheet carrying a real
+    # reconstructable chain (bearing due east, origin at E1000/N2000,
+    # 20m to the pile) — mirrors
+    # test_setout_reconstruction.py's synthetic cross-sheet fixture.
+    schedule_table = Table(
+        kind="unknown",
+        rows=[
+            ["SITE ID", "LOCATION", "EASTING (m)", "NORTHING (m)"],
+            ["PIL001", "ABUTMENT A", f"{stated_easting:.3f}", f"{stated_northing:.3f}"],
+        ],
+        bbox=BBox(x0=0, y0=0, x1=10, y1=10),
+    )
+    schedule_sheet = _synthetic_sheet(
+        "1000001",
+        raw_text=_PRECEDENCE_NOTE.format(sheet_no="1000002"),
+        tables=[schedule_table],
+        dxf_sheet=None,
+    )
+
+    origin_insert = DxfInsert(name="SETOUT POINT MARKER", insert=Point3D(0, 0, 0), layer="D-SETOUT")
+    origin_text = DxfText(text="E 1000.000\nN 2000.000", insert=Point3D(0.2, 0.2, 0), layer="D-TEXT")
+    bearing_text = DxfText(text='90° 00\' 00"', insert=Point3D(10.0, 0, 0), layer="D-TEXT")
+    location_text = DxfText(text="ABUTMENT A", insert=Point3D(10.0, 0, 0), layer="D-TEXT")
+    pile_text = DxfText(text="PIL001", insert=Point3D(20.0, 0, 0), layer="D-TEXT")
+    dim1 = _chain_dim(Point3D(0, 0, 0), Point3D(10, 0, 0), 10.0)
+    dim2 = _chain_dim(Point3D(10, 0, 0), Point3D(20, 0, 0), 10.0)
+    geometry_dxf = DxfSheet(
+        source_path="geom.dxf",
+        units="m",
+        dimensions=[dim1, dim2],
+        viewports=[],
+        inserts=[origin_insert],
+        texts=[origin_text, bearing_text, location_text, pile_text],
+    )
+    geometry_sheet = _synthetic_sheet("1000002", dxf_sheet=geometry_dxf)
+
+    return Project(source_path="synthetic", sheets=[schedule_sheet, geometry_sheet])
+
+
+def test_check_setout_reconstruction_uses_cross_sheet_dxf_and_reports_geometry_sheet_no():
+    # The schedule states a stated E/N far from what the geometry sheet's
+    # chain derives (real E ~1010, N ~2000) — forces a "high" mismatch
+    # Issue, so suggested_fix["geometry_sheet_no"] can be asserted
+    # directly instead of relying on a clean-pass producing nothing.
+    project = _cross_sheet_synthetic_project(stated_easting=1500.0, stated_northing=2000.0)
+
+    issues = check_setout_reconstruction(project, RuleConfig())
+    assert len(issues) == 1
+    issue = issues[0]
+    assert issue.severity == "high"
+    assert issue.sheet_no == "1000001"  # reported against the schedule sheet
+    assert issue.suggested_fix["geometry_sheet_no"] == "1000002"
+    assert "sheet 1000002" in issue.description
+
+
+def test_check_setout_reconstruction_cross_sheet_clean_pass_no_issue():
+    # Stated value matches the geometry-derived value closely (origin
+    # E1000/N2000, due-east bearing, 20m anchor-to-pile chain -> derived
+    # E1020/N2000) — proves the cross-sheet path can also produce a clean
+    # pass, not just mismatches.
+    project = _cross_sheet_synthetic_project(stated_easting=1020.0, stated_northing=2000.0)
+    assert check_setout_reconstruction(project, RuleConfig()) == []
+
+
+# --- _cached_reconstruct_sheet: geometry_sheet-aware cache -----------------
+
+
+def test_reconstruction_cache_distinguishes_different_geometry_sheets():
+    schedule_sheet = _real_sheet_101051()
+    schedule_sheet.dxf_sheet = None  # force reliance on an explicit geometry_sheet
+    geometry_sheet_a = _real_sheet_101051()
+    geometry_sheet_b = _real_sheet_101051()
+    config = RuleConfig()
+
+    _reconstruction_cache.clear()
+    result_a1 = _cached_reconstruct_sheet(schedule_sheet, config, geometry_sheet_a)
+    result_a2 = _cached_reconstruct_sheet(schedule_sheet, config, geometry_sheet_a)
+    result_b = _cached_reconstruct_sheet(schedule_sheet, config, geometry_sheet_b)
+
+    assert result_a1 is result_a2  # same geometry_sheet -> cached, not recomputed
+    assert result_a1 is not result_b  # different geometry_sheet -> distinct cache entry
+    assert len(_reconstruction_cache) == 2
+
+
+def test_reconstruction_cache_geometry_sheet_freed_independently():
+    import gc
+
+    schedule_sheet = _real_sheet_101051()
+    schedule_sheet.dxf_sheet = None
+    geometry_sheet = _real_sheet_101051()
+
+    _reconstruction_cache.clear()
+    _cached_reconstruct_sheet(schedule_sheet, RuleConfig(), geometry_sheet)
+    assert len(_reconstruction_cache) == 1
+
+    del geometry_sheet
+    gc.collect()
+    assert len(_reconstruction_cache) == 0
+
+
+# --- real BR08 cross-sheet, at the check-function level --------------------
+
+
+def test_real_br08_check_setout_reconstruction_cross_sheet():
+    # Full real BR08 Project: schedule sheet 2873042 (page_index 20, no
+    # DXF of its own) + geometry sheet 2873041 (page_index 19). See
+    # extraction/setout_reconstruction.py's docstring's 2026-08-14
+    # section for the real result this mirrors at the reconstruct_sheet
+    # level: ABUTMENT A/B's 28 piles reconstruct cleanly (no Issues);
+    # ABUTMENT A1/B1/B2's 15 piles have large, real, honestly-reported
+    # mismatches (high-severity Issues), a known limitation, not a bug in
+    # this cross-sheet wiring — both carry suggested_fix["geometry_sheet_
+    # no"] == "2873041" either way (the coverage-gap "unmatched"/"no_*"
+    # statuses do too), proving the resolution is real, not incidental.
+    with pdfplumber.open(BR08_SAMPLE_PDF) as pdf:
+        schedule_tables = extract_tables(pdf.pages[20])
+    with fitz.open(BR08_SAMPLE_PDF) as doc:
+        schedule_raw_text = doc[20].get_text("text")
+
+    schedule_sheet = _synthetic_sheet(
+        "2873042", raw_text=schedule_raw_text, tables=schedule_tables, dxf_sheet=None
+    )
+    schedule_sheet.page_index = 20
+    geometry_sheet = _synthetic_sheet("2873041", dxf_sheet=ingest_dxf(BR08_GEOMETRY_DXF))
+    geometry_sheet.page_index = 19
+
+    project = Project(source_path="synthetic", sheets=[schedule_sheet, geometry_sheet])
+    issues = check_setout_reconstruction(project, RuleConfig())
+
+    assert issues  # ABUTMENT A1/B1/B2's real mismatches must surface
+    for issue in issues:
+        assert issue.suggested_fix["geometry_sheet_no"] == "2873041"
+        assert issue.sheet_no == "2873042"
+    assert all(issue.severity == "high" for issue in issues)
+    # 15 real mismatched piles (ABUTMENT A1/B1/B2), none from the clean
+    # 28-pile A/B groups.
+    assert len(issues) == 15

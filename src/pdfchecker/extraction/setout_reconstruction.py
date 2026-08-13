@@ -79,18 +79,96 @@ spirit even though several dimension links are walked to reach it, so
 PLANNING.md §5's `base + per_hop×√hops` formula doesn't have a real
 multi-hop case to calibrate against yet).
 
-**Confirmed 2026-08-11: there's currently no more real data in this
-sample to push on the above with.** Ran `reconstruct_sheet` against every
-sheet in the full 37-page PDF, attached to all 31 real DWGs (converted
-via ODA, not just the two committed to `samples/dxf/`) — sheet 2871051 is
-the *only* sheet carrying a setout/coordinate schedule at all; every
-other sheet has no `SITE ID`/`EASTING`/`NORTHING`-style table for
-`parse_pile_schedule` to find. So the items above would currently be
-built against synthetic cases only, not real drafting conventions this
-codebase hasn't seen yet — worth a new/different real sample (a retaining
-wall, a second bridge, anything with more or differently-shaped setout
-schedules) before investing further here, per this codebase's own
-"confirm against real data first" convention.
+**Confirmed 2026-08-11: at the time, there was no more real data in the
+BR06 sample to push on the above with.** Ran `reconstruct_sheet` against
+every sheet in the full 37-page PDF, attached to all 31 real DWGs
+(converted via ODA, not just the two committed to `samples/BR06/dxf/`) —
+sheet 2871051 was the *only* sheet in that sample carrying a
+setout/coordinate schedule at all; every other sheet had no
+`SITE ID`/`EASTING`/`NORTHING`-style table for `parse_pile_schedule` to
+find.
+
+**Confirmed 2026-08-14: `samples/BR08/` (a second, real, complete bridge
+drawing set added after the above) has more — including a genuine
+multi-sheet case**, the first real slice of §5b's fuller "not one sheet"
+form:
+
+- Sheet 2873042 carries a pile schedule in the same `SITE ID`/`LOCATION`/
+  `EASTING`/`NORTHING` format as BR06 (two tables — "ABUTMENT A AND A1"
+  and "ABUTMENT B, B1 AND B2") — but its own DXF has zero `DIMENSION`
+  entities and zero pile-label text. It's a pure table sheet.
+- Sheet 2873042's raw page text carries one real, unique sentence: "...
+  THE SETOUT DIMENSIONS/DETAILS GIVEN ON THE FOUNDATION LAYOUT SHEET NO.
+  2873041 TAKE PRECEDENCE OVER THE SET-OUT COORDINATES IN THE TABLES." —
+  `find_geometry_sheet_no` reads this off `Sheet.raw_text` (already
+  populated by `pipeline.py`, no new extraction needed). A real,
+  unrelated "...CONTRACT DOCUMENTS SHALL TAKE PRECEDENCE." boilerplate
+  sentence sits on the very same page, confirming the regex has to match
+  the whole calibrated phrase, not just "TAKE PRECEDENCE".
+- Sheet 2873041 (the referenced "foundation layout" sheet) is a
+  self-contained geometry sheet structurally identical to BR06's single-
+  sheet case — 46 `DIMENSION` entities, DMS bearing text, 43
+  `PIL...`-prefixed pile labels, `ABUTMENT A/A1/B/B1/B2` location labels,
+  and 5 `SETOUT POINT` inserts each paired with a real `E .../N ...`
+  control-point text (one origin per abutment sub-group, not two).
+
+**Real result, and a real limitation this surfaced (not introduced by
+the cross-sheet work above — confirmed present either way):** the two
+main groups, `ABUTMENT A` and `ABUTMENT B` (14 piles each, 28 total),
+reconstruct to well under 2mm — the cross-sheet mechanism itself is
+proven correct by this. The three smaller sub-groups, `ABUTMENT A1`/
+`B1`/`B2` (5 piles each), reconstruct with large (1.4m-16m) errors.
+`find_location_for_chain`'s `known_locations` scoping *does* generalize
+correctly to all five groups for pile-ID matching (`candidate_ids`) —
+every pile lands in the right group. What doesn't generalize is origin
+and bearing *selection*, which was never location-scoped at all: both
+just pick whichever origin/bearing text is nearest to a chain's own
+nodes (`min(origins, key=...)`, `find_bearing_for_chain`). With BR06's 2
+well-separated abutments this was unambiguous (module text above: wrong
+bearings 7-37m away vs. the correct one at ~1.5m). BR08's 5 origins/5
+bearings sit in the same rough area as each other, a few meters apart,
+so nearest-distance-to-chain-nodes can and does grab the wrong one for
+the smaller sub-groups.
+
+A location-scoped fix was attempted and reverted the same session, not
+shipped half-verified: greedy one-to-one nearest assignment between
+origins/bearings and `ABUTMENT` location labels (mirroring
+`match_chain_points_to_piles`'s existing one-to-one pattern) produced a
+plausible-looking assignment, but applying it made things *worse*, not
+better — `ABUTMENT B` (previously accurate to <2mm) broke to ~2.5m off,
+while `A1`/`B2` stayed equally wrong and `B1` started failing
+`walk_chain`'s anchor-distance check entirely. That disproves "nearest
+label" as the right disambiguating signal here, for reasons not yet
+understood — reverted rather than kept, since a fix that measurably
+breaks a previously-correct case is worse than an honestly-reported gap.
+Left as a real, open limitation: `status == "reconstructed"` still holds
+for `A1`/`B1`/`B2` (the machinery completes), but the derived position is
+unreliable, and `checks/geometry.py`'s `geometry.setout_reconstruction`
+correctly surfaces this as a high-severity delta Issue rather than a
+false "all clean" — auditable, not silently wrong, but not fixed either.
+
+So `reconstruct_sheet` grew an optional `geometry_sheet` parameter
+(`checks/geometry.py`'s `_resolve_geometry_sheet` resolves it from
+`find_geometry_sheet_no` + `Project.sheet_by_no`) — the schedule table
+always comes from the `sheet` argument, but the DXF geometry can come
+from a *different*, cross-referenced sheet. Defaults to `None` (same
+sheet), so BR06's original case is unaffected.
+
+**Still not built** (unchanged from 2026-08-11, and still without real
+data to calibrate against): a genuinely branching (not single-path)
+dimension graph, structures without a printed bearing/chained-dimension
+convention at all, and multi-hop survey-tolerance scaling. The
+multi-*sheet* half of "the fuller form of §5b" is what BR08 unblocked;
+the multi-*branch-graph* half is a separate, still-open gap — don't
+conflate the two.
+
+**Also not resolved, newly confirmed real 2026-08-14** (see above):
+origin/bearing selection for a chain isn't location-scoped, unlike pile-
+ID matching — fine with 2 well-separated abutments (BR06), wrong for
+BR08's `A1`/`B1`/`B2` sub-groups. A one-to-one location-based fix was
+tried and reverted after it broke a previously-correct case rather than
+fixing the target one — needs real investigation into why nearest-label
+isn't the right signal before trying again, not a second guess.
 """
 
 from __future__ import annotations
@@ -131,6 +209,34 @@ _CONTROL_POINT_RE = re.compile(
 # parse as zero degrees, which would be a silent wrong answer rather than
 # the "skip, don't guess" this should be.
 _BEARING_DMS_RE = re.compile(r"(\d+)\s*°\s*(\d+)\s*'\s*(\d+)\s*\"")
+
+# A cross-sheet setout-precedence note, confirmed real and unique across
+# BR08's full 133-page sample (`samples/BR08/`, sheet 2873042 pointing to
+# sheet 2873041 — see this module's docstring's 2026-08-14 section).
+# Deliberately matches the whole calibrated phrase, not just "TAKE
+# PRECEDENCE" — the same sheet also carries an unrelated "...CONTRACT
+# DOCUMENTS SHALL TAKE PRECEDENCE." boilerplate sentence a looser pattern
+# would misfire on. Like `_BEARING_DMS_RE` above, this is a narrow match
+# calibrated to one real, confirmed sentence, not a general "extract any
+# sheet reference from any sentence" parser.
+_SETOUT_PRECEDENCE_NOTE_RE = re.compile(
+    r"SETOUT DIMENSIONS/DETAILS GIVEN ON THE FOUNDATION LAYOUT SHEET NO\.\s*"
+    r"(\d{6,8})\s*TAKE PRECEDENCE OVER THE SET-OUT COORDINATES IN THE TABLES",
+    re.IGNORECASE,
+)
+
+
+def find_geometry_sheet_no(raw_text: str) -> str | None:
+    """Reads a printed cross-sheet setout-precedence note off a schedule
+    sheet's raw page text (`Sheet.raw_text`) — the real BR08 convention
+    where a pile schedule's own DXF carries no geometry at all, and a
+    note instead says a *different* sheet's dimension chain is
+    authoritative for setout (see this module's docstring). `None` is the
+    normal case: most schedule sheets (e.g. BR06's 2871051) are
+    self-contained and carry no such note."""
+
+    m = _SETOUT_PRECEDENCE_NOTE_RE.search(raw_text)
+    return m.group(1) if m else None
 
 
 def _find_header_col(header_row: list[str | None], *substrings: str) -> int | None:
@@ -555,17 +661,30 @@ class SetoutReconstructionPoint:
     stated: SetoutPoint
     derived: SetoutPoint | None
     status: str  # "reconstructed" | "unmatched_pile" | "no_bearing" | "no_origin"
+    geometry_sheet_no: str | None = None
 
 
-def reconstruct_sheet(sheet: Sheet, config) -> list[SetoutReconstructionPoint]:
+def reconstruct_sheet(
+    sheet: Sheet, config, geometry_sheet: Sheet | None = None
+) -> list[SetoutReconstructionPoint]:
     """Ties the module together for one sheet: parse the schedule,
     find every dimension chain + origin, walk each chain that can be
     anchored and has a nearby bearing, and match walked points back to
     schedule rows by pile-ID label. A schedule point never silently
     disappears — every row ends up in the result with a status explaining
-    why it couldn't be reconstructed, if it couldn't."""
+    why it couldn't be reconstructed, if it couldn't.
 
-    dxf_sheet = sheet.dxf_sheet
+    `geometry_sheet` is the real BR08 cross-sheet case (this module's
+    docstring's 2026-08-14 section): the schedule table (`sheet.tables`,
+    always read from `sheet` regardless of this parameter) and the DXF
+    dimension-chain geometry (`.dxf_sheet`) can live on two *different*
+    sheets, linked by a printed setout-precedence note
+    (`find_geometry_sheet_no`). Defaults to `None`, meaning "same sheet"
+    — BR06's original single-sheet case — with byte-identical behavior to
+    before this parameter existed."""
+
+    geometry_sheet_no = (geometry_sheet or sheet).sheet_no
+    dxf_sheet = (geometry_sheet or sheet).dxf_sheet
     if dxf_sheet is None:
         return []
 
@@ -590,7 +709,11 @@ def reconstruct_sheet(sheet: Sheet, config) -> list[SetoutReconstructionPoint]:
         if point_id in results:
             return
         results[point_id] = SetoutReconstructionPoint(
-            point_id=point_id, stated=schedule_by_id[point_id], derived=derived, status=status
+            point_id=point_id,
+            stated=schedule_by_id[point_id],
+            derived=derived,
+            status=status,
+            geometry_sheet_no=geometry_sheet_no,
         )
 
     for chain in find_dimension_chains(dxf_sheet.dimensions, config.chain_link_tolerance_m):
@@ -656,7 +779,11 @@ def reconstruct_sheet(sheet: Sheet, config) -> list[SetoutReconstructionPoint]:
 
     for point_id in schedule_ids - set(results):
         results[point_id] = SetoutReconstructionPoint(
-            point_id=point_id, stated=schedule_by_id[point_id], derived=None, status="unmatched_pile"
+            point_id=point_id,
+            stated=schedule_by_id[point_id],
+            derived=None,
+            status="unmatched_pile",
+            geometry_sheet_no=geometry_sheet_no,
         )
 
     return list(results.values())

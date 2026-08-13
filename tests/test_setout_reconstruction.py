@@ -10,6 +10,7 @@ import math
 import sys
 from pathlib import Path
 
+import fitz
 import pdfplumber
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -22,6 +23,7 @@ from pdfchecker.extraction.setout_reconstruction import (  # noqa: E402
     find_bearing_for_chain,
     find_control_points,
     find_dimension_chains,
+    find_geometry_sheet_no,
     find_location_for_chain,
     match_chain_points_to_piles,
     parse_pile_locations,
@@ -44,6 +46,14 @@ from pdfchecker.ir import (  # noqa: E402
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples" / "BR06"
 SAMPLE_DXF = str(SAMPLES_DIR / "dxf" / "T2DPAA-T2D-C3S-BR-DRG-101051_0.dxf")
 SAMPLE_PDF = str(SAMPLES_DIR / "T2DPAA-T2D-C3S-BR-DRG-101000.pdf")
+
+# BR08 — the real multi-sheet case (module docstring's 2026-08-14 section):
+# schedule sheet 2873042 (page_index 20) has no DXF geometry of its own and
+# instead carries a printed note pointing at sheet 2873041 (page_index 19),
+# a self-contained geometry sheet structurally like BR06's 101051.
+BR08_DIR = Path(__file__).resolve().parent.parent / "samples" / "BR08"
+BR08_SAMPLE_PDF = str(BR08_DIR / "T2DPAA-T2D-C3S-BR-DRG-103000.pdf")
+BR08_GEOMETRY_DXF = str(BR08_DIR / "dxf" / "T2DPAA-T2D-C3S-BR-DRG-103041_0.dxf")
 
 
 def _dim(p1: Point3D, p2: Point3D, measurement: float, stated_text=None) -> DimensionEntity:
@@ -270,6 +280,130 @@ def test_find_location_for_chain_picks_nearest_known_label():
     assert location == "ABUTMENT A"
 
 
+# --- find_geometry_sheet_no ---------------------------------------------------
+
+
+def test_find_geometry_sheet_no_extracts_referenced_sheet():
+    # Real sentence, BR08 sheet 2873042 (page_index 20) — module
+    # docstring's 2026-08-14 finding.
+    with fitz.open(BR08_SAMPLE_PDF) as doc:
+        raw_text = doc[20].get_text("text")
+    assert find_geometry_sheet_no(raw_text) == "2873041"
+
+
+def test_find_geometry_sheet_no_returns_none_when_absent():
+    # Real negative case: BR06 sheet 2871051 is self-contained and carries
+    # no such note anywhere on its page.
+    with fitz.open(SAMPLE_PDF) as doc:
+        raw_text = doc[14].get_text("text")
+    assert find_geometry_sheet_no(raw_text) is None
+
+
+def test_find_geometry_sheet_no_ignores_unrelated_take_precedence_sentence():
+    # Real negative case, on the *same* BR08 page 21 as the true note:
+    # generic contract-precedence boilerplate that also contains the
+    # words "TAKE PRECEDENCE" but isn't a setout cross-reference at all —
+    # proves the regex's narrowness (matching the whole calibrated
+    # phrase) is load-bearing, not just documented.
+    unrelated = (
+        "WHEN REQUIREMENTS DIFFER BETWEEN SPECIFICATIONS, CONTRACT "
+        "DOCUMENTS SHALL TAKE PRECEDENCE."
+    )
+    assert find_geometry_sheet_no(unrelated) is None
+
+
+# --- reconstruct_sheet with a separate geometry_sheet ---------------------------
+
+
+def test_reconstruct_sheet_geometry_sheet_defaults_to_own_dxf():
+    # geometry_sheet=None (the default) must be byte-identical to the
+    # pre-existing single-sheet behavior — same schedule, same DXF, same
+    # sheet passed for both roles implicitly.
+    with pdfplumber.open(SAMPLE_PDF) as pdf:
+        tables = extract_tables(pdf.pages[14])
+    sheet = Sheet(
+        page_index=14,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "2871051"}),
+        revision_schedule=[],
+        tables=tables,
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=ingest_dxf(SAMPLE_DXF),
+    )
+
+    results = reconstruct_sheet(sheet, RuleConfig())
+    by_id = {r.point_id: r for r in results}
+    assert by_id["PIL234301"].status == "reconstructed"
+    assert by_id["PIL234301"].geometry_sheet_no == "2871051"
+
+
+def test_reconstruct_sheet_uses_separate_geometry_sheet_when_given():
+    # Synthetic: a schedule sheet with no DXF of its own, and a separate
+    # geometry sheet carrying a real reconstructable chain — proves the
+    # plumbing (schedule always from `sheet`, geometry from
+    # `geometry_sheet` when given) before trusting a real end-to-end BR08
+    # result below.
+    schedule_table = Table(
+        kind="unknown",
+        rows=[
+            ["SITE ID", "LOCATION", "EASTING (m)", "NORTHING (m)"],
+            ["PIL001", "ABUTMENT A", "1000.000", "2000.000"],
+        ],
+        bbox=BBox(x0=0, y0=0, x1=10, y1=10),
+    )
+    schedule_sheet = Sheet(
+        page_index=0,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "9999001"}),
+        revision_schedule=[],
+        tables=[schedule_table],
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=None,
+    )
+
+    origin_insert = DxfInsert(name="SETOUT POINT MARKER", insert=_pt(0.0, 0.0), layer="D-SETOUT")
+    origin_text = DxfText(text="E 1000.000\nN 2000.000", insert=_pt(0.2, 0.2), layer="D-TEXT")
+    bearing_text = DxfText(text='90° 00\' 00"', insert=_pt(10.0, 0.0), layer="D-TEXT")
+    location_text = DxfText(text="ABUTMENT A", insert=_pt(10.0, 0.0), layer="D-TEXT")
+    pile_text = DxfText(text="PIL001", insert=_pt(20.0, 0.0), layer="D-TEXT")
+    # Two chained dimensions (dim1's second witness point == dim2's first)
+    # — a lone dimension forms a chain of length 1, which reconstruct_sheet
+    # deliberately skips as "not a real setout chain" (see its docstring).
+    dim1 = _dim(_pt(0.0, 0.0), _pt(10.0, 0.0), 10.0)
+    dim2 = _dim(_pt(10.0, 0.0), _pt(20.0, 0.0), 10.0)
+    geometry_dxf_sheet = DxfSheet(
+        source_path="synthetic.dxf",
+        units="m",
+        dimensions=[dim1, dim2],
+        viewports=[],
+        inserts=[origin_insert],
+        texts=[origin_text, bearing_text, location_text, pile_text],
+    )
+    geometry_sheet = Sheet(
+        page_index=1,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "9999002"}),
+        revision_schedule=[],
+        tables=[],
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=geometry_dxf_sheet,
+    )
+
+    results = reconstruct_sheet(schedule_sheet, RuleConfig(), geometry_sheet=geometry_sheet)
+    by_id = {r.point_id: r for r in results}
+    assert by_id["PIL001"].status == "reconstructed"
+    assert by_id["PIL001"].geometry_sheet_no == "9999002"
+
+
 # --- against the real sample --------------------------------------------------
 
 
@@ -321,3 +455,93 @@ def test_real_sample_reconstructs_both_abutment_pile_rows():
 
     for point_id in ("PIL234341", "PIL234342", "PIL234343", "PIL234344"):
         assert by_id[point_id].status != "reconstructed"
+
+
+def test_real_br08_cross_sheet_reconstructs_main_abutment_groups():
+    # BR08's real multi-sheet case (module docstring's 2026-08-14
+    # section): schedule sheet 2873042 (page_index 20) has no DXF
+    # geometry of its own; its printed precedence note points at sheet
+    # 2873041 (page_index 19), a self-contained geometry sheet. This is
+    # the real, calibrated confirmation the cross-sheet mechanism itself
+    # works: ABUTMENT A and ABUTMENT B (28 real piles, the sheet's two
+    # main 14-pile groups) each reconstruct to well under 2mm — sourced
+    # entirely from sheet 2873041's dimension chain, cross-referenced via
+    # the note on 2873042 — proving `geometry_sheet` correctly carries a
+    # different sheet's geometry into the schedule sheet's reconstruction.
+    #
+    # A real, separate, honestly-reported limitation also surfaced here,
+    # NOT introduced by the cross-sheet plumbing (confirmed present with
+    # or without it): ABUTMENT A1/B1/B2 (this sheet's three smaller
+    # 5-pile sub-groups) reconstruct with large (1.4m-16m) errors under
+    # the existing nearest-to-chain-nodes origin/bearing matching. BR06's
+    # sample only ever had 2 well-separated abutments, where nearest-
+    # distance matching was unambiguous (module docstring). BR08's 5
+    # closely-packed sub-groups on one geometry sheet break that
+    # assumption — investigated this session (see module docstring's
+    # 2026-08-14 section for what was tried and why a location-based
+    # one-to-one fix was reverted rather than shipped half-verified: it
+    # measurably improved nothing and broke the previously-accurate
+    # ABUTMENT B group). Reported here as a known, real, currently-
+    # unresolved limitation, not silently masked — `status ==
+    # "reconstructed"` still holds for these (the machinery completes),
+    # but the derived position is unreliable; `checks/geometry.py`'s
+    # `geometry.setout_reconstruction` correctly surfaces this as a
+    # high-severity delta Issue rather than a false "all clean".
+    with pdfplumber.open(BR08_SAMPLE_PDF) as pdf:
+        schedule_tables = extract_tables(pdf.pages[20])
+    with fitz.open(BR08_SAMPLE_PDF) as doc:
+        schedule_raw_text = doc[20].get_text("text")
+
+    schedule_sheet = Sheet(
+        page_index=20,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "2873042"}),
+        revision_schedule=[],
+        tables=schedule_tables,
+        words=[],
+        paths=[],
+        raw_text=schedule_raw_text,
+        dxf_sheet=None,  # the real BR08 case: schedule sheet has no DXF geometry of its own
+    )
+    geometry_sheet = Sheet(
+        page_index=19,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "2873041"}),
+        revision_schedule=[],
+        tables=[],
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=ingest_dxf(BR08_GEOMETRY_DXF),
+    )
+
+    results = reconstruct_sheet(schedule_sheet, RuleConfig(), geometry_sheet=geometry_sheet)
+    by_id = {r.point_id: r for r in results}
+
+    # Coverage, not silence: every real schedule pile ends up with some
+    # status, none silently missing from the result.
+    assert len(results) == 43
+
+    main_groups = [f"PIL23210{n}" if n < 10 else f"PIL2321{n}" for n in range(1, 15)]
+    main_groups += [f"PIL232{n}" for n in range(126, 140)]
+    for point_id in main_groups:
+        r = by_id[point_id]
+        assert r.status == "reconstructed", f"{point_id}: {r.status}"
+        assert r.geometry_sheet_no == "2873041"
+        delta_mm = math.hypot(
+            r.derived.easting - r.stated.easting, r.derived.northing - r.stated.northing
+        ) * 1000
+        assert delta_mm < 10.0, f"{point_id}: {delta_mm:.1f}mm"
+
+    sub_groups = [f"PIL23211{n}" for n in range(5, 10)]
+    sub_groups += [f"PIL2321{n}" for n in range(21, 26)]
+    sub_groups += [f"PIL2321{n}" for n in range(40, 45)]
+    for point_id in sub_groups:
+        r = by_id[point_id]
+        assert r.status == "reconstructed"
+        delta_mm = math.hypot(
+            r.derived.easting - r.stated.easting, r.derived.northing - r.stated.northing
+        ) * 1000
+        assert delta_mm > 1000.0, f"{point_id}: expected the known large mismatch, got {delta_mm:.1f}mm"
