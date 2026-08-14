@@ -30,6 +30,17 @@ skipped, not guessed at — same "skip rather than guess" principle as the
 cross-sheet reference graph and revision-cloud detection elsewhere in
 this codebase.
 
+`geometry.dimension_consistency`'s Issues carry a real page-space `bbox`
+as of 2026-08-14, via `extraction/dxf_pdf_transform.py`'s per-viewport
+DXF-space -> PDF-page-space transform (PLANNING.md §8 — see that
+module's docstring for the real calibration this is built on).
+`geometry.setout_reconstruction`/`geometry.ifc_setout_consistency`
+below still don't — not because the transform doesn't exist, but
+because `extraction/setout_reconstruction.py`'s `SetoutReconstructionPoint`
+doesn't currently retain the local DXF-space point a delta Issue would
+need to feed it; a real, small, separate follow-up, not silently
+patched over.
+
 `geometry.setout_reconstruction` and `geometry.ifc_setout_consistency`
 both resolve each schedule sheet's geometry source via `_resolve_geometry_
 sheet` (added 2026-08-14, the real BR08 cross-sheet case — see
@@ -49,6 +60,7 @@ import weakref
 
 from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
+from pdfchecker.extraction.dxf_pdf_transform import dimension_bbox
 from pdfchecker.extraction.setout_reconstruction import find_geometry_sheet_no, reconstruct_sheet
 from pdfchecker.ir import DimensionEntity, IfcElement, Project, Sheet
 
@@ -145,13 +157,14 @@ def check_dimension_consistency(project: Project, config: RuleConfig) -> list[Is
                         f"Dimension stated as {stated_mm:g}mm but the drawn geometry measures "
                         f"{drawn_mm:.3f}mm ({delta_mm:+.3f}mm, tolerance ±{tolerance_mm:.3f}mm, {tier})"
                     ),
-                    # No page-space bbox yet — the DXF model-space -> PDF-page-space
-                    # transform isn't built (PLANNING.md §8: needs a per-viewport
-                    # mapping, not one per sheet). The DXF-space location is still
-                    # reported below, just not translated to a page location —
-                    # better than a wrong bbox, per this codebase's "confidence,
-                    # not silent" convention.
-                    bbox=None,
+                    # extraction/dxf_pdf_transform.py (built 2026-08-14, PLANNING.md
+                    # §8) — a page-space bbox via the per-viewport DXF-space ->
+                    # PDF-page-space transform. None only if this dimension's
+                    # points don't fall inside any of the sheet's viewport windows
+                    # (skip rather than guess a wrong location) — the DXF-space
+                    # location stays in suggested_fix either way, so nothing is
+                    # silently lost when that happens.
+                    bbox=dimension_bbox(dxf_sheet, dim, sheet.page_height),
                     severity="high",
                     suggested_fix={
                         "drawn_mm": round(drawn_mm, 3),
