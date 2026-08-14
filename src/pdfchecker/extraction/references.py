@@ -4,10 +4,12 @@ the whole extracted sheet set (needs every sheet's words already
 extracted first), not per-sheet ingestion — see ir.py's `Reference`
 docstring.
 
-Scoped to symbol-based references only (section markers, detail
-bubbles) — general free-text note references ("see Detail 4 on Dwg
-S-201") are explicitly deferred by PLANNING.md §4's scoping note, same
-sequencing as §6's narrative-extraction deferral.
+Symbol-based references (section markers, detail bubbles) were built
+first, per PLANNING.md §4's scoping note (same sequencing as §6's
+narrative-extraction deferral). **General free-text note references are
+now built too (2026-08-14)** — see the module docstring's dedicated
+section below for the real convention and what's still deliberately out
+of scope (cross-drawing-package citations).
 
 Calibrated against samples/T2DPAA-T2D-C3S-BR-DRG-101000.pdf (CLAUDE.md:
 check real samples before assuming a convention, and PLANNING.md §4
@@ -39,7 +41,64 @@ sample forced a deviation from the originally-sketched mechanics:
    index of every view title found across the whole sheet set — this is
    PLANNING §4's resolution algorithm, steps 1-3, applied as-is once the
    self-marker case is filtered out first.
-"""
+
+**General free-text note references, built 2026-08-14** (`_extract_note_references`
+— PLANNING.md §3's fourth reference type, previously deferred by §4's
+scoping note). Confirmed real convention on both BR06 and BR08: a note
+sentence of the form `"<REFER|SEE> [TO] SHEET [No.] <digits>[ TO
+<digits>]"`, e.g. `"1. FOR GENERAL NOTES REFER TO SHEET No. 2871005 TO
+2871008."` (real, appears on most BR06 sheets) or `"REFER SHEET No.
+2873092."` (single target, BR08). Two real findings shaped the scope:
+
+1. **The verb ("REFER"/"SEE") is what tells a real note apart from an
+   unrelated field that happens to contain "SHEET <digits>".** A real
+   false positive found on the sample: every BR06 sheet also carries a
+   title-block-adjacent `"INDEX SHEET REFERENCE: 8011 SHEET 2871002"`
+   legend field — same `"SHEET <digits>"` shape, same page region (it
+   sits above `TITLE_BLOCK_BAND_FRACTION`'s band, so isn't excluded by
+   the existing title-block cutout `_extract_markers` already uses), but
+   with no `"REFER"`/`"SEE"` verb anywhere on the line. Requiring one is
+   a real, confirmed-necessary filter, not defensive-only.
+2. **A note naming another drawing set entirely is real, common, and
+   deliberately out of scope.** Confirmed on BR08: `"REFER TO DRAWING
+   8003, SHEET No. 2374001"`-style notes citing sheets from a *different*
+   discipline's drawing package (civil road geometry, retaining walls,
+   lighting design — packages this project's own PDF doesn't include)
+   are common. Since one ingested `Project` is one drawing set, such a
+   sheet number is *expected* to not resolve here — flagging it would be
+   a wall of false positives, not a real finding. Any `"SHEET"` preceded
+   by a `"DRAWING"` word within a few words on the same line is treated
+   as a cross-package citation and skipped entirely — not extracted as a
+   `Reference` at all, resolved or not. (This is a coarser rule than
+   comparing drawing numbers: it triggers on the literal word `"DRAWING"`
+   regardless of which number follows, because a same-package citation on
+   this firm's sheets never names its own drawing number — confirmed:
+   BR06's own `"REFER TO SHEET No. 2871005 TO 2871008"` has no
+   `"DRAWING"` token at all.)
+
+A range (`"... TO <digits>"`) resolves both endpoints independently, not
+every integer in between — checking that BR06's real `2871005 TO
+2871008` note's two endpoints both exist is the confirmed-real signal;
+assuming every sheet number between them exists too is a stronger,
+firm-specific claim about contiguous numbering this codebase hasn't
+confirmed generally, so it isn't made. `ref_type` is `"note"`, `tag` is
+always `""` (there's no symbol tag, just a cited sheet number) —
+resolution is a flat presence check against `known_sheet_nos`, so
+confidence is always 1.0 or 0.0, never the symbol-marker path's
+intermediate 0.3 (there's no "sheet exists but wrong title" case for a
+bare sheet-number citation).
+
+**Real result against BR06:** 89 note references found, 88 resolve
+cleanly, and one is a genuine, confirmed drafting typo — sheet
+2871122's `"REFER SHEET No. 287114 FOR HOLD DOWN JOINTS..."` cites
+`"287114"` (6 digits) where this set's sheet numbers are all 7 digits;
+almost certainly `"2871114"` (a real sheet in this set) with a digit
+dropped. Left flagged, not special-cased away — this is exactly the
+real error this extraction exists to catch, and every other same-package
+note on the sample resolving cleanly is what makes this one genuine gap
+stand out rather than get lost in noise (see
+`tests/test_ingest_sample.py`'s
+`test_note_reference_catches_a_real_sheet_number_typo`)."""
 
 from __future__ import annotations
 
@@ -68,10 +127,10 @@ _VIEW_KEYWORDS = {"SECTION": "section", "DETAIL": "detail"}
 # Words that precede a "SECTION"/"DETAIL" mention when it's a body-text
 # cross-reference ("REFER TO SECTION 1", "SEE DETAIL 4") rather than a
 # view's own title ("HEADSTOCK SECTION 3", "SECTION 1 SECTION 2" — two
-# titles sharing a line). This is the general-note-reference pattern
-# PLANNING §4 explicitly defers (see module docstring) — the stoplist
-# exists to keep those sentences from being misread as titles, not to
-# extract them as references themselves.
+# titles sharing a line). This stoplist exists to keep those sentences
+# from being misread as titles by `_extract_view_titles`, not to extract
+# them as references itself — `_extract_note_references` below is the
+# module docstring's separate "SHEET <digits>" pattern, not this one.
 _STOPWORDS = {"REFER", "SEE", "TO", "PER", "SHOWN", "NOTE", "NOTES", "WITH", "ACCORDANCE"}
 
 # How close a tag word has to sit to a sheet-number word to be read as
@@ -87,6 +146,18 @@ _MARKER_MAX_DY = 20.0
 # the same small graphic cluster beside the title on the sample.
 _SELF_MARKER_MAX_DIST = 120.0
 
+# The one real signal that tells a general-note sheet-number citation
+# apart from an unrelated "SHEET <digits>"-shaped field (module
+# docstring's "general free-text note references" section, point 1).
+_NOTE_VERB_WORDS = {"REFER", "SEE"}
+
+# How many words to the left of "SHEET" to check for a "DRAWING" token
+# marking this as a cross-drawing-package citation (module docstring
+# point 2) — generous enough for "REFER TO DRAWING 8003, SHEET No." (3
+# words between "DRAWING" and "SHEET") without reaching back into an
+# unrelated previous sentence on the same line.
+_NOTE_DRAWING_LOOKBACK = 6
+
 
 @dataclass
 class _ViewTitle:
@@ -101,6 +172,14 @@ class _ViewTitle:
 class _Marker:
     tag: str
     sheet_hint: str
+    bbox: BBox
+    sheet_no: str | None
+    page_index: int
+
+
+@dataclass
+class _NoteReference:
+    sheet_hint: str  # one endpoint's digits, cleaned of trailing punctuation
     bbox: BBox
     sheet_no: str | None
     page_index: int
@@ -210,6 +289,71 @@ def _extract_markers(sheet: Sheet) -> list[_Marker]:
     return markers
 
 
+def _clean_sheet_no_token(text: str) -> str:
+    # A note sentence's trailing sheet number carries the sentence's own
+    # full stop as part of the same word token ("2871008.") — real
+    # tokenization confirmed on the sample, same reason
+    # `_is_note_reference` above strips "." off "No." before comparing.
+    return text.strip().rstrip(".,")
+
+
+def _extract_note_references(sheet: Sheet) -> list[_NoteReference]:
+    """Free-text `"<REFER|SEE> [TO] SHEET [No.] <digits>[ TO <digits>]"`
+    note references — module docstring's "General free-text note
+    references" section for the real convention, the two real filters
+    (a verb requirement, a "DRAWING" cross-package exclusion) this needed,
+    and why a range resolves its two endpoints rather than every sheet
+    number in between."""
+
+    band_y0 = sheet.page_height * (1 - TITLE_BLOCK_BAND_FRACTION)
+    body_words = [w for w in sheet.words if w.bbox.y0 < band_y0]
+
+    refs: list[_NoteReference] = []
+    for w in body_words:
+        if w.text.strip().upper() != "SHEET":
+            continue
+        same_line = sorted(
+            (ww for ww in body_words if abs(ww.bbox.y0 - w.bbox.y0) < 3),
+            key=lambda ww: ww.bbox.x0,
+        )
+        idx = same_line.index(w)
+        left = same_line[:idx]
+        right = same_line[idx + 1 :]
+
+        if not any(_norm_tag(ww.text.rstrip(":")) in _NOTE_VERB_WORDS for ww in left):
+            continue  # not a real note sentence — e.g. a title-block legend field
+        if any(_norm_tag(ww.text) == "DRAWING" for ww in left[-_NOTE_DRAWING_LOOKBACK:]):
+            continue  # cross-drawing-package citation — out of scope, module docstring
+
+        pos = 0
+        if pos < len(right) and _norm_tag(right[pos].text.rstrip(".")) == "NO":
+            pos += 1
+        if pos >= len(right):
+            continue
+        first = _clean_sheet_no_token(right[pos].text)
+        if not _SHEET_NO_RE.match(first):
+            continue
+
+        end_word = right[pos]
+        hints = [first]
+        if (
+            pos + 2 < len(right)
+            and _norm_tag(right[pos + 1].text) == "TO"
+            and _SHEET_NO_RE.match(_clean_sheet_no_token(right[pos + 2].text))
+        ):
+            hints.append(_clean_sheet_no_token(right[pos + 2].text))
+            end_word = right[pos + 2]
+
+        bbox = BBox(w.bbox.x0, w.bbox.y0, end_word.bbox.x1, end_word.bbox.y1)
+        for hint in hints:
+            refs.append(
+                _NoteReference(
+                    sheet_hint=hint, bbox=bbox, sheet_no=sheet.sheet_no, page_index=sheet.page_index
+                )
+            )
+    return refs
+
+
 def build_references(project: Project) -> list[Reference]:
     """Whole-project pass: index every view title across the set (step 1
     of PLANNING.md §4's resolution algorithm), then resolve every marker
@@ -221,9 +365,11 @@ def build_references(project: Project) -> list[Reference]:
 
     all_titles: list[_ViewTitle] = []
     all_markers: list[_Marker] = []
+    all_notes: list[_NoteReference] = []
     for sheet in project.sheets:
         all_titles.extend(_extract_view_titles(sheet))
         all_markers.extend(_extract_markers(sheet))
+        all_notes.extend(_extract_note_references(sheet))
 
     title_index: dict[tuple[str, str], _ViewTitle] = {
         (t.tag, t.sheet_no): t for t in all_titles
@@ -278,4 +424,20 @@ def build_references(project: Project) -> list[Reference]:
                     confidence=confidence,
                 )
             )
+
+    for n in all_notes:
+        resolved = n.sheet_hint in known_sheet_nos
+        references.append(
+            Reference(
+                ref_type="note",
+                tag="",
+                source_sheet_no=n.sheet_no,
+                source_page_index=n.page_index,
+                source_bbox=n.bbox,
+                target_sheet_hint=n.sheet_hint,
+                resolved=resolved,
+                target_sheet_no=n.sheet_hint if resolved else None,
+                confidence=1.0 if resolved else 0.0,
+            )
+        )
     return references

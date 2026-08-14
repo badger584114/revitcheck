@@ -66,12 +66,36 @@ def test_no_revision_mismatches_on_real_clean_set(real_issues):
 
 
 def test_cross_sheet_issues_on_real_set_are_lower_confidence_only(real_issues):
-    # This set's few unresolved reference candidates all name a sheet that
-    # genuinely exists in the pack (extraction/references.py's confidence
-    # 0.3 case) — none reference a sheet missing from the set entirely, so
-    # none should surface at "high" severity.
-    cross_sheet_issues = [i for i in real_issues if i.category == "cross_sheet"]
+    # This set's unresolved symbol-based reference candidates all name a
+    # sheet that genuinely exists in the pack (extraction/references.py's
+    # confidence 0.3 case) — none reference a sheet missing from the set
+    # entirely, so none should surface at "high" severity. One real "high"
+    # exception, confirmed 2026-08-14 and asserted separately below: a
+    # genuine drafting typo a general-note reference (not a symbol marker)
+    # catches, which correctly *should* be "high" (confidence 0.0) — this
+    # test's own bound is scoped past it rather than widened to hide it.
+    cross_sheet_issues = [
+        i
+        for i in real_issues
+        if i.category == "cross_sheet" and "287114" not in i.description
+    ]
     assert all(i.severity == "medium" for i in cross_sheet_issues)
+
+
+def test_cross_sheet_catches_the_real_sheet_number_typo(real_issues):
+    # The real drafting typo confirmed in
+    # test_note_reference_catches_a_real_sheet_number_typo
+    # (tests/test_ingest_sample.py) — sheet 2871122's note cites "287114"
+    # (6 digits) where this set's sheet numbers are all 7, almost
+    # certainly "2871114" with a digit dropped. This is the check-engine
+    # layer's own confirmation that the Issue actually surfaces, not just
+    # the underlying Reference.
+    matches = [
+        i for i in real_issues if i.category == "cross_sheet" and "287114" in i.description
+    ]
+    assert len(matches) == 1
+    assert matches[0].severity == "high"
+    assert matches[0].sheet_no == "2871122"
 
 
 def test_millimetres_not_flagged(real_issues):

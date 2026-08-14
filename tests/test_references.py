@@ -138,6 +138,106 @@ def test_general_note_reference_not_mistaken_for_a_title():
     assert refs[0].confidence == 0.3  # sheet 1000007 is real, but carries no genuine title
 
 
+# --- general free-text note references (module docstring's "General
+# free-text note references" section) --------------------------------------
+
+
+def test_note_reference_resolves_when_sheet_exists():
+    notes_sheet = _sheet(
+        "2000001",
+        [
+            _word("REFER", 50, 50, w=40),
+            _word("TO", 95, 50),
+            _word("SHEET", 130, 50, w=45),
+            _word("No.", 180, 50, w=20),
+            _word("2000002", 210, 50, w=45),
+        ],
+    )
+    target_sheet = _sheet("2000002", [])
+    project = Project(source_path="synthetic", sheets=[notes_sheet, target_sheet])
+    refs = build_references(project)
+
+    assert len(refs) == 1
+    ref = refs[0]
+    assert ref.ref_type == "note"
+    assert ref.tag == ""
+    assert ref.resolved is True
+    assert ref.target_sheet_hint == "2000002"
+    assert ref.target_sheet_no == "2000002"
+    assert ref.confidence == 1.0
+
+
+def test_note_reference_range_resolves_each_endpoint_independently():
+    # "SHEET No. 2000004 TO 2000005" — only 2000004 exists in this
+    # project, so the range's two endpoints must resolve independently,
+    # not pass/fail as one unit.
+    notes_sheet = _sheet(
+        "2000003",
+        [
+            _word("REFER", 50, 50, w=40),
+            _word("SHEET", 100, 50, w=45),
+            _word("No.", 150, 50, w=20),
+            _word("2000004", 180, 50, w=45),
+            _word("TO", 230, 50),
+            _word("2000005", 260, 50, w=45),
+        ],
+    )
+    target_sheet = _sheet("2000004", [])
+    project = Project(source_path="synthetic", sheets=[notes_sheet, target_sheet])
+    refs = build_references(project)
+
+    assert len(refs) == 2
+    by_hint = {r.target_sheet_hint: r for r in refs}
+    assert by_hint["2000004"].resolved is True
+    assert by_hint["2000005"].resolved is False
+    assert by_hint["2000005"].confidence == 0.0
+
+
+def test_note_reference_requires_a_verb_not_just_shape():
+    # The real BR06 false-positive risk (module docstring): a title-
+    # block-adjacent "INDEX SHEET REFERENCE: 8011 SHEET <no>" legend
+    # shares the bare "SHEET <digits>" shape but has no REFER/SEE verb
+    # anywhere on the line.
+    sheet = _sheet(
+        "2000006",
+        [
+            _word("INDEX", 50, 50, w=35),
+            _word("SHEET", 90, 50, w=45),
+            _word("REFERENCE:", 140, 50, w=70),
+            _word("8011", 215, 50, w=30),
+            _word("SHEET", 250, 50, w=45),
+            _word("2000007", 300, 50, w=45),
+        ],
+    )
+    target_sheet = _sheet("2000007", [])
+    project = Project(source_path="synthetic", sheets=[sheet, target_sheet])
+    refs = build_references(project)
+    assert refs == []
+
+
+def test_note_reference_skips_cross_drawing_package_citation():
+    # "REFER TO DRAWING 8003, SHEET No. 9999999" — a real, common
+    # convention for citing a different discipline's own drawing set
+    # (module docstring). Deliberately not extracted at all, resolved or
+    # not — 9999999 not existing in *this* project is expected, not an
+    # error, so this must not become an unresolved Reference either.
+    sheet = _sheet(
+        "2000008",
+        [
+            _word("REFER", 50, 50, w=40),
+            _word("TO", 95, 50),
+            _word("DRAWING", 130, 50, w=55),
+            _word("8003,", 190, 50, w=35),
+            _word("SHEET", 230, 50, w=45),
+            _word("No.", 280, 50, w=20),
+            _word("9999999", 310, 50, w=45),
+        ],
+    )
+    project = Project(source_path="synthetic", sheets=[sheet])
+    refs = build_references(project)
+    assert refs == []
+
+
 def test_sheet_reference_inside_a_general_note_sentence_not_read_as_a_marker():
     # "... SHEET No. 1000009 TO 1000010 ..." — a general-notes
     # cross-reference sentence; the sheet numbers in it must not be

@@ -564,14 +564,16 @@ class Reference:
     for the resolution algorithm and what this sample's real convention
     turned out to need).
 
-    Scoped to symbol-based references only (section markers, detail
-    bubbles) for now — general free-text note references ("see Detail 4
-    on Dwg S-201") are explicitly deferred by PLANNING.md §4's scoping
-    note, so `ref_type` is "section" | "detail" | "unknown" (unresolved,
-    kind undetermined), not the full four-type list §3 lists as the
-    eventual target."""
+    Symbol-based references (section markers, detail bubbles) were built
+    first per PLANNING.md §4's scoping note; general free-text note
+    references ("REFER TO SHEET No. X") were added 2026-08-14 as `"note"`
+    — see that module's docstring for the resolution algorithm and real
+    convention each type needed, and why a cross-drawing-package citation
+    (a different discipline's own sheet set) is deliberately excluded
+    rather than extracted as an ever-unresolved `Reference`. Match lines
+    ("MATCH LINE — SEE SHEET S-103") are still §3's un-built fourth type."""
 
-    ref_type: str  # "section" | "detail" | "unknown"
+    ref_type: str  # "section" | "detail" | "note" | "unknown"
     tag: str
     source_sheet_no: Optional[str]
     source_page_index: int
