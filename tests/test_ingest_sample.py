@@ -72,13 +72,39 @@ def test_known_section_reference_resolves(project):
     assert matches[0].ref_type == "section"
 
 
-def test_no_reference_targets_a_nonexistent_sheet(project):
-    # Every callout in this set names a sheet number that's genuinely
-    # somewhere in the pack — a reference to a sheet outside the set
-    # (confidence 0.0, extraction/references.py) would mean a genuinely
-    # broken cross-reference, which this clean set shouldn't have.
-    dead = [r for r in project.references if not r.resolved and r.confidence == 0.0]
+def test_no_symbol_reference_targets_a_nonexistent_sheet(project):
+    # Every symbol-based callout (section/detail marker) in this set
+    # names a sheet number that's genuinely somewhere in the pack — a
+    # reference to a sheet outside the set (confidence 0.0,
+    # extraction/references.py) would mean a genuinely broken
+    # cross-reference, which this clean set shouldn't have. Scoped to
+    # non-"note" references — see the real general-note typo confirmed
+    # in test_note_reference_catches_a_real_sheet_number_typo below,
+    # which is a genuine finding, not something this test should paper
+    # over by widening its own bound.
+    dead = [
+        r for r in project.references if not r.resolved and r.confidence == 0.0 and r.ref_type != "note"
+    ]
     assert dead == []
+
+
+def test_note_reference_catches_a_real_sheet_number_typo(project):
+    # A real drafting typo, confirmed 2026-08-14: sheet 2871122's note
+    # "REFER SHEET No. 287114 FOR HOLD DOWN JOINTS..." cites "287114" (6
+    # digits) where this set's real sheet numbering is 7 digits —
+    # almost certainly "2871114" (a real sheet in this set) with a digit
+    # dropped. Exactly the kind of real error general-note-reference
+    # resolution exists to catch, not an extraction artifact — every
+    # other "REFER TO SHEET No." note on this sample (89 total) resolves
+    # cleanly, so this one genuine gap stands out rather than being lost
+    # in a sea of false positives.
+    typo = [
+        r for r in project.references if r.ref_type == "note" and r.target_sheet_hint == "287114"
+    ]
+    assert len(typo) == 1
+    assert typo[0].source_sheet_no == "2871122"
+    assert typo[0].resolved is False
+    assert typo[0].confidence == 0.0
 
 
 def test_pile_schedule_table_extracted(project):

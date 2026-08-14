@@ -14,11 +14,16 @@ from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
 from pdfchecker.ir import Project
 
-_KIND_LABEL = {"section": "Section", "detail": "Detail", "unknown": "Reference"}
+_KIND_LABEL = {"section": "Section", "detail": "Detail", "note": "Note", "unknown": "Reference"}
 
 
 def _ref_string(ref) -> str:
     kind = _KIND_LABEL.get(ref.ref_type, "Reference")
+    # A note reference (extraction/references.py) has no symbol tag — just
+    # a cited sheet number — so `tag` is always "" for it; skip the
+    # "tag/" prefix rather than render an awkward "Note /2871005".
+    if not ref.tag:
+        return f"{kind} {ref.target_sheet_hint}"
     return f"{kind} {ref.tag}/{ref.target_sheet_hint}"
 
 
