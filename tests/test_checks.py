@@ -301,7 +301,8 @@ def test_american_spelling_flagged_with_british_suggestion():
     project = Project(source_path="synthetic", sheets=[_word_sheet("SPECIALIZED")])
     issues = check_spelling(project, RuleConfig())
     assert len(issues) == 1
-    assert issues[0].suggested_fix == {"corrected": "specialised"}
+    # `word` added 2026-08-14 (markup/notes.py's terse note needs it).
+    assert issues[0].suggested_fix == {"word": "SPECIALIZED", "corrected": "specialised"}
     assert "American spelling" in issues[0].description
 
 

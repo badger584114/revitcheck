@@ -358,6 +358,8 @@ Recorded here rather than silently deleted, per this doc's own convention (§1, 
 
 Yes — this is a natural extension of the existing Issue data, and worth building once the check engines are producing reliable results. Goal: engineer reviews and selects flagged issues, app burns them onto the sheets as redlines, drafting team gets a marked-up set with no manual markup step.
 
+**PDF markup built 2026-08-14** — `markup/pdf_markup.py` + `markup/notes.py`. `render_markup(project, issues, output_path)` burns whatever Issue list the caller passes (the engineer-selection step below is a UI concern, not built) onto a fresh copy of the source PDF as native `PyMuPDF` annotations: a `Square`/`Circle` at the Issue's own `bbox` (a zero-area bbox — already the real shape `checks/geometry.py`'s `_setout_point_bbox` produces for a single reconstructed point, PR #13 — is read directly as "draw a point marker, not a box," no new Issue field needed) plus a `FreeText` note using PyMuPDF's native `callout` leader. Every rule in the catalog needed its own terse note builder (`notes.py`, per §8's `Label: payload` table below) — three existing rules (`title_block.required_fields_present`, `spelling.en_gb`, `revision.sequential_numbering`) needed a small `suggested_fix` addition first, since nothing had consumed that field for anything but the full report until now. An Issue with `bbox=None` still gets a tag and a report entry, just no mark on any sheet — not silently dropped from the numbering. DXF/DWG redline-layer export (below) is not built — PDF is the primary target per the 2026-08-10 decision, and no consumer needs the DXF path yet.
+
 **Flow**
 1. Check run completes → issue list (as in §7), each already tied to a sheet and a location.
 2. Engineer selects which issues to include (default: all; filterable by severity/category/sheet — e.g. exclude a low-severity spelling flag they've decided to ignore).
@@ -409,7 +411,7 @@ This means the `Issue` object (produced by every rule, `(IR, config) -> [Issue]`
 5. Basic session-level rule config (JSON/YAML rules file, schema in §4's "Project rule configuration" subsection) — an uploaded file, not a persisted-and-edited rules UI, per §2's "Stateless by design"
 6. Client spec upload + numeric-threshold extraction (§6), scoped to structured schedules first — this is an automated way to populate the same rule set from step 5, so sequence it once that config mechanism works
 7. Narrative/presence requirement extraction from free-form spec prose, once numeric extraction (step 6) is proven on a real client spec
-8. Markup export (§8) once the check engines are reliable enough that auto-generated redlines are trustworthy to send to drafting unreviewed-in-detail — this is a trust-dependent feature, sequence it after the checks it depends on are proven
+8. Markup export (§8) once the check engines are reliable enough that auto-generated redlines are trustworthy to send to drafting unreviewed-in-detail — this is a trust-dependent feature, sequence it after the checks it depends on are proven. **PDF markup built 2026-08-14** — see §8 above; DXF/DWG redline export and the engineer-selection UI step aren't built
 
 ## 10. Self-contained / offline-capable deployment
 

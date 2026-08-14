@@ -78,6 +78,7 @@ def check_sequential_numbering(project: Project, config: RuleConfig) -> list[Iss
                     page_index=sheet.page_index,
                     description=f"Revision schedule has duplicate revision number(s): {dupes}",
                     severity="high",
+                    suggested_fix={"dupes": dupes},
                 )
             )
             continue
@@ -92,6 +93,7 @@ def check_sequential_numbering(project: Project, config: RuleConfig) -> list[Iss
                     page_index=sheet.page_index,
                     description=f"Revision schedule is missing revision number(s): {missing}",
                     severity="medium",
+                    suggested_fix={"missing": missing},
                 )
             )
     return issues
