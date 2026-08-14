@@ -847,13 +847,25 @@ def match_chain_points_to_piles(
 class SetoutReconstructionPoint:
     """One schedule point's reconstruction outcome — §5b step 6's
     "partial reconstruction is expected, report status per point, not
-    pass/fail" rule, applied at the check-rule level (checks/geometry.py)."""
+    pass/fail" rule, applied at the check-rule level (checks/geometry.py).
+
+    `local_point` (added 2026-08-14, PLANNING.md §8) is this pile's DXF
+    model-space position on `geometry_sheet` — the same point
+    `extraction/dxf_pdf_transform.py`'s `model_to_pdf_point` needs to
+    give `checks/geometry.py`'s Issues a real page-space `bbox`, the same
+    way `geometry.dimension_consistency` already does. `None` for
+    `"unmatched_pile"` (the pile was never found in the DXF at all, so
+    there's no local position to report) — populated for every other
+    status, including the two failure statuses, since `matched_local`
+    already has the chain node position before origin/bearing/walk is
+    even attempted."""
 
     point_id: str
     stated: SetoutPoint
     derived: SetoutPoint | None
     status: str  # "reconstructed" | "unmatched_pile" | "no_bearing" | "no_origin"
     geometry_sheet_no: str | None = None
+    local_point: Point3D | None = None
 
 
 def reconstruct_sheet(
@@ -897,7 +909,9 @@ def reconstruct_sheet(
 
     results: dict[str, SetoutReconstructionPoint] = {}
 
-    def record(point_id: str, derived: SetoutPoint | None, status: str) -> None:
+    def record(
+        point_id: str, derived: SetoutPoint | None, status: str, local_point: Point3D | None = None
+    ) -> None:
         if point_id in results:
             return
         results[point_id] = SetoutReconstructionPoint(
@@ -906,6 +920,7 @@ def reconstruct_sheet(
             derived=derived,
             status=status,
             geometry_sheet_no=geometry_sheet_no,
+            local_point=local_point,
         )
 
     chains = [c for c in find_dimension_chains(dxf_sheet.dimensions, config.chain_link_tolerance_m) if len(c) >= 2]
@@ -943,8 +958,8 @@ def reconstruct_sheet(
             continue  # this chain isn't a pile row on the schedule at all
 
         if not origins:
-            for point_id in matched_local:
-                record(point_id, None, "no_origin")
+            for point_id, local_point in matched_local.items():
+                record(point_id, None, "no_origin", local_point)
             continue
         origin_local, origin_real = min(
             origins, key=lambda o: min(_xy_dist(o[0], p) for p in nodes)
@@ -952,8 +967,8 @@ def reconstruct_sheet(
 
         bearing_deg = find_bearing_for_chain(nodes, dxf_sheet.texts, config.bearing_pair_max_distance_m)
         if bearing_deg is None:
-            for point_id in matched_local:
-                record(point_id, None, "no_bearing")
+            for point_id, local_point in matched_local.items():
+                record(point_id, None, "no_bearing", local_point)
             continue
 
         # A branch-less chain's own span vector is an unreliable, real-
@@ -979,8 +994,8 @@ def reconstruct_sheet(
             reference_span=reference_span,
         )
         if walk is None:
-            for point_id in matched_local:
-                record(point_id, None, "no_origin")
+            for point_id, local_point in matched_local.items():
+                record(point_id, None, "no_origin", local_point)
             continue
 
         if has_branch:
@@ -991,9 +1006,9 @@ def reconstruct_sheet(
         for point_id, local_point in matched_local.items():
             walked = min(walk, key=lambda r: _xy_dist(r.local_point, local_point))
             if walked.derived is None:
-                record(point_id, None, "no_origin")
+                record(point_id, None, "no_origin", local_point)
             else:
-                record(point_id, walked.derived, "reconstructed")
+                record(point_id, walked.derived, "reconstructed", local_point)
 
     for point_id in schedule_ids - set(results):
         results[point_id] = SetoutReconstructionPoint(

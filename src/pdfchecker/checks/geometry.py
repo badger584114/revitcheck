@@ -34,12 +34,17 @@ this codebase.
 as of 2026-08-14, via `extraction/dxf_pdf_transform.py`'s per-viewport
 DXF-space -> PDF-page-space transform (PLANNING.md §8 — see that
 module's docstring for the real calibration this is built on).
-`geometry.setout_reconstruction`/`geometry.ifc_setout_consistency`
-below still don't — not because the transform doesn't exist, but
-because `extraction/setout_reconstruction.py`'s `SetoutReconstructionPoint`
-doesn't currently retain the local DXF-space point a delta Issue would
-need to feed it; a real, small, separate follow-up, not silently
-patched over.
+`geometry.setout_reconstruction`/`geometry.ifc_setout_consistency` get
+one too, added the same day via `_setout_point_bbox` below — built once
+`extraction/setout_reconstruction.py`'s `SetoutReconstructionPoint`
+started retaining each point's local DXF-space position (`local_point`,
+see its own docstring). Scoped to the single-sheet case only: BR08's
+real cross-sheet setout-precedence case (the schedule sheet and the DXF
+geometry living on two different sheets) deliberately gets `bbox=None`
+instead, since transforming through the *geometry* sheet's viewports
+would produce a page-space point for a *different* page than the one
+this Issue's `page_index` actually reports — see `_setout_point_bbox`'s
+docstring for the full reasoning.
 
 `geometry.setout_reconstruction` and `geometry.ifc_setout_consistency`
 both resolve each schedule sheet's geometry source via `_resolve_geometry_
@@ -60,9 +65,9 @@ import weakref
 
 from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
-from pdfchecker.extraction.dxf_pdf_transform import dimension_bbox
+from pdfchecker.extraction.dxf_pdf_transform import dimension_bbox, model_to_pdf_point
 from pdfchecker.extraction.setout_reconstruction import find_geometry_sheet_no, reconstruct_sheet
-from pdfchecker.ir import DimensionEntity, IfcElement, Project, Sheet
+from pdfchecker.ir import BBox, DimensionEntity, IfcElement, Project, Sheet
 
 # extraction/dxf_source.py's _INSUNITS-resolved unit strings, converted
 # to a millimeter multiplier — tolerances are specified in mm
@@ -267,6 +272,34 @@ def _resolve_geometry_sheet(schedule_sheet: Sheet, project: Project) -> Sheet:
     return schedule_sheet
 
 
+def _setout_point_bbox(sheet: Sheet, geometry_sheet: Sheet, point) -> BBox | None:
+    """A `SetoutReconstructionPoint`'s page-space bbox — `extraction/
+    dxf_pdf_transform.py`'s transform (PLANNING.md §8) applied to
+    `point.local_point` (added 2026-08-14 alongside this function, the
+    real "follow-up" flagged when that transform was first wired into
+    `geometry.dimension_consistency`).
+
+    Only when `geometry_sheet is sheet`: in the real BR08 cross-sheet
+    case, `point.local_point` is in a *different* sheet's DXF model
+    space, transformed through *that* sheet's own viewports/paper space
+    — but this Issue's `page_index` reports the schedule sheet, not the
+    geometry sheet, so the resulting page-space point would land on the
+    wrong page. Skipping rather than guessing a mismatched location is
+    the same convention used everywhere else in this codebase; a real
+    fix would need `Issue` to carry a secondary location, which doesn't
+    exist yet. `None` also for an `"unmatched_pile"` point (no
+    `local_point` at all — never found in the DXF to begin with) or a
+    point whose local position doesn't fall inside any viewport."""
+
+    if point.local_point is None or geometry_sheet is not sheet or geometry_sheet.dxf_sheet is None:
+        return None
+    predicted = model_to_pdf_point(geometry_sheet.dxf_sheet, point.local_point, sheet.page_height)
+    if predicted is None:
+        return None
+    x, y = predicted
+    return BBox(x0=x, y0=y, x1=x, y1=y)
+
+
 # Human-readable notes for the non-"reconstructed" statuses
 # extraction/setout_reconstruction.py's `reconstruct_sheet` reports —
 # every schedule point ends up with *some* status (never silently
@@ -306,7 +339,7 @@ def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Is
                             f"Setout point {point.point_id}: "
                             f"{_STATUS_DESCRIPTIONS[point.status]}{cross_sheet_note}"
                         ),
-                        bbox=None,
+                        bbox=_setout_point_bbox(sheet, geometry_sheet, point),
                         severity="low",
                         suggested_fix={
                             "status": point.status,
@@ -337,7 +370,7 @@ def check_setout_reconstruction(project: Project, config: RuleConfig) -> list[Is
                         f"dimension overrides and whether the schedule was regenerated after the "
                         f"last drawing change{cross_sheet_note}"
                     ),
-                    bbox=None,
+                    bbox=_setout_point_bbox(sheet, geometry_sheet, point),
                     severity="high",
                     suggested_fix={
                         "stated": point.stated.to_dict(),
@@ -382,10 +415,16 @@ def _horizontal_centroid(element: IfcElement) -> tuple[float, float]:
     )
 
 
-def _ifc_issue(sheet: Sheet, description: str, severity: str, suggested_fix: dict) -> Issue:
+def _ifc_issue(
+    sheet: Sheet, description: str, severity: str, suggested_fix: dict, bbox: BBox | None = None
+) -> Issue:
     """Shared Issue-construction for `check_ifc_setout_consistency`'s
     outcome branches below — they'd otherwise copy-paste the same
-    rule_id/category/sheet_no/page_index/bbox=None quintet three times."""
+    rule_id/category/sheet_no/page_index quintet four times. `bbox`
+    defaults to `None` for the one caller with no specific point to
+    locate (the whole-sheet "no pile-shaped elements at all" coverage
+    Issue) — every per-point caller passes `_setout_point_bbox`'s result
+    explicitly instead of relying on the default."""
 
     return Issue(
         rule_id="geometry.ifc_setout_consistency",
@@ -393,7 +432,7 @@ def _ifc_issue(sheet: Sheet, description: str, severity: str, suggested_fix: dic
         sheet_no=sheet.sheet_no,
         page_index=sheet.page_index,
         description=description,
-        bbox=None,
+        bbox=bbox,
         severity=severity,
         suggested_fix=suggested_fix,
     )
@@ -461,14 +500,14 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
     candidates = [e for e in project.ifc_model.elements if _is_slender_vertical(e, config)]
     candidate_positions = [(_horizontal_centroid(e), e) for e in candidates]
 
-    sheet_points: list[tuple[Sheet, object]] = []
+    sheet_points: list[tuple[Sheet, Sheet, object]] = []
     for sheet in project.sheets:
         geometry_sheet = _resolve_geometry_sheet(sheet, project)
         if geometry_sheet.dxf_sheet is None:
             continue
         for point in _cached_reconstruct_sheet(sheet, config, geometry_sheet):
             if point.status == "reconstructed":
-                sheet_points.append((sheet, point))
+                sheet_points.append((sheet, geometry_sheet, point))
 
     if not sheet_points:
         return []
@@ -484,7 +523,7 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
         # _cached_reconstruct_sheet's comment above), so this counts by
         # page_index, not by using `Sheet` as a dict key directly.
         counts: dict[int, tuple[Sheet, int]] = {}
-        for sheet, _ in sheet_points:
+        for sheet, _, _ in sheet_points:
             prior = counts.get(sheet.page_index)
             counts[sheet.page_index] = (sheet, (prior[1] if prior else 0) + 1)
         return [
@@ -514,7 +553,7 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
     # simple, auditable, and — the actual bug this replaces — never lets
     # two points share one IFC element.
     pairs = []
-    for sheet, point in sheet_points:
+    for sheet, _, point in sheet_points:
         px, py = point.derived.easting, point.derived.northing
         for (cx, cy), elem in candidate_positions:
             pairs.append((math.hypot(cx - px, cy - py), sheet, point, elem))
@@ -532,9 +571,10 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
         assignment[key] = (dist, elem)
 
     issues = []
-    for sheet, point in sheet_points:
+    for sheet, geometry_sheet, point in sheet_points:
         key = (sheet.page_index, point.point_id)
         px, py = point.derived.easting, point.derived.northing
+        bbox = _setout_point_bbox(sheet, geometry_sheet, point)
 
         result = assignment.get(key)
         if result is None:
@@ -557,6 +597,7 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                         "nearest_distance_m": round(nearest_dist, 2),
                         "geometry_sheet_no": point.geometry_sheet_no,
                     },
+                    bbox,
                 )
             )
             continue
@@ -579,6 +620,7 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                         "nearest_distance_m": round(dist, 2),
                         "geometry_sheet_no": point.geometry_sheet_no,
                     },
+                    bbox,
                 )
             )
             continue
@@ -605,6 +647,7 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                     "delta_mm": round(delta_mm, 1),
                     "geometry_sheet_no": point.geometry_sheet_no,
                 },
+                bbox,
             )
         )
     return issues

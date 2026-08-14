@@ -455,6 +455,10 @@ def test_reconstruct_sheet_geometry_sheet_defaults_to_own_dxf():
     by_id = {r.point_id: r for r in results}
     assert by_id["PIL234301"].status == "reconstructed"
     assert by_id["PIL234301"].geometry_sheet_no == "2871051"
+    # local_point (added 2026-08-14, checks/geometry.py's Issue-bbox
+    # follow-up) — the real DXF model-space position matched_local
+    # already had for this pile, now carried through onto the result.
+    assert by_id["PIL234301"].local_point is not None
 
 
 def test_reconstruct_sheet_uses_separate_geometry_sheet_when_given():
@@ -654,6 +658,18 @@ def test_real_sample_reconstructs_both_abutment_pile_rows():
 
     for point_id in ("PIL234341", "PIL234342", "PIL234343", "PIL234344"):
         assert by_id[point_id].status != "reconstructed"
+
+    # Confirmed real 2026-08-14 (local_point's own docstring): these four
+    # aren't a uniform group status-wise — two never match any chain at
+    # all ("unmatched_pile", no local_point to report), and two do sit
+    # near a real chain node but with no anchorable setout-point origin
+    # nearby ("no_origin", local_point populated from that chain node).
+    for point_id in ("PIL234341", "PIL234342"):
+        assert by_id[point_id].status == "unmatched_pile"
+        assert by_id[point_id].local_point is None
+    for point_id in ("PIL234343", "PIL234344"):
+        assert by_id[point_id].status == "no_origin"
+        assert by_id[point_id].local_point is not None
 
 
 def test_real_br08_cross_sheet_reconstructs_main_abutment_groups():

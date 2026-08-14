@@ -422,6 +422,46 @@ def test_mismatch_beyond_survey_tolerance_flagged_high():
     assert len(mismatch) == 1
     assert mismatch[0].severity == "high"
     assert mismatch[0].suggested_fix["delta_mm"] > 40
+    # Single-sheet case (geometry_sheet is sheet) — _setout_point_bbox
+    # should resolve a real bbox via the sheet's own real viewports, same
+    # as geometry.dimension_consistency's Issues do.
+    assert mismatch[0].bbox is not None
+
+
+def test_mismatch_bbox_lands_within_real_page_bounds():
+    # Same fixture as the test above, but with the sheet's real PDF page
+    # size (not the 100.0x100.0 placeholder the rest of this file uses)
+    # — the real end-to-end confirmation that _setout_point_bbox's page-
+    # space output is a sane, in-bounds page location, not just "not None."
+    with pdfplumber.open(SAMPLE_PDF) as pdf:
+        tables = extract_tables(pdf.pages[14])
+    for table in tables:
+        for row in table.rows:
+            if row and row[0] == "PIL234301":
+                row[7] = "278435.885"  # same 50mm push as the test above
+    with fitz.open(SAMPLE_PDF) as doc:
+        page_rect = doc[14].rect
+    sheet = Sheet(
+        page_index=14,
+        page_width=page_rect.width,
+        page_height=page_rect.height,
+        title_block=TitleBlock(fields={"sheet_no": "2871051"}),
+        revision_schedule=[],
+        tables=tables,
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=ingest_dxf(SAMPLE_DXF),
+    )
+    project = Project(source_path="synthetic", sheets=[sheet])
+
+    issues = check_setout_reconstruction(project, RuleConfig())
+    mismatch = [i for i in issues if "PIL234301" in i.description and "schedule states" in i.description]
+    assert len(mismatch) == 1
+    bbox = mismatch[0].bbox
+    assert bbox is not None
+    assert 0 <= bbox.x0 <= page_rect.width
+    assert 0 <= bbox.y0 <= page_rect.height
 
 
 # --- _is_slender_vertical (schema-general pile-shape heuristic) ------------
@@ -516,6 +556,9 @@ def test_no_slender_candidates_in_model_reports_coverage_gap():
     assert issues[0].severity == "low"
     assert "none match the pile-shape heuristic" in issues[0].description
     assert issues[0].suggested_fix["candidate_count"] == 0
+    # A whole-sheet coverage Issue, not about any one point — no bbox to
+    # give it (there's no single point._setout_point_bbox call site).
+    assert issues[0].bbox is None
 
 
 def test_ifc_pile_within_tolerance_no_issue():
@@ -552,6 +595,9 @@ def test_ifc_pile_beyond_tolerance_flagged_high():
     assert mismatch[0].severity == "high"
     assert mismatch[0].suggested_fix["delta_mm"] > 40
     assert mismatch[0].suggested_fix["ifc_global_id"] == "pile-301"
+    # Same real DXF/viewport data as geometry.setout_reconstruction's own
+    # bbox tests above — _setout_point_bbox is shared between both rules.
+    assert mismatch[0].bbox is not None
 
 
 def test_ifc_no_candidate_within_search_radius_flagged_low():
@@ -573,6 +619,7 @@ def test_ifc_no_candidate_within_search_radius_flagged_low():
     assert len(no_match) == 1
     assert no_match[0].severity == "low"
     assert no_match[0].suggested_fix["nearest_distance_m"] > 2.0
+    assert no_match[0].bbox is not None  # a "low" Issue still gets a real location, not just "high" ones
 
 
 def test_unreconstructed_points_never_checked_against_ifc():
@@ -752,11 +799,23 @@ def _cross_sheet_synthetic_project(stated_easting: float, stated_northing: float
     pile_text = DxfText(text="PIL001", insert=Point3D(20.0, 0, 0), layer="D-TEXT")
     dim1 = _chain_dim(Point3D(0, 0, 0), Point3D(10, 0, 0), 10.0)
     dim2 = _chain_dim(Point3D(10, 0, 0), Point3D(20, 0, 0), 10.0)
+    # A real viewport covering the whole chain — present so
+    # test_check_setout_reconstruction_cross_sheet_bbox_stays_none below
+    # proves the cross-sheet page-mismatch *guard* is what keeps bbox
+    # None, not simply "there's no viewport data to transform through."
+    viewport = ViewportEntity(
+        id=1,
+        ps_center=Point3D(0.1, 0.1, 0.0),
+        ps_width=1.0,
+        ps_height=1.0,
+        view_center_point=Point3D(10.0, 0.0, 0.0),
+        view_height=40.0,
+    )
     geometry_dxf = DxfSheet(
         source_path="geom.dxf",
         units="m",
         dimensions=[dim1, dim2],
-        viewports=[],
+        viewports=[viewport],
         inserts=[origin_insert],
         texts=[origin_text, bearing_text, location_text, pile_text],
     )
@@ -788,6 +847,21 @@ def test_check_setout_reconstruction_cross_sheet_clean_pass_no_issue():
     # pass, not just mismatches.
     project = _cross_sheet_synthetic_project(stated_easting=1020.0, stated_northing=2000.0)
     assert check_setout_reconstruction(project, RuleConfig()) == []
+
+
+def test_check_setout_reconstruction_cross_sheet_bbox_stays_none():
+    # _setout_point_bbox's real reason to exist (module docstring,
+    # checks/geometry.py): this fixture's geometry sheet has a real
+    # viewport covering the pile's local_point (see
+    # _cross_sheet_synthetic_project), so a bbox *would* resolve if
+    # transformed through it — but doing so would place the point on the
+    # geometry sheet's own page, not the schedule sheet's page this
+    # Issue actually reports (page_index/sheet_no == "1000001", not
+    # "1000002"). bbox must stay None here, not silently wrong.
+    project = _cross_sheet_synthetic_project(stated_easting=1500.0, stated_northing=2000.0)
+    issues = check_setout_reconstruction(project, RuleConfig())
+    assert len(issues) == 1
+    assert issues[0].bbox is None
 
 
 # --- _cached_reconstruct_sheet: geometry_sheet-aware cache -----------------
