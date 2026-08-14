@@ -137,15 +137,11 @@ origins/bearings and `ABUTMENT` location labels (mirroring
 plausible-looking assignment, but applying it made things *worse*, not
 better — `ABUTMENT B` (previously accurate to <2mm) broke to ~2.5m off,
 while `A1`/`B2` stayed equally wrong and `B1` started failing
-`walk_chain`'s anchor-distance check entirely. That disproves "nearest
-label" as the right disambiguating signal here, for reasons not yet
-understood — reverted rather than kept, since a fix that measurably
-breaks a previously-correct case is worse than an honestly-reported gap.
-Left as a real, open limitation: `status == "reconstructed"` still holds
-for `A1`/`B1`/`B2` (the machinery completes), but the derived position is
-unreliable, and `checks/geometry.py`'s `geometry.setout_reconstruction`
-correctly surfaces this as a high-severity delta Issue rather than a
-false "all clean" — auditable, not silently wrong, but not fixed either.
+`walk_chain`'s anchor-distance check entirely. That disproved "nearest
+label" as the right disambiguating signal, for reasons this session
+didn't understand yet — reverted rather than kept, since a fix that
+measurably breaks a previously-correct case is worse than an honestly-
+reported gap.
 
 So `reconstruct_sheet` grew an optional `geometry_sheet` parameter
 (`checks/geometry.py`'s `_resolve_geometry_sheet` resolves it from
@@ -154,21 +150,80 @@ always comes from the `sheet` argument, but the DXF geometry can come
 from a *different*, cross-referenced sheet. Defaults to `None` (same
 sheet), so BR06's original case is unaffected.
 
+**Re-investigated and resolved 2026-08-14, later session — the real root
+cause was not origin/bearing selection at all.** Brute-forcing every
+origin×bearing×sign combination for the three broken sub-chains against
+the schedule (not shipped — a one-off diagnostic, never how the real
+check picks a value) showed the "nearest text" origin and bearing picked
+for `A1`/`B1`/`B2` were *already correct* — the wrong-looking result came
+from `walk_chain`'s sign/direction step instead. Its "positive walking
+direction" is derived from the chain's own two farthest local nodes
+(`far_a`/`far_b`) — a real-world-arbitrary choice: nothing ties which of
+the two farthest nodes is "positive" to which way the printed bearing
+actually faces, it's decided purely by witness-point/entity insertion
+order. On BR06's abutments and BR08's two 14-pile main chains, that
+arbitrary pick happened to land on the correct real-world direction; on
+BR08's three 4-dimension sub-chains it landed backwards on all 3/3 —
+confirmed directly: flipping the bearing 180° for each took their error
+from a *growing* 1.4m-16m (the signature of a direction flip — the error
+compounds with distance from the anchor) down to a *constant* ~1.40m
+for every pile in the group.
+
+The one real, checkable-without-the-schedule structural fact that told
+the reliably-correct chains apart from the reliably-wrong ones on every
+sample seen so far: the main chains are anchored *via a branch* (module
+docstring point 3 — a short leader link off a node partway along the
+chain, where the setout point attaches), while the broken sub-chains are
+bare straight paths with no such fork. `_chain_has_branch` makes that
+check concrete (any node with 3+ dimension edges touching it). Fixed via
+sign inheritance, not a fresh heuristic on the branch-less chain's own
+(unreliably small) node set: `reconstruct_sheet` walks branch-having
+chains first, and for each records an *oriented* span vector
+(`_oriented_span_from_walk` — real-world-facing, since it's derived from
+that chain's own already-walked signed distances, not local order).
+`_find_reference_span` then looks for a branch-less chain's nearest
+same-line continuation among those already-walked chains — physically
+close (BR08's real gaps are ~2m) and running along the same local line
+(colinear, not perpendicular) — and `walk_chain`'s new `reference_span`
+parameter uses that neighbor's oriented span in place of the branch-less
+chain's own guess. No schedule value is read anywhere in this — the
+neighbor's direction is established independently, from its own
+already-correct anchor+bearing walk, the same way a human re-deriving
+the sub-chain by hand would notice "this row keeps going the same way
+the main row was going" rather than treat it as a fresh, unrelated
+measurement. Real result: `ABUTMENT A1`/`B1`/`B2` now reconstruct to a
+*constant* ~1.40m off their schedule row (down from the old 1.4m-16m
+growing spread), for all three sub-groups, with the two main groups'
+own <2mm accuracy unaffected (they don't need borrowing — they still
+walk with their own self-derived span, unchanged).
+
+That remaining constant ~1.40m is real, not a further bug to chase —
+confirmed directly by the user, who has access to the actual drawings:
+`A1`/`B1`/`B2` were added to this bridge later than the main structure,
+as part of a separate retaining-wall design package for the same large
+infrastructure project, and use that package's own setout point rather
+than the bridge sheet's — a staged/split-design-ownership interface
+condition specific to this project, not a reconstruction error to design
+away. `checks/geometry.py`'s `geometry.setout_reconstruction` correctly
+surfacing these as a high-severity delta Issue is the right behavior;
+the fix above is only about making the *reported magnitude* honest (a
+constant offset pointing at "systematic origin issue," matching what's
+really going on) rather than a fictitious growing-with-distance number
+that would send a reviewing engineer looking for a dimension-chain
+mistake that was never there.
+
 **Still not built** (unchanged from 2026-08-11, and still without real
 data to calibrate against): a genuinely branching (not single-path)
 dimension graph, structures without a printed bearing/chained-dimension
 convention at all, and multi-hop survey-tolerance scaling. The
 multi-*sheet* half of "the fuller form of §5b" is what BR08 unblocked;
 the multi-*branch-graph* half is a separate, still-open gap — don't
-conflate the two.
-
-**Also not resolved, newly confirmed real 2026-08-14** (see above):
-origin/bearing selection for a chain isn't location-scoped, unlike pile-
-ID matching — fine with 2 well-separated abutments (BR06), wrong for
-BR08's `A1`/`B1`/`B2` sub-groups. A one-to-one location-based fix was
-tried and reverted after it broke a previously-correct case rather than
-fixing the target one — needs real investigation into why nearest-label
-isn't the right signal before trying again, not a second guess.
+conflate the two. Also still open: `_chain_has_branch` is a real,
+calibrated signal on every sample seen so far (3/3 branch-having chains
+correct, 3/3 branch-less chains wrong before this fix), but it isn't a
+proof for chains with no colinear branch-having neighbor at all to
+borrow from — those still fall back to the original self-derived (and,
+in principle, still arbitrary) span, same as before this fix existed.
 """
 
 from __future__ import annotations
@@ -515,6 +570,7 @@ def walk_chain(
     units: str,
     origin_pair_max_distance_m: float = 5.0,
     snap_tolerance_m: float = 0.01,
+    reference_span: tuple[float, float] | None = None,
 ) -> list[ChainWalkResult] | None:
     """Walks the chain's graph from whichever node is nearest
     `origin_local` (module docstring point 3 — that node is not
@@ -523,7 +579,16 @@ def walk_chain(
     distance along the bearing unit vector. Returns `None` if no node is
     within `origin_pair_max_distance_m` of the origin — this chain can't
     be anchored, so nothing in it can be reconstructed (report as
-    `no_origin`, not a silent empty result, at the call site)."""
+    `no_origin`, not a silent empty result, at the call site).
+
+    `reference_span` (module docstring's 2026-08-14 "sign inheritance"
+    section) overrides the chain's own two-farthest-nodes span vector —
+    used when this chain's own node set is too small/branch-less to
+    determine a real-world-anchored direction reliably on its own, in
+    favor of a *known-good* neighboring chain's already-oriented span
+    (`_oriented_span_from_walk`, real-direction-facing: dot >= 0 always
+    means "the neighbor's own increasing signed distance"). `None` (the
+    default) keeps the original self-derived behavior byte-identical."""
 
     meters_per_unit = _METERS_PER_UNIT.get(units)
     if meters_per_unit is None:
@@ -557,15 +622,25 @@ def walk_chain(
 
     # Overall span vector — the chain's two most-distant nodes — used to
     # give every edge a consistent +/- sign without knowing the local-to-
-    # real rotation (module docstring point 4).
-    far_a, far_b = 0, 0
-    best = 0.0
-    for i in range(len(nodes)):
-        for j in range(i + 1, len(nodes)):
-            d = _xy_dist(nodes[i], nodes[j])
-            if d > best:
-                best, far_a, far_b = d, i, j
-    span = (nodes[far_b].x - nodes[far_a].x, nodes[far_b].y - nodes[far_a].y)
+    # real rotation (module docstring point 4). This is only a *relative*
+    # sign convention, not a real-world-anchored one — nothing here ties
+    # "which of the two farthest nodes is which" to the printed bearing's
+    # actual forward direction, so on a short/branch-less chain this is a
+    # coin flip (module docstring's 2026-08-14 section: confirmed backwards
+    # on 3/3 real BR08 sub-chains). `reference_span`, when given, replaces
+    # this self-derived guess with a neighboring chain's already-oriented
+    # one instead.
+    if reference_span is not None:
+        span = reference_span
+    else:
+        far_a, far_b = 0, 0
+        best = 0.0
+        for i in range(len(nodes)):
+            for j in range(i + 1, len(nodes)):
+                d = _xy_dist(nodes[i], nodes[j])
+                if d > best:
+                    best, far_a, far_b = d, i, j
+        span = (nodes[far_b].x - nodes[far_a].x, nodes[far_b].y - nodes[far_a].y)
 
     bearing_rad = math.radians(bearing_deg)
     unit_vec = (math.sin(bearing_rad), math.cos(bearing_rad))  # (dE, dN) per survey convention
@@ -595,6 +670,123 @@ def walk_chain(
         )
         out.append(ChainWalkResult(local_point=p, derived=derived, signed_distance_m=signed_distance))
     return out
+
+
+def _chain_has_branch(chain: list[DimensionEntity], tolerance_m: float) -> bool:
+    """True if some witness point in this chain has 3+ dimension edges
+    touching it — a real fork/branch in the chain graph, not just a plain
+    path. Module docstring's 2026-08-14 section: this is the one real,
+    checkable structural fact (no schedule needed) that told BR08's
+    reliably-correct chains (the two 14-pile main abutments, each anchored
+    via a short branch off their setout-point leader — module docstring
+    point 3) apart from the three 4-dimension sub-chains that got
+    `walk_chain`'s sign backwards, on every real chain seen so far.
+    Doesn't *prove* a branch-having chain's self-derived span is correct
+    in general (that heuristic is still a coin flip in principle — see
+    `walk_chain`'s docstring), just that it's the only case confirmed
+    reliable on real data, so branch-less chains borrow a reference span
+    from one instead of trusting their own (`reconstruct_sheet`)."""
+
+    degree: dict[int, int] = {}
+    nodes: list[Point3D] = []
+
+    def node_index(p: Point3D) -> int:
+        for idx, q in enumerate(nodes):
+            if _xy_dist(p, q) <= tolerance_m:
+                return idx
+        nodes.append(p)
+        return len(nodes) - 1
+
+    for d in chain:
+        i = node_index(d.ext_line1_origin)
+        j = node_index(d.ext_line2_origin)
+        degree[i] = degree.get(i, 0) + 1
+        degree[j] = degree.get(j, 0) + 1
+    return any(deg >= 3 for deg in degree.values())
+
+
+def _oriented_span_from_walk(
+    walk: list[ChainWalkResult],
+) -> tuple[float, float] | None:
+    """The two farthest-apart nodes in an already-walked chain, as a
+    vector oriented so a positive dot product always means "the same
+    direction this chain's own signed distance increases in" — i.e. a
+    real-world-facing span vector, safe to hand to another chain as
+    `walk_chain`'s `reference_span` (module docstring's 2026-08-14
+    section). `None` if the walk has fewer than two reconstructed nodes
+    to span."""
+
+    reconstructed = [r for r in walk if r.derived is not None]
+    if len(reconstructed) < 2:
+        return None
+    far_a, far_b = reconstructed[0], reconstructed[1]
+    best = _xy_dist(far_a.local_point, far_b.local_point)
+    for i in range(len(reconstructed)):
+        for j in range(i + 1, len(reconstructed)):
+            d = _xy_dist(reconstructed[i].local_point, reconstructed[j].local_point)
+            if d > best:
+                best, far_a, far_b = d, reconstructed[i], reconstructed[j]
+    span = (
+        far_b.local_point.x - far_a.local_point.x,
+        far_b.local_point.y - far_a.local_point.y,
+    )
+    if far_b.signed_distance_m < far_a.signed_distance_m:
+        span = (-span[0], -span[1])
+    return span
+
+
+def _find_reference_span(
+    chain_nodes: list[Point3D],
+    trustworthy: list[tuple[list[Point3D], tuple[float, float]]],
+    max_gap_m: float,
+    min_colinearity: float = 0.9,
+) -> tuple[float, float] | None:
+    """Finds the nearest already-walked, branch-having chain
+    (`trustworthy` — a list of `(its nodes, its oriented span)` pairs,
+    `reconstruct_sheet`'s pass 1) that this branch-less chain is a real
+    local-space continuation of: physically close (within `max_gap_m`,
+    the real BR08 gaps are ~2m — module docstring's 2026-08-14 section)
+    *and* running along roughly the same local line (`min_colinearity`,
+    the cosine of the angle between the two chains' own span directions —
+    a perpendicular or unrelated chain shouldn't donate its direction).
+    `None` if no such neighbor exists, so the caller falls back to
+    `walk_chain`'s own (unreliable but better-than-nothing) self-derived
+    span — same "skip rather than guess" spirit, but there's no schedule
+    to fall back on here, just the pre-existing heuristic."""
+
+    def own_span(nodes: list[Point3D]) -> tuple[float, float] | None:
+        if len(nodes) < 2:
+            return None
+        a, b = nodes[0], nodes[1]
+        best = _xy_dist(a, b)
+        for i in range(len(nodes)):
+            for j in range(i + 1, len(nodes)):
+                d = _xy_dist(nodes[i], nodes[j])
+                if d > best:
+                    best, a, b = d, nodes[i], nodes[j]
+        length = math.hypot(b.x - a.x, b.y - a.y)
+        return None if length == 0 else ((b.x - a.x) / length, (b.y - a.y) / length)
+
+    this_dir = own_span(chain_nodes)
+    if this_dir is None:
+        return None
+
+    best_candidate = None
+    best_gap = None
+    for other_nodes, other_span in trustworthy:
+        gap = min(_xy_dist(p, q) for p in chain_nodes for q in other_nodes)
+        if gap > max_gap_m:
+            continue
+        other_length = math.hypot(*other_span)
+        if other_length == 0:
+            continue
+        other_dir = (other_span[0] / other_length, other_span[1] / other_length)
+        cosine = this_dir[0] * other_dir[0] + this_dir[1] * other_dir[1]
+        if abs(cosine) < min_colinearity:
+            continue
+        if best_gap is None or gap < best_gap:
+            best_gap, best_candidate = gap, other_span
+    return best_candidate
 
 
 def match_chain_points_to_piles(
@@ -716,9 +908,17 @@ def reconstruct_sheet(
             geometry_sheet_no=geometry_sheet_no,
         )
 
-    for chain in find_dimension_chains(dxf_sheet.dimensions, config.chain_link_tolerance_m):
-        if len(chain) < 2:
-            continue  # a lone dimension, not a real setout chain
+    chains = [c for c in find_dimension_chains(dxf_sheet.dimensions, config.chain_link_tolerance_m) if len(c) >= 2]
+    # Branch-having chains first (module docstring's 2026-08-14 "sign
+    # inheritance" section) — they're the only case confirmed to resolve
+    # `walk_chain`'s own sign correctly on real data, so their oriented
+    # span needs to already be in `trustworthy` before a branch-less
+    # chain looks for a neighbor to borrow one from. Reordering only
+    # changes which pass a chain is walked in, not what it does.
+    chains.sort(key=lambda c: not _chain_has_branch(c, config.chain_link_tolerance_m))
+    trustworthy: list[tuple[list[Point3D], tuple[float, float]]] = []
+
+    for chain in chains:
         nodes = _chain_nodes(chain, config.chain_link_tolerance_m)
 
         # Scope candidate schedule IDs to this chain's own LOCATION where
@@ -756,6 +956,18 @@ def reconstruct_sheet(
                 record(point_id, None, "no_bearing")
             continue
 
+        # A branch-less chain's own span vector is an unreliable, real-
+        # world-arbitrary sign guess (walk_chain's docstring) — borrow an
+        # already-walked branch-having neighbor's oriented span instead,
+        # when this chain is a real local-space continuation of one
+        # (module docstring's 2026-08-14 "sign inheritance" section).
+        has_branch = _chain_has_branch(chain, config.chain_link_tolerance_m)
+        reference_span = (
+            None
+            if has_branch
+            else _find_reference_span(nodes, trustworthy, config.chain_continuation_max_gap_m)
+        )
+
         walk = walk_chain(
             chain,
             origin_local,
@@ -764,11 +976,17 @@ def reconstruct_sheet(
             dxf_sheet.units,
             config.origin_pair_max_distance_m,
             config.chain_link_tolerance_m,
+            reference_span=reference_span,
         )
         if walk is None:
             for point_id in matched_local:
                 record(point_id, None, "no_origin")
             continue
+
+        if has_branch:
+            oriented = _oriented_span_from_walk(walk)
+            if oriented is not None:
+                trustworthy.append((nodes, oriented))
 
         for point_id, local_point in matched_local.items():
             walked = min(walk, key=lambda r: _xy_dist(r.local_point, local_point))
