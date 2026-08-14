@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import fitz  # noqa: E402
 import pdfplumber  # noqa: E402
+import pytest  # noqa: E402
 
 from pdfchecker.checks.catalog import RuleConfig  # noqa: E402
 from pdfchecker.checks.geometry import (  # noqa: E402
@@ -53,6 +54,7 @@ from pdfchecker.ir import (  # noqa: E402
     Sheet,
     Table,
     TitleBlock,
+    ViewportEntity,
 )
 
 SAMPLE_PDF = str(
@@ -196,7 +198,52 @@ def test_mismatch_beyond_tolerance_flagged():
     assert issues[0].severity == "high"
     assert issues[0].suggested_fix["drawn_mm"] == 3000.0
     assert issues[0].suggested_fix["stated_mm"] == 3010.0
-    assert issues[0].bbox is None  # no DXF->PDF transform yet — documented, not an oversight
+    # This synthetic DxfSheet has no viewports, so there's nothing for
+    # extraction/dxf_pdf_transform.py's model_to_pdf_point to map this
+    # dimension's points through — correctly None, not a sign the
+    # transform itself is missing (see test_bbox_populated_when_dimension_
+    # falls_within_a_viewport below for the transform actually running).
+    assert issues[0].bbox is None
+
+
+def test_bbox_populated_when_dimension_falls_within_a_viewport():
+    # Same mismatch as the test above, but this DxfSheet has a real
+    # viewport covering the dimension's (model-space) location — proves
+    # check_dimension_consistency's Issue.bbox is actually wired up to
+    # extraction/dxf_pdf_transform.py, not just that the transform module
+    # works in isolation. Unit-scale viewport (ps == view, no zoom) keeps
+    # the expected page-space numbers simple to reason about.
+    p = Point3D(5.0, 5.0, 0.0)
+    dim = DimensionEntity(
+        measurement=3.000,
+        stated_text="3010",
+        dim_line_point=p,
+        ext_line1_origin=p,
+        ext_line2_origin=p,
+        dimstyle="Dimension_Standard_O__mm_",
+        layer="D-ENHA-TEXT-DIMS",
+        dim_type=0,
+    )
+    viewport = ViewportEntity(
+        id=1,
+        ps_center=Point3D(0.005, 0.005, 0.0),  # 5mm, 5mm — same as the dim's model point
+        ps_width=0.02,
+        ps_height=0.02,
+        view_center_point=p,
+        view_height=0.02,  # scale = ps_height / view_height = 1:1
+    )
+    dxf_sheet = DxfSheet(
+        source_path="x.dxf", dimensions=[dim], viewports=[viewport], units="m"
+    )
+    project = Project(source_path="synthetic", sheets=[_sheet("2871099", dxf_sheet)])
+    issues = check_dimension_consistency(project, RuleConfig())
+    assert len(issues) == 1
+    bbox = issues[0].bbox
+    assert bbox is not None
+    # paper (0.005, 0.005)m -> pdf (0.005*2834.6457, page_height(100) - 0.005*2834.6457)
+    expected_x = 0.005 * (72 / 25.4) * 1000
+    assert bbox.x0 == pytest.approx(expected_x, abs=0.01)
+    assert bbox.y0 == pytest.approx(100.0 - expected_x, abs=0.01)
 
 
 def test_mismatch_within_default_tolerance_no_issue():
