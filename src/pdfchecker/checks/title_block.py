@@ -38,7 +38,11 @@ def check_required_fields(project: Project, config: RuleConfig) -> list[Issue]:
                         description=f"Title block field '{field_name}' is missing or unreadable",
                         bbox=band_bbox,
                         severity="high",
-                        suggested_fix=None,  # nothing to auto-derive; a human has to supply the field
+                        # Nothing to auto-derive — a human has to supply the
+                        # field — but `field` is still worth carrying through:
+                        # markup/notes.py's terse "Missing: <field>" note
+                        # needs it (PLANNING.md §8's markup-label table).
+                        suggested_fix={"field": field_name},
                     )
                 )
     return issues

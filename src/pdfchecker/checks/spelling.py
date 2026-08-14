@@ -64,7 +64,7 @@ def check_spelling(project: Project, config: RuleConfig) -> list[Issue]:
                         description=f"American spelling '{token}' — project uses British English",
                         bbox=word.bbox,
                         severity="low",
-                        suggested_fix={"corrected": AMERICAN_TO_BRITISH[lower]},
+                        suggested_fix={"word": token, "corrected": AMERICAN_TO_BRITISH[lower]},
                     )
                 )
                 continue
@@ -80,7 +80,11 @@ def check_spelling(project: Project, config: RuleConfig) -> list[Issue]:
                         description=f"Possible misspelling: '{token}'",
                         bbox=word.bbox,
                         severity="low",
-                        suggested_fix={"corrected": correction} if correction else None,
+                        # `word` always included even with no correction —
+                        # markup/notes.py's terse note needs something to
+                        # show even when `corrected` is None (no confident
+                        # suggestion found).
+                        suggested_fix={"word": token, "corrected": correction},
                     )
                 )
     return issues
