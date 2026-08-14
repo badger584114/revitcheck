@@ -81,6 +81,13 @@ class RuleConfig:
     origin_pair_max_distance_m: float = 5.0
     bearing_pair_max_distance_m: float = 30.0
     pile_label_pair_max_distance_m: float = 5.0
+    # A branch-less chain's own sign is unreliable (walk_chain's docstring)
+    # — how far away a branch-having neighbor chain can be and still donate
+    # its already-oriented span, when the two are a real local-space
+    # continuation of each other. Real BR08 gaps between a main abutment
+    # chain and its sub-group continuation are ~2m; 10m default leaves
+    # headroom without reaching across to an unrelated structure.
+    chain_continuation_max_gap_m: float = 10.0
     # Flat for now, not PLANNING.md §5's base + per_hop×√hops scaling —
     # see extraction/setout_reconstruction.py's docstring for why: this
     # MVP has no real multi-hop-from-different-origins case to calibrate

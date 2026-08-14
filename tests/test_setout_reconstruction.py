@@ -19,6 +19,10 @@ from pdfchecker.checks.catalog import RuleConfig  # noqa: E402
 from pdfchecker.extraction.dxf_source import ingest_dxf  # noqa: E402
 from pdfchecker.extraction.tables import extract_tables  # noqa: E402
 from pdfchecker.extraction.setout_reconstruction import (  # noqa: E402
+    ChainWalkResult,
+    _chain_has_branch,
+    _find_reference_span,
+    _oriented_span_from_walk,
     _parse_bearing_dms,
     find_bearing_for_chain,
     find_control_points,
@@ -39,6 +43,7 @@ from pdfchecker.ir import (  # noqa: E402
     DxfText,
     Point3D,
     Sheet,
+    SetoutPoint,
     Table,
     TitleBlock,
 )
@@ -182,6 +187,118 @@ def test_walk_chain_prefers_stated_text_over_measurement():
     walk = walk_chain(dims, nodes[0], origin_real, bearing_deg=0.0, units="m")
     by_pos = {(r.local_point.x, r.local_point.y): r for r in walk}
     assert by_pos[(0, 10)].derived.northing == 12.5  # not 10.0
+
+
+# --- walk_chain sign inheritance (module docstring's 2026-08-14 "sign
+# inheritance" section) -------------------------------------------------------
+
+
+def test_walk_chain_self_derived_sign_depends_on_arbitrary_entity_order():
+    # The bug this session's whole fix is about, reproduced directly: a
+    # bare 2-node chain's own "positive direction" (no reference_span) is
+    # whichever way `ext_line1_origin` -> `ext_line2_origin` happens to
+    # point in the DXF — entirely an artifact of DXF entity/authoring
+    # order, unrelated to which way the printed bearing actually faces.
+    # Same two physical points, opposite entity order -> opposite sign.
+    origin_real = SetoutPoint(point_id="", easting=1000.0, northing=2000.0)
+    forward = walk_chain([_dim(_pt(0, 0), _pt(0, 10), 10.0)], _pt(0, 0), origin_real, 0.0, "m")
+    reversed_ = walk_chain([_dim(_pt(0, 10), _pt(0, 0), 10.0)], _pt(0, 0), origin_real, 0.0, "m")
+    forward_far = next(r for r in forward if r.local_point.y == 10)
+    reversed_far = next(r for r in reversed_ if r.local_point.y == 10)
+    assert forward_far.derived.northing == 2010.0
+    assert reversed_far.derived.northing == 1990.0  # same real point, opposite answer
+
+
+def test_walk_chain_reference_span_makes_sign_order_independent():
+    # The fix: an explicit `reference_span` (as `reconstruct_sheet` passes
+    # in from an already-walked branch-having neighbor) overrides the
+    # chain's own arbitrary far-pair guess, so both entity orderings from
+    # the test above now agree with each other and with the neighbor's
+    # own established direction.
+    origin_real = SetoutPoint(point_id="", easting=1000.0, northing=2000.0)
+    # A reference span already oriented "increasing y = increasing signed
+    # distance" (as _oriented_span_from_walk would hand back).
+    reference_span = (0.0, 1.0)
+    forward = walk_chain(
+        [_dim(_pt(0, 0), _pt(0, 10), 10.0)], _pt(0, 0), origin_real, 0.0, "m", reference_span=reference_span
+    )
+    reversed_ = walk_chain(
+        [_dim(_pt(0, 10), _pt(0, 0), 10.0)], _pt(0, 0), origin_real, 0.0, "m", reference_span=reference_span
+    )
+    forward_far = next(r for r in forward if r.local_point.y == 10)
+    reversed_far = next(r for r in reversed_ if r.local_point.y == 10)
+    assert forward_far.derived.northing == 2010.0
+    assert reversed_far.derived.northing == 2010.0  # now agrees with `forward`
+
+
+# --- _chain_has_branch --------------------------------------------------------
+
+
+def test_chain_has_branch_true_for_a_forked_node():
+    # Mirrors the real sample's main-abutment chains: a node with 3 edges
+    # touching it (the pile-chain continuing through it, plus a short
+    # branch off to the setout-point's own leader) — module docstring
+    # point 3 / this module's `_chain_has_branch` docstring.
+    dims = [
+        _dim(_pt(0, 0), _pt(10, 0), 10.0),
+        _dim(_pt(10, 0), _pt(20, 0), 10.0),
+        _dim(_pt(10, 0), _pt(10, 1), 1.0),  # the branch
+    ]
+    assert _chain_has_branch(dims, tolerance_m=0.01) is True
+
+
+def test_chain_has_branch_false_for_a_plain_path():
+    dims = [
+        _dim(_pt(0, 0), _pt(10, 0), 10.0),
+        _dim(_pt(10, 0), _pt(20, 0), 10.0),
+    ]
+    assert _chain_has_branch(dims, tolerance_m=0.01) is False
+
+
+# --- _oriented_span_from_walk --------------------------------------------------
+
+
+def test_oriented_span_from_walk_points_toward_increasing_distance():
+    walk = [
+        ChainWalkResult(local_point=_pt(0, 0), derived=SetoutPoint("", 0, 0), signed_distance_m=0.0),
+        ChainWalkResult(local_point=_pt(10, 0), derived=SetoutPoint("", 0, 10), signed_distance_m=10.0),
+    ]
+    assert _oriented_span_from_walk(walk) == (10.0, 0.0)
+
+
+def test_oriented_span_from_walk_flips_when_farthest_pair_is_reversed():
+    # Same two real points, but the *first* one in the list has the
+    # larger signed distance this time — the span must still come out
+    # pointing toward increasing distance, not toward node-list order.
+    walk = [
+        ChainWalkResult(local_point=_pt(10, 0), derived=SetoutPoint("", 0, 10), signed_distance_m=10.0),
+        ChainWalkResult(local_point=_pt(0, 0), derived=SetoutPoint("", 0, 0), signed_distance_m=0.0),
+    ]
+    assert _oriented_span_from_walk(walk) == (10.0, 0.0)
+
+
+# --- _find_reference_span ------------------------------------------------------
+
+
+def test_find_reference_span_picks_nearby_colinear_neighbor():
+    chain_nodes = [_pt(22, 0), _pt(30, 0)]  # continues just past the neighbor's end
+    trustworthy = [([_pt(0, 0), _pt(20, 0)], (20.0, 0.0))]  # neighbor spans x=0..20
+    assert _find_reference_span(chain_nodes, trustworthy, max_gap_m=10.0) == (20.0, 0.0)
+
+
+def test_find_reference_span_none_when_too_far():
+    chain_nodes = [_pt(1000, 0), _pt(1010, 0)]
+    trustworthy = [([_pt(0, 0), _pt(20, 0)], (20.0, 0.0))]
+    assert _find_reference_span(chain_nodes, trustworthy, max_gap_m=10.0) is None
+
+
+def test_find_reference_span_none_when_perpendicular():
+    # Close, but running across the neighbor's line, not along it — a
+    # perpendicular chain shouldn't donate its direction (module
+    # docstring's 2026-08-14 section / this function's own docstring).
+    chain_nodes = [_pt(20, 2), _pt(20, 10)]
+    trustworthy = [([_pt(0, 0), _pt(20, 0)], (20.0, 0.0))]
+    assert _find_reference_span(chain_nodes, trustworthy, max_gap_m=10.0) is None
 
 
 # --- match_chain_points_to_piles: one-to-one assignment ----------------------
@@ -404,6 +521,88 @@ def test_reconstruct_sheet_uses_separate_geometry_sheet_when_given():
     assert by_id["PIL001"].geometry_sheet_no == "9999002"
 
 
+def test_reconstruct_sheet_sub_chain_inherits_sign_from_branched_neighbor():
+    # Synthetic version of the real BR08 shape (module docstring's
+    # 2026-08-14 "sign inheritance" section): a branch-having main chain
+    # (piles at x=0..40, with a leader branch off its middle node at
+    # x=20, where the setout point anchors) plus a branch-less 8m
+    # continuation chain 2m past its far end (x=42->50), with its own
+    # separate origin. The continuation's single DIMENSION is authored
+    # with `ext_line1_origin`/`ext_line2_origin` in the order that would
+    # give the *wrong* sign under the old self-derived heuristic (see
+    # test_walk_chain_self_derived_sign_depends_on_arbitrary_entity_order
+    # for the same swap in isolation) — this proves the real
+    # `reconstruct_sheet` wiring (branch detection -> neighbor lookup ->
+    # reference_span) fixes it, not just the underlying walk_chain call.
+    main_dims = [
+        _dim(_pt(0, 0), _pt(10, 0), 10.0),
+        _dim(_pt(10, 0), _pt(20, 0), 10.0),
+        _dim(_pt(20, 0), _pt(30, 0), 10.0),
+        _dim(_pt(30, 0), _pt(40, 0), 10.0),
+        _dim(_pt(20, 0), _pt(20.01, 0.5), 0.5),  # the branch off the anchor node
+    ]
+    # Deliberately "backwards" order throughout (each dimension's far node
+    # listed as ext_line1_origin) — see this test's own docstring above.
+    # Two dimensions, not one: reconstruct_sheet skips a lone-dimension
+    # "chain" as not a real setout chain (its own docstring), same as any
+    # real sub-group.
+    sub_dims = [
+        _dim(_pt(46, 0), _pt(42, 0), 4.0),
+        _dim(_pt(50, 0), _pt(46, 0), 4.0),
+    ]
+
+    dxf_sheet = DxfSheet(
+        source_path="synthetic.dxf",
+        units="m",
+        dimensions=main_dims + sub_dims,
+        viewports=[],
+        inserts=[
+            DxfInsert(name="SETOUT POINT MAIN", insert=_pt(20.05, 0.05), layer="D-SETOUT"),
+            DxfInsert(name="SETOUT POINT SUB", insert=_pt(42.05, 0.05), layer="D-SETOUT"),
+        ],
+        texts=[
+            DxfText(text="E 1000.000\nN 2000.000", insert=_pt(20.1, 0.1), layer="D-TEXT"),
+            DxfText(text="E 1000.000\nN 2022.000", insert=_pt(42.1, 0.1), layer="D-TEXT"),
+            DxfText(text='0° 00\' 00"', insert=_pt(25, 3), layer="D-TEXT"),
+            DxfText(text="PIL001", insert=_pt(40, 0.1), layer="D-TEXT"),
+            DxfText(text="PIL002", insert=_pt(50, 0.1), layer="D-TEXT"),
+        ],
+    )
+    schedule_table = Table(
+        kind="unknown",
+        rows=[
+            ["SITE ID", "EASTING (m)", "NORTHING (m)"],
+            ["PIL001", "1000.000", "2020.000"],
+            ["PIL002", "1000.000", "2030.000"],
+        ],
+        bbox=BBox(x0=0, y0=0, x1=10, y1=10),
+    )
+    sheet = Sheet(
+        page_index=0,
+        page_width=100.0,
+        page_height=100.0,
+        title_block=TitleBlock(fields={"sheet_no": "9999003"}),
+        revision_schedule=[],
+        tables=[schedule_table],
+        words=[],
+        paths=[],
+        raw_text="",
+        dxf_sheet=dxf_sheet,
+    )
+
+    results = reconstruct_sheet(sheet, RuleConfig())
+    by_id = {r.point_id: r for r in results}
+
+    assert by_id["PIL001"].status == "reconstructed"
+    assert by_id["PIL001"].derived.northing == 2020.0
+
+    # The point this test is actually about: without sign inheritance,
+    # this would derive northing 2014.0 (8m in the wrong direction from
+    # the sub-chain's own origin) instead of the correct 2030.0.
+    assert by_id["PIL002"].status == "reconstructed"
+    assert by_id["PIL002"].derived.northing == 2030.0
+
+
 # --- against the real sample --------------------------------------------------
 
 
@@ -469,24 +668,26 @@ def test_real_br08_cross_sheet_reconstructs_main_abutment_groups():
     # the note on 2873042 — proving `geometry_sheet` correctly carries a
     # different sheet's geometry into the schedule sheet's reconstruction.
     #
-    # A real, separate, honestly-reported limitation also surfaced here,
+    # A real, separate, honestly-reported condition also surfaced here,
     # NOT introduced by the cross-sheet plumbing (confirmed present with
-    # or without it): ABUTMENT A1/B1/B2 (this sheet's three smaller
-    # 5-pile sub-groups) reconstruct with large (1.4m-16m) errors under
-    # the existing nearest-to-chain-nodes origin/bearing matching. BR06's
-    # sample only ever had 2 well-separated abutments, where nearest-
-    # distance matching was unambiguous (module docstring). BR08's 5
-    # closely-packed sub-groups on one geometry sheet break that
-    # assumption — investigated this session (see module docstring's
-    # 2026-08-14 section for what was tried and why a location-based
-    # one-to-one fix was reverted rather than shipped half-verified: it
-    # measurably improved nothing and broke the previously-accurate
-    # ABUTMENT B group). Reported here as a known, real, currently-
-    # unresolved limitation, not silently masked — `status ==
-    # "reconstructed"` still holds for these (the machinery completes),
-    # but the derived position is unreliable; `checks/geometry.py`'s
-    # `geometry.setout_reconstruction` correctly surfaces this as a
-    # high-severity delta Issue rather than a false "all clean".
+    # or without it) and investigated further in a later session
+    # (module docstring's 2026-08-14 "sign inheritance" section):
+    # ABUTMENT A1/B1/B2 (this sheet's three smaller 5-pile sub-groups)
+    # reconstruct to a *constant* ~1.40m off their schedule row — origin/
+    # bearing *selection* was never the problem (confirmed by brute-
+    # forcing every candidate pairing against the schedule); a real
+    # `walk_chain` sign/direction bug was, now fixed via reference-span
+    # inheritance from a branch-having neighbor chain. The residual
+    # ~1.40m itself is real, not a bug: confirmed by the user (who has
+    # access to the actual drawings) that A1/B1/B2 were added to this
+    # bridge later, as part of a separate retaining-wall design package
+    # for the same large infrastructure project, and use that package's
+    # own setout point rather than the bridge sheet's — a staged-design
+    # interface condition specific to this project, not a reconstruction
+    # error. `checks/geometry.py`'s `geometry.setout_reconstruction`
+    # correctly surfaces this as a high-severity delta Issue rather than
+    # a false "all clean" — that's the right behavior, not something to
+    # suppress.
     with pdfplumber.open(BR08_SAMPLE_PDF) as pdf:
         schedule_tables = extract_tables(pdf.pages[20])
     with fitz.open(BR08_SAMPLE_PDF) as doc:
@@ -544,4 +745,9 @@ def test_real_br08_cross_sheet_reconstructs_main_abutment_groups():
         delta_mm = math.hypot(
             r.derived.easting - r.stated.easting, r.derived.northing - r.stated.northing
         ) * 1000
-        assert delta_mm > 1000.0, f"{point_id}: expected the known large mismatch, got {delta_mm:.1f}mm"
+        # A tight band, not just "large": the ~1.40m is a real, constant
+        # cross-package setout offset (this test's docstring), and a
+        # constant-not-growing delta is exactly what the sign fix above
+        # is confirming — a wide/loose bound here would let a future sign
+        # regression (back to the old 1.4m-16m growing spread) slip by.
+        assert 1300.0 < delta_mm < 1500.0, f"{point_id}: expected ~1.40m, got {delta_mm:.1f}mm"
