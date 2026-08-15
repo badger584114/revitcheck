@@ -53,6 +53,13 @@ class RuleConfig:
     )
     project_glossary_path: str | None = None
     firm_glossary_path: str | None = None
+    # PLANNING.md §4 "Custom dictionary / glossary management" +
+    # `glossary.session_additions` in §4's consolidated schema — terms
+    # added inline in a session's uploaded rules file rather than a
+    # separate JSON file. Layered on top of the two file-backed tiers
+    # above, session-only (never written back to either JSON file), by
+    # checks/session_config.py's loader.
+    session_glossary_words: set[str] = field(default_factory=set)
 
     # PLANNING.md §5 "Tolerance configuration" — drawn-vs-stated dimension
     # tolerance is a rounding-grid, not a flat delta (see checks/geometry.py).

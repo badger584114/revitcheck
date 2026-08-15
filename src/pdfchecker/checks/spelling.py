@@ -38,7 +38,9 @@ def _build_checker(glossary: set[str]) -> SpellChecker:
 
 @register("spelling.en_gb")
 def check_spelling(project: Project, config: RuleConfig) -> list[Issue]:
-    glossary = load_glossary(config.firm_glossary_path, config.project_glossary_path)
+    glossary = load_glossary(
+        config.firm_glossary_path, config.project_glossary_path, extra_words=config.session_glossary_words
+    )
     sc = _build_checker(glossary)
 
     issues = []
