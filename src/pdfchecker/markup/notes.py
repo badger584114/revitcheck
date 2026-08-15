@@ -99,6 +99,16 @@ def _ifc_setout_consistency_note(issue: Issue) -> str:
     return "Setout: IFC model has no piles"
 
 
+def _ifc_superstructure_coverage_note(issue: Issue) -> str:
+    fix = issue.suggested_fix or {}
+    # shape_category is the long, human-readable form ("deck/slab-shaped
+    # (large flat plate)") — checks/geometry.py's _SUPERSTRUCTURE_SHAPES
+    # labels; drop the parenthetical for a terse note, same "label plus
+    # the minimum info needed" rule as every other builder here.
+    category = fix.get("shape_category", "element").split(" (")[0]
+    return f"IFC: no {category}"
+
+
 _NOTE_BUILDERS = {
     "title_block.required_fields_present": _title_block_note,
     "spelling.en_gb": _spelling_note,
@@ -109,6 +119,7 @@ _NOTE_BUILDERS = {
     "geometry.dimension_consistency": _dimension_consistency_note,
     "geometry.setout_reconstruction": _setout_reconstruction_note,
     "geometry.ifc_setout_consistency": _ifc_setout_consistency_note,
+    "geometry.ifc_superstructure_coverage": _ifc_superstructure_coverage_note,
 }
 
 

@@ -134,6 +134,44 @@ def convert_dwg_to_dxf(
     dependencies in this codebase.
     """
 
+    _run_oda_converter(in_dir, out_dir, oda_path, out_version, "DXF")
+
+
+def convert_dxf_to_dwg(
+    in_dir: str,
+    out_dir: str,
+    oda_path: str = _DEFAULT_ODA_PATH,
+    out_version: str = "ACAD2018",
+) -> None:
+    """Batch-converts every DXF in `in_dir` to DWG in `out_dir` — the
+    reverse of `convert_dwg_to_dxf`, added 2026-08-15 for §8's DXF/DWG
+    redline export (`markup/dxf_markup.py` produces marked-up DXF copies;
+    this is the last step to hand the drafting team an actual DWG, per
+    PLANNING.md §8: "Convert back through ODA if the original was DWG").
+
+    ODA File Converter's CLI is symmetric in both directions (same
+    `<in_dir> <out_dir> <out_version> <out_format> ...` shape, just
+    `out_format="DWG"` instead of `"DXF"`), so this shares
+    `_run_oda_converter` with `convert_dwg_to_dxf` rather than
+    duplicating the subprocess call.
+
+    **Not run end-to-end in this environment** — no ODA File Converter
+    install here (same reason `convert_dwg_to_dxf`'s own real-conversion
+    test skips itself, see `tests/test_dxf_source.py`'s docstring) — but
+    the direction this mirrors (DWG->DXF) *was* confirmed end-to-end
+    against all 31 real files in `samples/dwg/`, and ODA's own CLI
+    contract for the two directions is identical apart from the format
+    argument, so this is a real, minimal extension of an already-proven
+    mechanism, not a new one. Worth a real round-trip confirmation
+    (DXF -> markup -> DWG -> re-open in AutoCAD/Civil 3D) once ODA is
+    available to run it against, per this codebase's own "confirm
+    against real data" convention — flagged here as the honest gap, not
+    silently assumed to work."""
+
+    _run_oda_converter(in_dir, out_dir, oda_path, out_version, "DWG")
+
+
+def _run_oda_converter(in_dir: str, out_dir: str, oda_path: str, out_version: str, out_format: str) -> None:
     if not Path(oda_path).exists():
         raise FileNotFoundError(
             f"ODA File Converter not found at {oda_path!r}. Install it from "
@@ -143,7 +181,7 @@ def convert_dwg_to_dxf(
         )
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [oda_path, in_dir, out_dir, out_version, "DXF", "0", "1"],
+        [oda_path, in_dir, out_dir, out_version, out_format, "0", "1"],
         check=True,
         capture_output=True,
     )

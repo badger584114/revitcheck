@@ -33,6 +33,10 @@ back to the left near a page edge), not a real collision-avoidance
 layout — two Issues flagged close together on a dense sheet can produce
 overlapping notes. Worth revisiting once this runs against a real sheet
 dense enough to show it, not guessed at ahead of that.
+
+Tag numbering (`markup/tags.py`'s `assign_tags`) moved out to its own
+module 2026-08-15, once `dxf_markup.py` needed the exact same order — a
+tag has to mean the same Issue whichever markup format it appears in.
 """
 
 from __future__ import annotations
@@ -45,6 +49,7 @@ import fitz
 from pdfchecker.checks.issue import Issue
 from pdfchecker.ir import BBox, Project
 from pdfchecker.markup.notes import markup_note
+from pdfchecker.markup.tags import assign_tags
 
 # PLANNING.md §8 doesn't specify a palette — high/medium/low mapped to a
 # real red/orange/olive traffic-light scale, distinguishable at a glance
@@ -61,8 +66,6 @@ _NOTE_WIDTH_PT = 140.0
 _NOTE_HEIGHT_PT = 16.0
 _NOTE_OFFSET_PT = 18.0
 _NOTE_FONTSIZE_PT = 8.0
-
-_SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 @dataclass
@@ -160,14 +163,9 @@ def render_markup(project: Project, issues: list[Issue], output_path: str) -> li
     PDF without recomputing anything."""
 
     doc = fitz.open(project.source_path)
-    ordered = sorted(
-        issues,
-        key=lambda i: (i.page_index, _SEVERITY_ORDER.get(i.severity, len(_SEVERITY_ORDER)), i.rule_id),
-    )
 
     report = []
-    for idx, issue in enumerate(ordered, start=1):
-        tag = f"#{idx:03d}"
+    for tag, issue in assign_tags(issues):
         note = markup_note(issue)
         rendered = False
         if issue.bbox is not None and 0 <= issue.page_index < doc.page_count:
