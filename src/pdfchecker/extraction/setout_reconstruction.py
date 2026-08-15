@@ -69,15 +69,31 @@ already calibrated for §5a):
    wiggle over a 34m run) — worth re-confirming if a future sample shows
    a curved/kinked setout line.
 
-**Explicitly not built here** (left for when a sample demands it): a real
-multi-branch dimension graph (PLANNING.md §5b's fuller traversal, needed
-for structures without a single straight chained row), structures without
-a printed bearing/chained-dimension convention at all, and multi-hop
-survey-tolerance scaling (`checks/geometry.py`'s `survey_tolerance_mm` is
-a flat value for now — every point here is one hop from its anchor in
-spirit even though several dimension links are walked to reach it, so
-PLANNING.md §5's `base + per_hop×√hops` formula doesn't have a real
-multi-hop case to calibrate against yet).
+**Explicitly not built here:** structures without a printed bearing/
+chained-dimension convention at all, and multi-hop survey-tolerance
+scaling (`checks/geometry.py`'s `survey_tolerance_mm` is a flat value for
+now — every point here is one hop from its anchor in spirit even though
+several dimension links are walked to reach it, so PLANNING.md §5's
+`base + per_hop×√hops` formula doesn't have a real multi-hop case to
+calibrate against yet). Both left for when a sample demands them.
+
+A real multi-branch dimension graph (PLANNING.md §5b's fuller traversal,
+originally sketched for structures without a single straight chained
+row) is a different case, **confirmed 2026-08-15 directly by the user to
+never occur in this domain, not merely unbuilt for lack of a sample**:
+bridges are always set out in a linear fashion, specifically so the
+construction team gets simple, unambiguous instructions — a real
+constraint on how setout is drafted, not just a pattern this codebase
+happened to see twice. A genuinely forking chain graph, and the
+"redundant paths are a QC signal, reconciled by flagging the
+disagreement" design PLANNING.md §5b sketches for it, was a hedge
+against a case the drafting convention itself rules out, not a deferred
+feature. Point 4 above's "never a real multi-way branching graph on this
+sample" turns out to be the general case, not a one-sample observation
+waiting on more data. (BR08's A1/B1/B2 sub-chain offset, described
+below, is a separate, already-resolved anomaly — a staged/split-design-
+ownership package boundary, not a forking chain — and the user
+confirmed it doesn't weaken this conclusion.)
 
 **Confirmed 2026-08-11: at the time, there was no more real data in the
 BR06 sample to push on the above with.** Ran `reconstruct_sheet` against
@@ -213,12 +229,15 @@ that would send a reviewing engineer looking for a dimension-chain
 mistake that was never there.
 
 **Still not built** (unchanged from 2026-08-11, and still without real
-data to calibrate against): a genuinely branching (not single-path)
-dimension graph, structures without a printed bearing/chained-dimension
-convention at all, and multi-hop survey-tolerance scaling. The
-multi-*sheet* half of "the fuller form of §5b" is what BR08 unblocked;
-the multi-*branch-graph* half is a separate, still-open gap — don't
-conflate the two. Also still open: `_chain_has_branch` is a real,
+data to calibrate against): structures without a printed bearing/
+chained-dimension convention at all, and multi-hop survey-tolerance
+scaling. The multi-*sheet* half of "the fuller form of §5b" is what BR08
+unblocked; a genuinely branching (not single-path) dimension graph is a
+separate concern — **confirmed 2026-08-15, directly by the user, to be
+resolved rather than open: bridges are always set out in a linear
+fashion so the construction team gets simple instructions, so this case
+doesn't occur and isn't being waited on** — don't conflate the three.
+Also still open: `_chain_has_branch` is a real,
 calibrated signal on every sample seen so far (3/3 branch-having chains
 correct, 3/3 branch-less chains wrong before this fix), but it isn't a
 proof for chains with no colinear branch-having neighbor at all to
