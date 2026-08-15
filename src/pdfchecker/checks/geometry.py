@@ -547,6 +547,25 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
     flagged as a known limitation for a tighter-spaced project, not
     solved.
 
+    **An IFC-side location signal was found 2026-08-15, but not wired in
+    here yet.** No IFC pile carries structure/location text, but it
+    doesn't need to — real geography works instead, and needs no reading
+    of a page's north arrow, since both sides of the comparison already
+    live in real Easting/Northing: a reconstructed LOCATION group's mean
+    position (from `extraction/setout_reconstruction.py`'s own
+    `parse_pile_locations`) and any IFC element's own world-space
+    centroid are directly comparable. Confirmed decisively on sheet
+    2871051/BR06 (see `check_ifc_superstructure_coverage`'s docstring for
+    the real figures — sub-0.1m agreement identifying `"ABUTMENT A"` as
+    the model's `"...WEST..."` group and `"ABUTMENT B"` as `"...EAST..."`,
+    against a ~7.9m abutment separation). Schema-general — works off
+    position alone, not either side's naming convention — so it would
+    scope one-to-one assignment by nearest-LOCATION-group rather than
+    project-wide nearest-element, closing this gap for a future
+    tighter-spaced project. Left unbuilt for now since neither real
+    sample makes the gap live; worth doing before trusting this rule on
+    a project with closely-spaced structures.
+
     Only points with `status == "reconstructed"` are checked — a point
     that couldn't be reconstructed at all is already `geometry.
     setout_reconstruction`'s concern, not repeated here. A sheet with no
@@ -753,12 +772,40 @@ def check_ifc_superstructure_coverage(project: Project, config: RuleConfig) -> l
       no confirmed figure for, so any tolerance around that comparison
       would itself be a guess, not a calibrated check.
     - The real IFC data adds a second reason to distrust an easy
-      DXF<->IFC name match here: the schedule's `LOCATION` column says
+      DXF<->IFC *name* match here: the schedule's `LOCATION` column says
       `"ABUTMENT A"`/`"ABUTMENT B"` (see `extraction/
       setout_reconstruction.py`), but this project's real IFC abutment
       beam elements are named `"...ABUTMENT EAST/WEST_BR06_<n>"` — A/B
-      vs. EAST/WEST, with no confirmed mapping between the two
-      conventions to build a match on.
+      vs. EAST/WEST, with no shared vocabulary between the two naming
+      conventions. **Resolved 2026-08-15, not by name-matching but by
+      geography** — the user pointed out every sheet carries a north
+      arrow, so a bridge's abutments can always be oriented to real
+      compass directions; turns out this project doesn't even need a
+      north arrow read off the page to use that, since both sides of the
+      comparison are *already* real-world coordinates: `geometry.
+      setout_reconstruction`'s reconstructed points, grouped by the
+      schedule's own `LOCATION` column, have a real mean Easting per
+      abutment (confirmed: `"ABUTMENT A"` 278437.35mE, `"ABUTMENT B"`
+      278445.23mE on sheet 2871051), and the real IFC abutment-beam
+      elements' own world-space centroid gives the same figure directly
+      (confirmed: `"...EAST..."` beams average 278445.22mE, `"...
+      WEST..."` beams average 278437.34mE) — sub-0.1m agreement, decisive
+      against the ~7.9m separation between the two abutments. So `A =
+      WEST` and `B = EAST` on this real project, derived, not asserted —
+      and the mechanism generalizes beyond names entirely: any IFC
+      element's real-world Easting can be compared to a reconstructed
+      LOCATION group's mean Easting, schema-general, no reliance on
+      either side's naming convention holding on a different project.
+      This closes the naming-mismatch half of the blocker (and, more
+      valuably, gives `check_ifc_setout_consistency`'s own documented
+      "no confirmed IFC-side location signal to scope by" gap a real
+      answer, not just this rule) — not yet wired into either rule's
+      matching logic, since neither real sample's pile/beam spacing
+      makes the gap live today; see `check_ifc_setout_consistency`'s
+      docstring for that gap's current status. The *other* half of this
+      rule's own blocker — no independently-derived real-world value to
+      compare deck/beam *magnitude* against — is untouched by this and
+      stays open.
     - Matching a specific DXF `DIMENSION` on a general-arrangement/
       elevation sheet to "the" overall deck length, with no schedule or
       label to anchor on, is exactly the kind of spatial-proximity
