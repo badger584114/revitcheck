@@ -264,5 +264,16 @@ def load_session_config(path: str | Path) -> LoadedSessionConfig:
         config.ifc_match_max_distance_m = float(ifc["match_max_distance_m"])
     if "setout_tolerance_mm" in ifc:
         config.ifc_setout_tolerance_mm = _length_mm(ifc["setout_tolerance_mm"], "tolerances.ifc.setout_tolerance_mm")
+    # geometry.ifc_superstructure_coverage's shape heuristics (2026-08-15)
+    if "deck_footprint_min_m" in ifc:
+        config.ifc_deck_footprint_min_m = float(ifc["deck_footprint_min_m"])
+    if "deck_aspect_ratio_max" in ifc:
+        config.ifc_deck_aspect_ratio_max = float(ifc["deck_aspect_ratio_max"])
+    if "beam_footprint_min_m" in ifc:
+        config.ifc_beam_footprint_min_m = float(ifc["beam_footprint_min_m"])
+    if "beam_aspect_ratio_min" in ifc:
+        config.ifc_beam_aspect_ratio_min = float(ifc["beam_aspect_ratio_min"])
+    if "beam_aspect_ratio_max" in ifc:
+        config.ifc_beam_aspect_ratio_max = float(ifc["beam_aspect_ratio_max"])
 
     return LoadedSessionConfig(rule_config=config, check_scope=check_scope, warnings=warnings)

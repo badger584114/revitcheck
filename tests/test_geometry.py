@@ -31,12 +31,15 @@ import pytest  # noqa: E402
 from pdfchecker.checks.catalog import RuleConfig  # noqa: E402
 from pdfchecker.checks.geometry import (  # noqa: E402
     _cached_reconstruct_sheet,
+    _is_elongated_beam,
     _is_slender_vertical,
+    _is_thin_horizontal_plate,
     _parse_stated_mm,
     _reconstruction_cache,
     _resolve_geometry_sheet,
     check_dimension_consistency,
     check_ifc_setout_consistency,
+    check_ifc_superstructure_coverage,
     check_setout_reconstruction,
 )
 from pdfchecker.extraction.dxf_source import attach_dxf_sheets, ingest_dxf  # noqa: E402
@@ -937,3 +940,150 @@ def test_real_br08_check_setout_reconstruction_cross_sheet():
     # 15 real mismatched piles (ABUTMENT A1/B1/B2), none from the clean
     # 28-pile A/B groups.
     assert len(issues) == 15
+
+
+# --- _is_thin_horizontal_plate / _is_elongated_beam -------------------------
+# checks/geometry.py's own docstrings on these two functions have the real
+# BR06 figures this is calibrated against: deck-slab pours (footprint
+# 7.56-23.07m, dz/footprint 0.0106-0.0402) and abutment beam/headstock
+# elements (footprint 10.51-13.32m, dz/footprint 0.100-0.124), both
+# sampled from the same real IFC model _is_slender_vertical's tests above
+# use.
+
+
+def _ifc_box(global_id: str, dx: float, dy: float, dz: float) -> IfcElement:
+    return IfcElement(
+        global_id=global_id,
+        ifc_class="IfcBuildingElementPart",
+        predefined_type=None,
+        display_name=None,
+        bbox_min=Point3D(x=0.0, y=0.0, z=0.0),
+        bbox_max=Point3D(x=dx, y=dy, z=dz),
+    )
+
+
+def test_is_thin_horizontal_plate_identifies_real_deck_pour_shape():
+    # Real BR06 figures: dx=10.86 dy=23.07 dz=0.52 (largest real pour).
+    deck = _ifc_box("g1", dx=10.86, dy=23.07, dz=0.52)
+    assert _is_thin_horizontal_plate(deck, RuleConfig()) is True
+
+
+def test_is_thin_horizontal_plate_rejects_pile_shape():
+    pile = _ifc_pile("g2", 0.0, 0.0)
+    assert _is_thin_horizontal_plate(pile, RuleConfig()) is False
+
+
+def test_is_thin_horizontal_plate_rejects_pile_cap_shape():
+    # Real BR06 pile cap: ~1.1m x 1.1m x 1.15m — footprint alone excludes it.
+    pile_cap = _ifc_box("g3", dx=1.1, dy=1.1, dz=1.15)
+    assert _is_thin_horizontal_plate(pile_cap, RuleConfig()) is False
+
+
+def test_is_thin_horizontal_plate_rejects_abutment_beam_shape():
+    # Real BR06 abutment beam: dx=1.98 dy=10.51 dz=1.30 — large footprint
+    # like a deck pour, but too thick relative to it (ratio 0.124 > the
+    # 0.06 default ifc_deck_aspect_ratio_max).
+    beam = _ifc_box("g4", dx=1.98, dy=10.51, dz=1.30)
+    assert _is_thin_horizontal_plate(beam, RuleConfig()) is False
+
+
+def test_is_elongated_beam_identifies_real_abutment_beam_shape():
+    beam = _ifc_box("g5", dx=2.23, dy=13.32, dz=1.33)  # real BR06 figures
+    assert _is_elongated_beam(beam, RuleConfig()) is True
+
+
+def test_is_elongated_beam_rejects_deck_pour_shape():
+    deck = _ifc_box("g6", dx=10.10, dy=13.32, dz=0.54)  # real BR06 figures
+    assert _is_elongated_beam(deck, RuleConfig()) is False
+
+
+def test_is_elongated_beam_rejects_pile_shape():
+    pile = _ifc_pile("g7", 0.0, 0.0)
+    assert _is_elongated_beam(pile, RuleConfig()) is False
+
+
+def test_is_elongated_beam_rejects_small_footprint():
+    # Same aspect ratio as a real abutment beam, but too small a footprint
+    # to be a superstructure member — the footprint floor matters
+    # independently of ratio alone, same pattern as
+    # test_is_slender_vertical_rejects_wide_slender_shape above.
+    small = _ifc_box("g8", dx=0.3, dy=1.0, dz=0.11)
+    assert _is_elongated_beam(small, RuleConfig()) is False
+
+
+# --- geometry.ifc_superstructure_coverage -----------------------------------
+
+
+def _project_with_ifc_elements(elements: list[IfcElement]) -> Project:
+    sheet = _real_sheet_101051()
+    ifc_model = IfcModel(
+        source_path="x.ifc", schema="IFC4", length_unit="METRE", has_map_conversion=False,
+        site_ref_lat=None, site_ref_long=None, elements=elements,
+    )
+    return Project(source_path="synthetic", sheets=[sheet], ifc_model=ifc_model)
+
+
+def test_no_ifc_model_no_superstructure_issues():
+    sheet = _real_sheet_101051()
+    project = Project(source_path="synthetic", sheets=[sheet])
+    assert check_ifc_superstructure_coverage(project, RuleConfig()) == []
+
+
+def test_no_sheets_no_superstructure_issues():
+    ifc_model = IfcModel(
+        source_path="x.ifc", schema="IFC4", length_unit="METRE", has_map_conversion=False,
+        site_ref_lat=None, site_ref_long=None, elements=[],
+    )
+    project = Project(source_path="synthetic", sheets=[], ifc_model=ifc_model)
+    assert check_ifc_superstructure_coverage(project, RuleConfig()) == []
+
+
+def test_both_shapes_present_no_issues():
+    deck = _ifc_box("deck", dx=10.86, dy=23.07, dz=0.52)
+    beam = _ifc_box("beam", dx=2.23, dy=13.32, dz=1.33)
+    project = _project_with_ifc_elements([deck, beam])
+    assert check_ifc_superstructure_coverage(project, RuleConfig()) == []
+
+
+def test_missing_deck_shape_flagged_as_project_wide_coverage_gap():
+    beam = _ifc_box("beam", dx=2.23, dy=13.32, dz=1.33)
+    project = _project_with_ifc_elements([beam])  # no deck-shaped element at all
+
+    issues = check_ifc_superstructure_coverage(project, RuleConfig())
+    assert len(issues) == 1
+    issue = issues[0]
+    assert issue.severity == "low"
+    assert "deck/slab-shaped" in issue.description
+    assert "Project-wide finding" in issue.description
+    assert issue.suggested_fix["shape_category"] == "deck/slab-shaped (large flat plate)"
+    assert issue.suggested_fix["ifc_element_count"] == 1
+    # Anchored to the project's first sheet, same real sheet the other IFC
+    # tests in this file use.
+    assert issue.sheet_no == project.sheets[0].sheet_no
+    assert issue.page_index == project.sheets[0].page_index
+    assert issue.bbox is None  # no single location for a whole-model finding
+
+
+def test_missing_both_shapes_flags_both_categories():
+    pile = _ifc_pile("pile", 0.0, 0.0)  # neither deck- nor beam-shaped
+    project = _project_with_ifc_elements([pile])
+
+    issues = check_ifc_superstructure_coverage(project, RuleConfig())
+    categories = {i.suggested_fix["shape_category"] for i in issues}
+    assert len(issues) == 2
+    assert categories == {
+        "deck/slab-shaped (large flat plate)",
+        "abutment-beam-shaped (large elongated member)",
+    }
+
+
+def test_configurable_thresholds_change_what_counts_as_deck_shaped():
+    # A pour that fails the real default deck footprint (5.0m) but would
+    # pass a lower configured threshold — proves the heuristic reads its
+    # thresholds from config, not a hardcoded constant (CLAUDE.md's own
+    # "tolerances must be configurable" rule).
+    small_deck = _ifc_box("small-deck", dx=4.0, dy=4.0, dz=0.1)
+    assert _is_thin_horizontal_plate(small_deck, RuleConfig()) is False
+
+    loose_config = RuleConfig(ifc_deck_footprint_min_m=3.0)
+    assert _is_thin_horizontal_plate(small_deck, loose_config) is True

@@ -48,6 +48,12 @@ tolerances:
     pile_aspect_ratio_min: 3.0
     match_max_distance_m: 2.0
     setout_tolerance_mm: "10mm"
+    # geometry.ifc_superstructure_coverage's shape heuristics (2026-08-15)
+    deck_footprint_min_m: 5.0
+    deck_aspect_ratio_max: 0.06
+    beam_footprint_min_m: 5.0
+    beam_aspect_ratio_min: 0.06
+    beam_aspect_ratio_max: 0.5
 
 rules:
   - id: "spelling.en_gb"

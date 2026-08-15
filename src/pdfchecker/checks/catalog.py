@@ -122,6 +122,24 @@ class RuleConfig:
     ifc_match_max_distance_m: float = 2.0
     ifc_setout_tolerance_mm: float = 10.0
 
+    # PLANNING.md §5's IFC subsection, "non-pile superstructure" gap —
+    # geometry.ifc_superstructure_coverage (added 2026-08-15). Two more
+    # schema-general shape heuristics, same "footprint + aspect ratio"
+    # shape as ifc_pile_footprint_max_m/ifc_pile_aspect_ratio_min above,
+    # calibrated against the same real BR06 IFC model — see
+    # checks/geometry.py's _is_thin_horizontal_plate/_is_elongated_beam
+    # docstrings for the real dx/dy/dz figures found for deck-slab pours
+    # (footprint 7.56-23.07m, ratio 0.0106-0.0402) vs. abutment beam/
+    # headstock elements (footprint 10.51-13.32m, ratio 0.100-0.124) —
+    # confirmed on one real project only, not yet cross-checked against
+    # BR08 (that file's IFC model is far larger and ifcopenshell.geom is
+    # genuinely slow per complex element — see checks/geometry.py).
+    ifc_deck_footprint_min_m: float = 5.0
+    ifc_deck_aspect_ratio_max: float = 0.06
+    ifc_beam_footprint_min_m: float = 5.0
+    ifc_beam_aspect_ratio_min: float = 0.06
+    ifc_beam_aspect_ratio_max: float = 0.5
+
     def is_enabled(self, rule_id: str) -> bool:
         return rule_id in self.enabled_rule_ids
 

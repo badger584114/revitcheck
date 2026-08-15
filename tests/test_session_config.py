@@ -268,6 +268,11 @@ tolerances:
     pile_aspect_ratio_min: 2.5
     match_max_distance_m: 1.0
     setout_tolerance_mm: "8mm"
+    deck_footprint_min_m: 4.0
+    deck_aspect_ratio_max: 0.05
+    beam_footprint_min_m: 6.0
+    beam_aspect_ratio_min: 0.07
+    beam_aspect_ratio_max: 0.4
 """
         loaded = load_session_config(_write(tmp_path, cfg))
         c = loaded.rule_config
@@ -275,3 +280,8 @@ tolerances:
         assert c.ifc_pile_aspect_ratio_min == 2.5
         assert c.ifc_match_max_distance_m == 1.0
         assert c.ifc_setout_tolerance_mm == 8.0
+        assert c.ifc_deck_footprint_min_m == 4.0
+        assert c.ifc_deck_aspect_ratio_max == 0.05
+        assert c.ifc_beam_footprint_min_m == 6.0
+        assert c.ifc_beam_aspect_ratio_min == 0.07
+        assert c.ifc_beam_aspect_ratio_max == 0.4
