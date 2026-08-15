@@ -904,9 +904,19 @@ def check_ifc_superstructure_coverage(project: Project, config: RuleConfig) -> l
     be compared against the same way `geometry.setout_reconstruction`
     compares piles — a real, potential future data source, not built
     (no sample to calibrate against yet), and only relevant in that
-    specific "roads team hasn't done it" case. Abutment beams weren't
-    explicitly covered by this confirmation, unlike deck — worth
-    confirming separately whether beam geometry follows the same logic.
+    specific "roads team hasn't done it" case.
+
+    **Abutment beams are a different story, confirmed by the user
+    2026-08-15 — still this tool's responsibility, genuinely open, and
+    now better-scoped than the deck-length-style magnitude proxy
+    originally speculated.** The critical thing to verify is beam
+    *placement*, specifically real-world height/elevation (bearing seat
+    / soffit level) — not a length or span comparison. A steel-girder
+    superstructure (this sample's is concrete) comes with more/different
+    detail drawings, a real project-type variable this rule doesn't
+    handle yet. Not buildable yet — waiting on a real sample to
+    calibrate a height-based check against, same "wait for real data"
+    discipline as everywhere else in this codebase.
 
     So this rule reports only what's actually confirmed: whether the
     attached IFC model has *any* element matching each shape category in
