@@ -31,6 +31,7 @@ DXF parsing (`ezdxf`) is therefore committed work for Stage 3+, not indefinitely
 
 - PDF.js for PDF rendering, a custom DXF→SVG/Canvas renderer (or convert DXF to PDF server-side via ODA/`ezdxf`+`matplotlib` for a unified viewer)
 - Canvas/SVG overlay layer to highlight flagged issues directly on the drawing, with click-to-jump between issue list and drawing location
+- **Full frontend + minimal-API implementation plan: see `FRONTEND_PLAN.md` (2026-08-15)** — screen-by-screen breakdown, the API contract (built directly on `Issue.to_dict()`/`LoadedSessionConfig`, no reinvented schema), the DXF-viewer decision (server-side raster/PDF conversion, not a client DXF renderer — reuses the already-calibrated `extraction/dxf_pdf_transform.py`), state-management approach for the stateless-by-design constraint, and a 6-phase build order (Phase 0 walking skeleton through Phase 5 auth/firm config) so this doesn't have to land all at once.
 
 **Data & infra**
 
