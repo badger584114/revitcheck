@@ -480,6 +480,33 @@ def _horizontal_centroid(element: IfcElement) -> tuple[float, float]:
     )
 
 
+def _location_centroids(
+    sheet_points: list[tuple[Sheet, Sheet, object]],
+) -> dict[str, tuple[float, float]]:
+    """Mean real Easting/Northing of each schedule `LOCATION`'s
+    reconstructed points — the 2026-08-15 finding (see `check_ifc_setout_
+    consistency`'s docstring for the real BR06 figures): both a
+    reconstructed-point group and an IFC element already carry real
+    Easting/Northing, so geography — not name-matching — is what tells
+    them apart. Points with no `location` (schedule had no `LOCATION`
+    column, or this row didn't carry one) don't contribute a group;
+    `check_ifc_setout_consistency` falls back to unscoped matching for
+    those, not a guessed group."""
+
+    groups: dict[str, list[tuple[float, float]]] = {}
+    for _, _, point in sheet_points:
+        if point.location:
+            groups.setdefault(point.location, []).append((point.derived.easting, point.derived.northing))
+    return {loc: (sum(e for e, n in pts) / len(pts), sum(n for e, n in pts) / len(pts)) for loc, pts in groups.items()}
+
+
+def _nearest_location(pos: tuple[float, float], centroids: dict[str, tuple[float, float]]) -> str | None:
+    if not centroids:
+        return None
+    px, py = pos
+    return min(centroids, key=lambda loc: math.hypot(centroids[loc][0] - px, centroids[loc][1] - py))
+
+
 def _ifc_issue(
     sheet: Sheet, description: str, severity: str, suggested_fix: dict, bbox: BBox | None = None
 ) -> Issue:
@@ -547,6 +574,27 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
     flagged as a known limitation for a tighter-spaced project, not
     solved.
 
+    **An IFC-side location signal was found and wired in, 2026-08-15.** No
+    IFC pile carries structure/location text, but it doesn't need to —
+    real geography works instead, and needs no reading of a page's north
+    arrow, since both sides of the comparison already live in real
+    Easting/Northing: a reconstructed LOCATION group's mean position
+    (`SetoutReconstructionPoint.location`, from `extraction/
+    setout_reconstruction.py`'s own `parse_pile_locations`) and any IFC
+    element's own world-space centroid are directly comparable. Confirmed
+    decisively on sheet 2871051/BR06 (see `check_ifc_superstructure_
+    coverage`'s docstring for the real figures — sub-0.1m agreement
+    identifying `"ABUTMENT A"` as the model's `"...WEST..."` group and
+    `"ABUTMENT B"` as `"...EAST..."`, against a ~7.9m abutment
+    separation). Schema-general — works off position alone, not either
+    side's naming convention. `_location_centroids`/`_nearest_location`
+    below scope one-to-one assignment to a point's own LOCATION group
+    rather than project-wide nearest-element whenever a schedule actually
+    has `LOCATION` data to scope by (unscoped, unchanged behavior
+    otherwise) — this doesn't change anything observable on either real
+    sample (their ~8m spacing was already outside the match radius), but
+    closes the gap for a project with closely-spaced structures.
+
     Only points with `status == "reconstructed"` are checked — a point
     that couldn't be reconstructed at all is already `geometry.
     setout_reconstruction`'s concern, not repeated here. A sheet with no
@@ -612,6 +660,18 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
             for sheet, count in counts.values()
         ]
 
+    # Geographic location scoping (2026-08-15) — see this rule's docstring
+    # for the real BR06 figures this is calibrated against. A candidate is
+    # assigned to whichever reconstructed LOCATION group's centroid it
+    # sits nearest to; a point only pairs against candidates assigned to
+    # its *own* LOCATION. Points/candidates with no location signal to
+    # scope by (no `LOCATION` column on this schedule at all) fall back to
+    # the old unscoped behavior rather than a guessed restriction.
+    location_centroids = _location_centroids(sheet_points)
+    candidate_locations = {
+        elem.global_id: _nearest_location(pos, location_centroids) for pos, elem in candidate_positions
+    }
+
     # Nearest-available one-to-one assignment: every (point, candidate)
     # pair, closest first, each point/element claimed at most once. Not
     # globally distance-optimal (a true min-cost assignment would be), but
@@ -620,9 +680,18 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
     pairs = []
     for sheet, _, point in sheet_points:
         px, py = point.derived.easting, point.derived.northing
+        point_location = point.location if point.location in location_centroids else None
         for (cx, cy), elem in candidate_positions:
+            if point_location is not None and candidate_locations[elem.global_id] != point_location:
+                continue  # geographically scoped to a different structure — not a candidate for this point
             pairs.append((math.hypot(cx - px, cy - py), sheet, point, elem))
     pairs.sort(key=lambda p: p[0])
+
+    # Points that survived location scoping with at least one candidate —
+    # distinguishes "scoped out entirely" (below) from "had candidates but
+    # every one got claimed by a closer point first" (the pre-existing
+    # case this greedy assignment already handled).
+    scoped_in_points = {(sheet.page_index, point.point_id) for _, sheet, point, _ in pairs}
 
     claimed_points: set[tuple[int, str]] = set()
     claimed_elems: set[str] = set()
@@ -642,12 +711,42 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
         bbox = _setout_point_bbox(sheet, geometry_sheet, point)
 
         result = assignment.get(key)
+        if result is None and key not in scoped_in_points:
+            # Location scoping (above) left this point with zero
+            # candidates at all — every pile-like IFC element in the
+            # model was geographically nearer to a *different* LOCATION
+            # group's centroid than this point's own. Distinct from the
+            # "claimed by a closer point" case below: there was nothing
+            # here for anyone to claim.
+            issues.append(
+                _ifc_issue(
+                    sheet,
+                    (
+                        f"Setout point {point.point_id}: no pile-like IFC element in the model is "
+                        f"geographically nearest to this point's own LOCATION ('{point.location}') — "
+                        f"every candidate belongs to a different structure by nearest-location scoping"
+                    ),
+                    "low",
+                    {
+                        "derived": point.derived.to_dict(),
+                        "location": point.location,
+                        "geometry_sheet_no": point.geometry_sheet_no,
+                    },
+                    bbox,
+                )
+            )
+            continue
         if result is None:
             # Every candidate this point could reach was claimed by a
             # closer point first — fewer pile-shaped IFC elements than
             # reconstructable schedule points, a distinct real case from
             # "no candidates in the whole model" above.
-            nearest_dist = min(math.hypot(cx - px, cy - py) for (cx, cy), _ in candidate_positions)
+            point_location = point.location if point.location in location_centroids else None
+            nearest_dist = min(
+                math.hypot(cx - px, cy - py)
+                for (cx, cy), elem in candidate_positions
+                if point_location is None or candidate_locations[elem.global_id] == point_location
+            )
             issues.append(
                 _ifc_issue(
                     sheet,
@@ -753,12 +852,40 @@ def check_ifc_superstructure_coverage(project: Project, config: RuleConfig) -> l
       no confirmed figure for, so any tolerance around that comparison
       would itself be a guess, not a calibrated check.
     - The real IFC data adds a second reason to distrust an easy
-      DXF<->IFC name match here: the schedule's `LOCATION` column says
+      DXF<->IFC *name* match here: the schedule's `LOCATION` column says
       `"ABUTMENT A"`/`"ABUTMENT B"` (see `extraction/
       setout_reconstruction.py`), but this project's real IFC abutment
       beam elements are named `"...ABUTMENT EAST/WEST_BR06_<n>"` — A/B
-      vs. EAST/WEST, with no confirmed mapping between the two
-      conventions to build a match on.
+      vs. EAST/WEST, with no shared vocabulary between the two naming
+      conventions. **Resolved 2026-08-15, not by name-matching but by
+      geography** — the user pointed out every sheet carries a north
+      arrow, so a bridge's abutments can always be oriented to real
+      compass directions; turns out this project doesn't even need a
+      north arrow read off the page to use that, since both sides of the
+      comparison are *already* real-world coordinates: `geometry.
+      setout_reconstruction`'s reconstructed points, grouped by the
+      schedule's own `LOCATION` column, have a real mean Easting per
+      abutment (confirmed: `"ABUTMENT A"` 278437.35mE, `"ABUTMENT B"`
+      278445.23mE on sheet 2871051), and the real IFC abutment-beam
+      elements' own world-space centroid gives the same figure directly
+      (confirmed: `"...EAST..."` beams average 278445.22mE, `"...
+      WEST..."` beams average 278437.34mE) — sub-0.1m agreement, decisive
+      against the ~7.9m separation between the two abutments. So `A =
+      WEST` and `B = EAST` on this real project, derived, not asserted —
+      and the mechanism generalizes beyond names entirely: any IFC
+      element's real-world Easting can be compared to a reconstructed
+      LOCATION group's mean Easting, schema-general, no reliance on
+      either side's naming convention holding on a different project.
+      This closes the naming-mismatch half of the blocker (and, more
+      valuably, gives `check_ifc_setout_consistency`'s own documented
+      "no confirmed IFC-side location signal to scope by" gap a real
+      answer, not just this rule) — not yet wired into either rule's
+      matching logic, since neither real sample's pile/beam spacing
+      makes the gap live today; see `check_ifc_setout_consistency`'s
+      docstring for that gap's current status. The *other* half of this
+      rule's own blocker — no independently-derived real-world value to
+      compare deck/beam *magnitude* against — is untouched by this and
+      stays open.
     - Matching a specific DXF `DIMENSION` on a general-arrangement/
       elevation sheet to "the" overall deck length, with no schedule or
       label to anchor on, is exactly the kind of spatial-proximity

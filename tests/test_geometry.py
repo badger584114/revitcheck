@@ -604,11 +604,38 @@ def test_ifc_pile_beyond_tolerance_flagged_high():
 
 
 def test_ifc_no_candidate_within_search_radius_flagged_low():
-    # Only one real IFC pile placed, at PIL234301's position (Abutment A).
-    # PIL234321 is a real reconstructable pile on the *other* abutment,
-    # ~8m away — well beyond the default 2m ifc_match_max_distance_m, so
-    # it should be reported as "no match found", not compared against the
-    # wrong pile.
+    # Same real PIL234301 position (ABUTMENT A) and PIL234302 (ABUTMENT A
+    # too, ~3.02m away, real consecutive piles — see
+    # test_one_to_one_assignment_no_double_claiming below). Both same-
+    # location, so 2026-08-15's geographic scoping doesn't exclude the
+    # pair — this is the surviving "assigned, but farther than
+    # ifc_match_max_distance_m (2.0m default)" branch, not the new
+    # zero-candidates-for-this-location branch below.
+    sheet = _real_sheet_101051()
+    ifc_model = IfcModel(
+        source_path="x.ifc", schema="IFC4", length_unit="METRE", has_map_conversion=False,
+        site_ref_lat=None, site_ref_long=None,
+        elements=[_ifc_pile("pile-301", 278435.835, 6130732.397)],  # PIL234301's own position
+    )
+    project = Project(source_path="synthetic", sheets=[sheet], ifc_model=ifc_model)
+
+    issues = check_ifc_setout_consistency(project, RuleConfig())
+    no_match = [i for i in issues if "PIL234302" in i.description]
+    assert len(no_match) == 1
+    assert no_match[0].severity == "low"
+    assert no_match[0].suggested_fix["nearest_distance_m"] > 2.0
+    assert no_match[0].bbox is not None  # a "low" Issue still gets a real location, not just "high" ones
+
+
+def test_ifc_location_scoping_excludes_wrong_structure_candidate():
+    # 2026-08-15: the only IFC pile in the model sits at PIL234301's real
+    # position (ABUTMENT A). PIL234321 is a real reconstructable pile on
+    # the *other* abutment (ABUTMENT B), ~8m away — real, confirmed real
+    # LOCATION data, not synthetic. Before location scoping, this reported
+    # "beyond search radius" (technically true but implied "maybe this is
+    # it, just too far"); scoped, it's now correctly "wrong structure
+    # entirely" — the single candidate is geographically assigned to
+    # ABUTMENT A and never becomes a candidate for an ABUTMENT B point.
     sheet = _real_sheet_101051()
     ifc_model = IfcModel(
         source_path="x.ifc", schema="IFC4", length_unit="METRE", has_map_conversion=False,
@@ -621,8 +648,33 @@ def test_ifc_no_candidate_within_search_radius_flagged_low():
     no_match = [i for i in issues if "PIL234321" in i.description]
     assert len(no_match) == 1
     assert no_match[0].severity == "low"
-    assert no_match[0].suggested_fix["nearest_distance_m"] > 2.0
-    assert no_match[0].bbox is not None  # a "low" Issue still gets a real location, not just "high" ones
+    assert "geographically nearest to this point's own LOCATION" in no_match[0].description
+    assert "ABUTMENT B" in no_match[0].description
+    assert no_match[0].suggested_fix["location"] == "ABUTMENT B"
+    assert "nearest_distance_m" not in no_match[0].suggested_fix  # distinct from the "beyond radius" branch
+    assert no_match[0].bbox is not None
+
+
+def test_ifc_location_scoping_matches_each_point_to_its_own_structure():
+    # 2026-08-15: one real candidate per abutment, both close to their own
+    # real point but not exactly on it, so nearest-distance alone would
+    # already pick correctly here too — the real point of this test is
+    # confirming scoping doesn't introduce cross-structure noise once both
+    # structures have their own nearby candidate.
+    sheet = _real_sheet_101051()
+    ifc_model = IfcModel(
+        source_path="x.ifc", schema="IFC4", length_unit="METRE", has_map_conversion=False,
+        site_ref_lat=None, site_ref_long=None,
+        elements=[
+            _ifc_pile("pile-A", 278435.835, 6130732.397),  # PIL234301, ABUTMENT A
+            _ifc_pile("pile-B", 278443.770, 6130732.314),  # PIL234321, ABUTMENT B
+        ],
+    )
+    project = Project(source_path="synthetic", sheets=[sheet], ifc_model=ifc_model)
+
+    issues = check_ifc_setout_consistency(project, RuleConfig())
+    assert all("PIL234301" not in i.description for i in issues)
+    assert all("PIL234321" not in i.description for i in issues)
 
 
 def test_unreconstructed_points_never_checked_against_ifc():
