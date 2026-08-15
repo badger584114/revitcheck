@@ -76,6 +76,13 @@ now — every point here is one hop from its anchor in spirit even though
 several dimension links are walked to reach it, so PLANNING.md §5's
 `base + per_hop×√hops` formula doesn't have a real multi-hop case to
 calibrate against yet). Both left for when a sample demands them.
+**The multi-hop item specifically is confirmed by the user 2026-08-15 to
+still be a real, live gap, not a candidate to drop** — bridges'
+own chains are typically short (consistent with every real chain seen
+so far), but other structure types this tool is meant to cover, e.g.
+retaining walls, can have genuinely longer chains where per-hop rounding
+error compounding would matter. A real retaining-wall sample to
+calibrate against is expected, not hypothetical.
 
 A real multi-branch dimension graph (PLANNING.md §5b's fuller traversal,
 originally sketched for structures without a single straight chained
