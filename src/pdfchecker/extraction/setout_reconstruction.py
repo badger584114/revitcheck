@@ -877,7 +877,20 @@ class SetoutReconstructionPoint:
     there's no local position to report) — populated for every other
     status, including the two failure statuses, since `matched_local`
     already has the chain node position before origin/bearing/walk is
-    even attempted."""
+    even attempted.
+
+    `location` (added 2026-08-15) is the schedule's own `LOCATION` column
+    value for this point (`parse_pile_locations`, already computed inside
+    `reconstruct_sheet` for its own pile-ID-matching scoping — this just
+    exposes it) — e.g. `"ABUTMENT A"`. `checks/geometry.py`'s `geometry.
+    ifc_setout_consistency` uses it to scope IFC candidate matching
+    geographically (a reconstructed LOCATION group's mean real Easting/
+    Northing vs. each IFC element's own — see that rule's docstring for
+    the real BR06 figures this is calibrated against). `None` when the
+    schedule table had no `LOCATION` column, or this point's row didn't
+    carry one — scoping falls back to unscoped matching in that case,
+    same "don't restrict where there's no signal to restrict by"
+    principle as everywhere else in this module."""
 
     point_id: str
     stated: SetoutPoint
@@ -885,6 +898,7 @@ class SetoutReconstructionPoint:
     status: str  # "reconstructed" | "unmatched_pile" | "no_bearing" | "no_origin"
     geometry_sheet_no: str | None = None
     local_point: Point3D | None = None
+    location: str | None = None
 
 
 def reconstruct_sheet(
@@ -940,6 +954,7 @@ def reconstruct_sheet(
             status=status,
             geometry_sheet_no=geometry_sheet_no,
             local_point=local_point,
+            location=locations_by_id.get(point_id),
         )
 
     chains = [c for c in find_dimension_chains(dxf_sheet.dimensions, config.chain_link_tolerance_m) if len(c) >= 2]
@@ -1036,6 +1051,7 @@ def reconstruct_sheet(
             derived=None,
             status="unmatched_pile",
             geometry_sheet_no=geometry_sheet_no,
+            location=locations_by_id.get(point_id),
         )
 
     return list(results.values())
