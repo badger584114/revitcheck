@@ -10,7 +10,14 @@ cross-checks each sheet's reconstructed setout point against the
 project's uploaded IFC model, via a schema-general pile-shape heuristic
 rather than this firm's Revit naming; see this file's own docstring on
 that rule, and extraction/ifc_source.py's docstring for the real IFC
-findings it's built on) are built.
+findings it's built on) are built, plus `geometry.ifc_superstructure_
+coverage` (added 2026-08-15 — the "non-pile superstructure" gap §5's IFC
+subsection flagged as still open: two more schema-general shape
+heuristics, `_is_thin_horizontal_plate`/`_is_elongated_beam`, for
+deck-slab-like and abutment-beam-like elements. A coverage check only,
+not a magnitude/position cross-check like the pile rule — see that
+rule's own docstring for why a real numeric comparison isn't buildable
+yet without guessing an unconfirmed correspondence).
 
 Consumes `Sheet.dxf_sheet` (extraction/dxf_source.py's `DxfSheet`,
 attached via `attach_dxf_sheets` — see that module's docstring for the
@@ -62,6 +69,7 @@ from __future__ import annotations
 import math
 import re
 import weakref
+from typing import Callable
 
 from pdfchecker.checks.catalog import RuleConfig, register
 from pdfchecker.checks.issue import Issue
@@ -408,6 +416,63 @@ def _is_slender_vertical(element: IfcElement, config: RuleConfig) -> bool:
     return dz / footprint >= config.ifc_pile_aspect_ratio_min
 
 
+def _is_thin_horizontal_plate(element: IfcElement, config: RuleConfig) -> bool:
+    """A schema-general shape heuristic for deck-slab-like elements —
+    large horizontal footprint, thin — the geometric *opposite* of
+    `_is_slender_vertical`'s pile heuristic above. PLANNING.md §5's IFC
+    subsection names this as the real open gap: "a check for the
+    non-pile superstructure (deck, abutment beams) ... a different
+    shape signature ... would be needed."
+
+    Calibrated 2026-08-15 against BR06's real IFC model, the same one
+    the pile heuristic uses. The deck slab itself doesn't carry direct
+    geometry on this export — `IfcSlab`/`FLOOR` elements named "Deck
+    Slab"/"Deck Asphalt" have `Representation=None` and decompose
+    (`IsDecomposedBy`) into child `IfcBuildingElementPart` elements
+    (Revit's per-pour-stage split) that carry the real geometry — six of
+    them, footprint (max horizontal extent) 7.56-23.07m, `dz/footprint`
+    0.0106-0.0402 (dx stays close to a ~10m deck width across every
+    pour; dy is the pour's along-bridge-span length, which varies).
+    Confirmed clear of two other real shapes on the same model: pile
+    caps (~1.1m footprint, ratio ~1.0-1.09 — footprint alone already
+    excludes them) and abutment beams/headstocks (~10.5-13.3m footprint,
+    ratio 0.100-0.124 — see `_is_elongated_beam` below; the gap between
+    0.0402 and 0.100 is where `ifc_deck_aspect_ratio_max`'s default
+    (0.06) sits, with margin on both sides)."""
+
+    dx = element.bbox_max.x - element.bbox_min.x
+    dy = element.bbox_max.y - element.bbox_min.y
+    dz = element.bbox_max.z - element.bbox_min.z
+    footprint = max(dx, dy)
+    if footprint < config.ifc_deck_footprint_min_m:
+        return False
+    return dz / footprint <= config.ifc_deck_aspect_ratio_max
+
+
+def _is_elongated_beam(element: IfcElement, config: RuleConfig) -> bool:
+    """A schema-general shape heuristic for abutment-beam/headstock-like
+    elements — large footprint like a deck slab, but noticeably thicker
+    relative to that footprint. Calibrated 2026-08-15 against the same
+    BR06 model as `_is_thin_horizontal_plate`: sampled 4 of the model's
+    68 real `IfcBeam` elements (all named `"...ABUTMENT EAST/WEST_BR06_
+    <n>"`, the same Revit family across the sample — a same-population
+    sample, not a search for a rare subtype, unlike the pile-search
+    under-sampling mistake `extraction/ifc_source.py`'s docstring
+    records), all landing at footprint 10.51-13.32m, ratio 0.100-0.124 —
+    consistent enough with each other, and clear of deck slabs' 0.0106-
+    0.0402, to treat as a real, distinct shape band rather than
+    overlap. Not re-confirmed against BR08."""
+
+    dx = element.bbox_max.x - element.bbox_min.x
+    dy = element.bbox_max.y - element.bbox_min.y
+    dz = element.bbox_max.z - element.bbox_min.z
+    footprint = max(dx, dy)
+    if footprint < config.ifc_beam_footprint_min_m:
+        return False
+    ratio = dz / footprint
+    return config.ifc_beam_aspect_ratio_min <= ratio <= config.ifc_beam_aspect_ratio_max
+
+
 def _horizontal_centroid(element: IfcElement) -> tuple[float, float]:
     return (
         (element.bbox_min.x + element.bbox_max.x) / 2,
@@ -648,6 +713,103 @@ def check_ifc_setout_consistency(project: Project, config: RuleConfig) -> list[I
                     "geometry_sheet_no": point.geometry_sheet_no,
                 },
                 bbox,
+            )
+        )
+    return issues
+
+
+# §5's IFC subsection "non-pile superstructure" label -> shape predicate.
+# A tuple, not a dict, so the report order below is stable and matches the
+# order this module's docstring/PLANNING.md discusses them in.
+_SUPERSTRUCTURE_SHAPES: tuple[tuple[str, Callable[[IfcElement, RuleConfig], bool]], ...] = (
+    ("deck/slab-shaped (large flat plate)", _is_thin_horizontal_plate),
+    ("abutment-beam-shaped (large elongated member)", _is_elongated_beam),
+)
+
+
+@register("geometry.ifc_superstructure_coverage")
+def check_ifc_superstructure_coverage(project: Project, config: RuleConfig) -> list[Issue]:
+    """PLANNING.md §5's real, previously-open "non-pile superstructure"
+    gap: an IFC-based check for structure that has neither a
+    `DIMENSION` override to compare (§5a) nor a setout table to
+    reconstruct against (§5b) — deck slabs, abutment beams. `geometry.
+    ifc_setout_consistency` can't reach these, since it only checks
+    already-*reconstructed* setout points, and reconstruction only
+    exists for schedule-tabulated points (piles on the real samples so
+    far).
+
+    **Deliberately a coverage check, not a magnitude/position
+    cross-check like the pile rule.** That would need an independently-
+    derived real-world value to compare IFC geometry against, the same
+    role the setout table + bearing/dimension-chain reconstruction plays
+    for piles — and nothing like that has been confirmed for deck/beam
+    elements yet:
+
+    - The obvious candidate — abutment-to-abutment span from `geometry.
+      setout_reconstruction`'s reconstructed pile positions, vs. deck
+      slab length — was considered and rejected: a pile centerline span
+      isn't the same real-world distance as a deck length (abutment
+      backwall setback, bearing offsets), by an amount this codebase has
+      no confirmed figure for, so any tolerance around that comparison
+      would itself be a guess, not a calibrated check.
+    - The real IFC data adds a second reason to distrust an easy
+      DXF<->IFC name match here: the schedule's `LOCATION` column says
+      `"ABUTMENT A"`/`"ABUTMENT B"` (see `extraction/
+      setout_reconstruction.py`), but this project's real IFC abutment
+      beam elements are named `"...ABUTMENT EAST/WEST_BR06_<n>"` — A/B
+      vs. EAST/WEST, with no confirmed mapping between the two
+      conventions to build a match on.
+    - Matching a specific DXF `DIMENSION` on a general-arrangement/
+      elevation sheet to "the" overall deck length, with no schedule or
+      label to anchor on, is exactly the kind of spatial-proximity
+      guessing PLANNING.md §1 already found unreliable for PDF dimension
+      reconstruction — not attempted here without first exploring real
+      sheet data to see if anything better than proximity exists.
+
+    So this rule reports only what's actually confirmed: whether the
+    attached IFC model has *any* element matching each shape category in
+    `_SUPERSTRUCTURE_SHAPES` at all. Zero matches for a category is
+    reported as one low-severity, project-wide Issue (not a per-sheet or
+    per-point one — there's no natural sheet to pin a whole-model finding
+    to, so it's attached to the project's first sheet with a description
+    that says so explicitly) — same "confidence, not silent" principle
+    as `check_ifc_setout_consistency`'s own "zero pile-shaped elements"
+    branch, which this mirrors. A real limitation worth being explicit
+    about: a project that genuinely has no deck (e.g. a retaining wall)
+    would also get the "no deck-shaped element found" Issue — this rule
+    has no way yet to tell "absent because unmodeled/wrong shape" apart
+    from "absent because this structure never had one", same class of
+    gap the pile-coverage branch already accepts.
+
+    Finding *something* in a category isn't itself reported as an Issue
+    — silence there means "found, nothing more to say yet", not "clean";
+    it's exactly as far as a confirmed check can go until the magnitude-
+    comparison gap above is closed."""
+
+    if project.ifc_model is None or not project.sheets:
+        return []
+
+    anchor_sheet = project.sheets[0]
+    issues = []
+    for label, predicate in _SUPERSTRUCTURE_SHAPES:
+        count = sum(1 for e in project.ifc_model.elements if predicate(e, config))
+        if count > 0:
+            continue
+        issues.append(
+            Issue(
+                rule_id="geometry.ifc_superstructure_coverage",
+                category="geometry",
+                sheet_no=anchor_sheet.sheet_no,
+                page_index=anchor_sheet.page_index,
+                description=(
+                    f"Project-wide finding (not specific to this sheet): the attached IFC model "
+                    f"({len(project.ifc_model.elements)} elements) has no {label} element — either "
+                    "genuinely absent from this structure, unmodeled, or shaped differently than this "
+                    "heuristic expects (see geometry.py's _is_thin_horizontal_plate/_is_elongated_beam "
+                    "docstrings for the real figures this is calibrated against)"
+                ),
+                severity="low",
+                suggested_fix={"shape_category": label, "ifc_element_count": len(project.ifc_model.elements)},
             )
         )
     return issues

@@ -8,39 +8,53 @@ project that already has DXF/IFC attached, same as tests/test_geometry.py
 does, not this script.
 
 Usage: python scripts/markup.py samples/BR06/T2DPAA-T2D-C3S-BR-DRG-101000.pdf [output.pdf]
+       python scripts/markup.py samples/BR06/T2DPAA-T2D-C3S-BR-DRG-101000.pdf --config config/session_example.yaml
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from pdfchecker.checks import RuleConfig, run_checks  # noqa: E402
+from pdfchecker.checks import RuleConfig, load_session_config, run_checks  # noqa: E402
 from pdfchecker.extraction.pipeline import ingest_pdf  # noqa: E402
 from pdfchecker.markup.pdf_markup import render_markup  # noqa: E402
 
 
 def main() -> None:
-    if len(sys.argv) not in (2, 3):
-        print(__doc__)
-        sys.exit(1)
-
-    path = sys.argv[1]
-    output_path = sys.argv[2] if len(sys.argv) == 3 else str(Path(path).with_suffix("")) + "_markup.pdf"
-
-    project = ingest_pdf(path)
-    config = RuleConfig(
-        firm_glossary_path="config/firm_glossary.json",
-        project_glossary_path="config/project_glossary.json",
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("pdf_path")
+    parser.add_argument("output_path", nargs="?", help="defaults to <pdf_path>_markup.pdf")
+    parser.add_argument(
+        "--config",
+        help="session-level rules file (YAML/JSON, PLANNING.md §4/§9 step 5) — "
+        "see config/session_example.yaml. Falls back to config/{firm,project}_glossary.json if omitted.",
     )
+    args = parser.parse_args()
+
+    output_path = args.output_path or str(Path(args.pdf_path).with_suffix("")) + "_markup.pdf"
+
+    project = ingest_pdf(args.pdf_path)
+
+    if args.config:
+        loaded = load_session_config(args.config)
+        for warning in loaded.warnings:
+            print(f"[config warning] {warning}")
+        config = loaded.rule_config
+    else:
+        config = RuleConfig(
+            firm_glossary_path="config/firm_glossary.json",
+            project_glossary_path="config/project_glossary.json",
+        )
     issues = run_checks(project, config)
 
     report = render_markup(project, issues, output_path)
     rendered = sum(1 for r in report if r.rendered)
 
-    print(f"Marked up {path}: {len(report)} issues ({rendered} drawn on a sheet, {len(report) - rendered} report-only)")
+    print(f"Marked up {args.pdf_path}: {len(report)} issues ({rendered} drawn on a sheet, {len(report) - rendered} report-only)")
     print(f"-> {output_path}\n")
 
     for entry in report:

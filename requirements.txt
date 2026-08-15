@@ -22,6 +22,7 @@ pypdfium2==5.12.1
 pyspellchecker==0.8.4
 python-dateutil==2.9.0.post0
 pytest==8.4.2
+PyYAML==6.0.1
 shapely==2.0.7
 six==1.17.0
 tomli==2.4.1
