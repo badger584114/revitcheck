@@ -20,6 +20,7 @@ from pdfchecker.extraction.pdf_source import extract_paths, extract_words  # noq
 from pdfchecker.extraction.titleblock import (  # noqa: E402
     FieldSpec,
     _looks_like_a_label,
+    extract_prominent_sheet_id,
     extract_title_block,
 )
 
@@ -218,3 +219,100 @@ class TestCellBasedExtraction:
         fields = extract_title_block(page, extract_words(page), specs, paths=extract_paths(page)).fields
         doc.close()
         assert fields.get("date") == "21/03/2019"
+
+
+class TestProminentSheetId:
+    """`extract_prominent_sheet_id` — the last-resort strategy for a title
+    block that doesn't label its sheet identifier at all.
+
+    Confirmed on the Flinders / CS1-DRG-* set, where the sheet's own
+    number is printed large in the bottom-right corner with no field label
+    anywhere near it, so neither labelled strategy can reach it.
+
+    It finds the sheet's *unique* identifier — `sheet_no`, not
+    `drawing_no`. On BR06 those differ (`drawing_no` is `8011`, shared
+    across the whole set), and the most prominent number is the per-sheet
+    one on both clients.
+    """
+
+    def test_largest_font_wins(self, tmp_path):
+        doc, page = _page_with(
+            tmp_path, [("2871002", 100, 560), ("2871051", 600, 560)]
+        )
+        # same size here, so make the intended one bigger
+        doc.close()
+        path = tmp_path / "big.pdf"
+        d = fitz.open()
+        pg = d.new_page(width=_W, height=_H)
+        pg.insert_text((100, 560), "2871002", fontsize=7)
+        pg.insert_text((600, 560), "2871051", fontsize=20)
+        d.save(str(path)); d.close()
+        d = fitz.open(str(path)); pg = d[0]
+        assert extract_prominent_sheet_id(extract_words(pg), _H * 0.75) == "2871051"
+        d.close()
+
+    def test_tie_on_size_breaks_to_the_rightmost(self, tmp_path):
+        """The real BR06 case: sheet number `2871051` (22.4pt, x=0.919) is
+        exactly tied on font size with an unrelated KNET reference
+        `24467656` (22.4pt, x=0.811). Both clients put the identifier in
+        the bottom-right corner."""
+
+        path = tmp_path / "tie.pdf"
+        d = fitz.open()
+        pg = d.new_page(width=_W, height=_H)
+        pg.insert_text((500, 560), "24467656", fontsize=16)
+        pg.insert_text((680, 560), "2871051", fontsize=16)
+        d.save(str(path)); d.close()
+        d = fitz.open(str(path)); pg = d[0]
+        assert extract_prominent_sheet_id(extract_words(pg), _H * 0.75) == "2871051"
+        d.close()
+
+    def _two_token_page(self, tmp_path, prefix_size, digits_size):
+        path = tmp_path / f"split{prefix_size}_{digits_size}.pdf"
+        d = fitz.open()
+        pg = d.new_page(width=_W, height=_H)
+        pg.insert_text((560, 560), "CS1-DRG-", fontsize=prefix_size)
+        pg.insert_text((700, 560), "359895", fontsize=digits_size)  # clear of the prefix
+        d.save(str(path)); d.close()
+        d = fitz.open(str(path))
+        return d, d[0]
+
+    def test_equal_sized_split_tokens_resolve_to_the_number(self, tmp_path):
+        """The real Flinders layout: `CS1-DRG-359895` is split into two
+        words at the *same* size, so the rightmost tie-break lands on the
+        digits directly — which is also what matches `359895.dwg`."""
+
+        d, pg = self._two_token_page(tmp_path, 16, 16)
+        assert extract_prominent_sheet_id(extract_words(pg), _H * 0.75) == "359895"
+        d.close()
+
+    def test_a_larger_prefix_is_joined_to_its_digits(self, tmp_path):
+        """Defensive: where the prefix is set larger than its number, the
+        prefix wins on size and would otherwise be returned alone, which
+        is not an identifier."""
+
+        d, pg = self._two_token_page(tmp_path, 16, 14)
+        assert extract_prominent_sheet_id(extract_words(pg), _H * 0.75) == "CS1-DRG-359895"
+        d.close()
+
+    def test_a_prefix_with_no_number_is_not_an_identifier(self, tmp_path):
+        doc, page = _page_with(tmp_path, [("CS1-DRG-", 600, 560)])
+        assert extract_prominent_sheet_id(extract_words(page), _H * 0.75) is None
+        doc.close()
+
+    def test_nothing_numberlike_yields_none(self, tmp_path):
+        doc, page = _page_with(tmp_path, [("ABUTMENT DETAILS", 600, 560)])
+        assert extract_prominent_sheet_id(extract_words(page), _H * 0.75) is None
+        doc.close()
+
+    def test_only_consulted_when_labelled_strategies_found_nothing(self, tmp_path):
+        """It must not second-guess a labelled extraction — on BR06 it
+        happens to agree on all 37 pages, but specs remain authoritative."""
+
+        doc, page = _page_with(
+            tmp_path, [("SHEET No.", 100, 560), ("2871051", 100, 575), ("9999999", 700, 560)]
+        )
+        specs = [FieldSpec("sheet_no", "SHEET No.", direction="below", max_dx=45, max_dy=30)]
+        fields = extract_title_block(page, extract_words(page), specs).fields
+        doc.close()
+        assert fields.get("sheet_no") == "2871051"

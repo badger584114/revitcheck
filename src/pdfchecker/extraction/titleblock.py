@@ -22,6 +22,7 @@ get misread as this sheet's own Sheet No.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 import fitz
@@ -184,6 +185,17 @@ def extract_title_block(
         canonical, _discovered = extract_by_cells(words, paths, discovery_band)
         for name, value in canonical.items():
             fields.setdefault(name, value)
+
+    # 3. Last resort for the sheet's own identifier: some title blocks
+    #    don't label it at all (see extract_prominent_sheet_id). Only
+    #    consulted if neither labelled strategy produced one, and it
+    #    independently reproduces BR06's spec value on all 37 pages, so
+    #    it isn't second-guessing them where they work.
+    if "sheet_no" not in fields:
+        band_y0 = page.rect.height * (1 - DISCOVERY_BAND_FRACTION)
+        sheet_id = extract_prominent_sheet_id(words, band_y0)
+        if sheet_id:
+            fields["sheet_no"] = sheet_id
 
     return TitleBlock(fields=fields)
 
@@ -357,3 +369,73 @@ def extract_by_cells(words: list[TextWord], paths, band_y0: float) -> tuple[dict
         if name and name not in canonical:
             canonical[name] = value
     return canonical, discovered
+
+
+# --- Unlabelled sheet identifier ---------------------------------------
+#
+# Some title blocks don't label their sheet identifier at all — it's just
+# printed, large, in the bottom-right corner. Confirmed on the Flinders /
+# CS1-DRG-* set: the sheet's own number appears as a bare `CS1-DRG-`
+# followed by six digits, with no field label anywhere near it, so neither
+# `DEFAULT_FIELD_SPECS` (which needs a known label) nor `extract_by_cells`
+# (which needs *a* label) can reach it.
+#
+# What identifies it instead is prominence. A title block prints the
+# sheet's own identifier larger than anything else in it, because that's
+# what a person scanning a printed set reads first.
+
+# Number-ish tokens: a drawing-number prefix (`CS1-DRG-`, and `DRG` is a
+# near-universal abbreviation — it appears in both clients' own file
+# naming), or a bare 5-8 digit run.
+_SHEET_ID_RE = re.compile(r"^[A-Z0-9]*-?DRG-?\d*$|^\d{5,8}$", re.I)
+
+
+def extract_prominent_sheet_id(words: list[TextWord], band_y0: float) -> str | None:
+    """The sheet's own identifier, found by prominence rather than by a
+    label. `None` if nothing in the band looks like one.
+
+    Largest font wins; ties break rightmost, then lowest. The tie-break
+    earns its place — on a real BR06 sheet the sheet number `2871051`
+    (22.4pt, x=0.919) is exactly tied on size with an unrelated 8-digit
+    KNET reference `24467656` (22.4pt, x=0.811), and the corner rule picks
+    correctly. Both clients put the identifier in the bottom-right corner,
+    which is the same reason it's printed large.
+
+    A prefix token ending in `DRG-` carries no number on its own, so the
+    digits immediately to its right on the same line are joined to it —
+    Flinders splits `CS1-DRG-359895` into two words.
+
+    **Validated both ways, which is why this isn't a Flinders-specific
+    hack.** On Flinders it resolves all 116 sheets to 116 distinct
+    identifiers, every one at the same font size, and all 93 DWG
+    filenames appear among them (the 23 extras are index/notes sheets with
+    no CAD file, the same ratio BR06 shows). On BR06 — where the labelled
+    specs already work — it independently reproduces the spec-extracted
+    `sheet_no` on all 37 pages, 37/37, without being told any label.
+
+    Note it finds the sheet's *unique identifier*, which is `sheet_no`,
+    not `drawing_no`. On BR06 those differ: `drawing_no` is `8011`, shared
+    across the whole set, while `sheet_no` is per-sheet. The most
+    prominent number is the per-sheet one on both clients."""
+
+    candidates = [
+        w for w in words
+        if w.bbox.y0 >= band_y0 and w.text.strip() and _SHEET_ID_RE.match(w.text.strip())
+    ]
+    if not candidates:
+        return None
+
+    best = max(candidates, key=lambda w: (round(w.bbox.height, 1), w.bbox.x0, w.bbox.y0))
+    text = best.text.strip()
+    if text.upper().rstrip("-").endswith("DRG"):
+        same_line = [
+            w for w in words
+            if abs(w.bbox.y0 - best.bbox.y0) < 3
+            and w.bbox.x0 >= best.bbox.x1 - 1
+            and re.fullmatch(r"\d{4,8}", w.text.strip())
+        ]
+        if not same_line:
+            return None  # a prefix with no number is not an identifier
+        same_line.sort(key=lambda w: w.bbox.x0)
+        text += same_line[0].text.strip()
+    return text or None
