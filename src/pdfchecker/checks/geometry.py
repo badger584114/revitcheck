@@ -461,7 +461,28 @@ def _is_elongated_beam(element: IfcElement, config: RuleConfig) -> bool:
     records), all landing at footprint 10.51-13.32m, ratio 0.100-0.124 —
     consistent enough with each other, and clear of deck slabs' 0.0106-
     0.0402, to treat as a real, distinct shape band rather than
-    overlap. Not re-confirmed against BR08."""
+    overlap. Not re-confirmed against BR08.
+
+    **That calibration is wrong; the paragraph above is kept to show how
+    (found 2026-08-17).** Running this predicate over the whole
+    68-element population rather than a 4-element sample: roughly 60 of
+    the 68 real `IfcBeam` elements sit at footprint ~6.93m, ratio ~0.018
+    — inside `_is_thin_horizontal_plate`'s deck band (<= 0.06), not this
+    one. Only ~2 land in the 10.51-13.32m / 0.100-0.124 range above. The
+    "same-population sample, not a search for a rare subtype" claim is
+    therefore exactly backwards: the sample *was* the rare subtype,
+    repeating the very under-sampling mistake it cites as the thing it
+    avoided.
+
+    Consequence today: nothing observable. `check_ifc_superstructure_
+    coverage` only reports when a category has *zero* matches, and both
+    are non-empty either way (77 deck-shaped, 8 beam-shaped on BR06), so
+    the rule's output is unchanged — but these two bands do not separate
+    the populations their names imply. Recalibrate against the full
+    population, and against BR08 (now ~22s to ingest rather than
+    prohibitive), before this rule grows the magnitude/position
+    cross-check §5 still has open, since that one would genuinely depend
+    on the bands being meaningful."""
 
     dx = element.bbox_max.x - element.bbox_min.x
     dy = element.bbox_max.y - element.bbox_min.y
