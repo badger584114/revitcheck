@@ -298,7 +298,26 @@ def run_session(
 
     started = _stage("ingest_pdf")
     project = ingest_pdf(pdf_path)
-    stages.append(SessionStage("ingest_pdf", time.time() - started, f"{len(project.sheets)} sheets"))
+    skipped = [s for s in project.sheets if not s.tables_scanned]
+    stages.append(
+        SessionStage(
+            "ingest_pdf",
+            time.time() - started,
+            f"{len(project.sheets)} sheets"
+            + (f"; ruled-table scan skipped on {len(skipped)}" if skipped else ""),
+        )
+    )
+    if skipped:
+        # Coverage, not silence: those sheets have `tables == []` because
+        # nothing looked, not because they have no tables. Cheap to say so
+        # here, and it's the difference between "no schedule on that sheet"
+        # and "we never checked" if a geometry result later looks thin.
+        warnings.append(
+            f"Ruled-table extraction was skipped on {len(skipped)} of {len(project.sheets)} sheets "
+            "whose text carries no Easting/Northing (extraction/tables.py's SETOUT_TABLE_KEYWORDS) — "
+            "those sheets' `tables` are empty because they were not scanned, not because they hold no "
+            "tables. Pass a wider `table_scan_keywords` to ingest_pdf() to widen or disable this."
+        )
 
     if wants_geometry and (dwg_paths or dxf_paths):
         started = _stage("ingest_dxf")

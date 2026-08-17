@@ -525,6 +525,16 @@ class Sheet:
     raw_text: str
     revision_clouds: list[RevisionCloud] = field(default_factory=list)
     dxf_sheet: Optional[DxfSheet] = None
+    # False when ruled-table extraction was deliberately skipped for this
+    # sheet — `extraction/tables.py`'s `page_may_hold_setout_table` found
+    # no Easting/Northing text, so the (very expensive) table detector was
+    # never run (see that function for the profiling and the trade-off).
+    # `tables` is then `[]` because nobody *looked*, which is a different
+    # claim from "this sheet has no tables", and consumers that care about
+    # the difference need to be able to tell them apart — the same
+    # "report a coverage indicator, don't fail silently" rule the check
+    # rules follow, applied to ingestion.
+    tables_scanned: bool = True
 
     @property
     def drawing_no(self) -> Optional[str]:
@@ -542,6 +552,7 @@ class Sheet:
             "title_block": self.title_block.to_dict(),
             "revision_schedule": [r.to_dict() for r in self.revision_schedule],
             "tables": [t.to_dict() for t in self.tables],
+            "tables_scanned": self.tables_scanned,
             "word_count": len(self.words),
             "path_count": len(self.paths),
             "revision_clouds": [c.to_dict() for c in self.revision_clouds],

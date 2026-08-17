@@ -5,6 +5,18 @@ The `project` fixture is defined in conftest.py (session-scoped) so this
 file and test_checks.py share one ingestion run.
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+from pdfchecker.extraction.pipeline import ingest_pdf  # noqa: E402
+from pdfchecker.extraction.setout_reconstruction import (  # noqa: E402
+    parse_pile_locations,
+    parse_pile_schedule,
+)
+from pdfchecker.extraction.tables import page_may_hold_setout_table  # noqa: E402
+
 
 def test_ingests_all_sheets(project):
     assert len(project.sheets) == 37
@@ -116,3 +128,68 @@ def test_pile_schedule_table_extracted(project):
     assert schedules, "expected at least one EASTING/NORTHING-bearing schedule table"
     all_text = " ".join(str(cell) for t in schedules for row in t.rows for cell in row if cell)
     assert "PIL234321" in all_text  # a real pile ID visible on this sheet
+
+
+class TestTableScanGate:
+    """The 2026-08-17 ruled-table gate — `extraction/tables.py`'s
+    `page_may_hold_setout_table`, wired into `ingest_pdf`.
+
+    pdfplumber's `find_tables()` was 91.5% of PDF ingestion (97.8s of
+    106.9s on this sample) and produced 733 tables of which exactly one
+    was a real schedule. Gating it on a cheap Easting/Northing text test
+    took ingestion to ~11s. These assert the two halves that matter: the
+    real schedule still survives, and the sheets that were skipped are
+    *marked* as skipped rather than silently looking empty."""
+
+    def test_keyword_test_needs_every_keyword(self):
+        assert page_may_hold_setout_table("... EASTING 278437.803 NORTHING 6130709.230 ...")
+        assert page_may_hold_setout_table("easting and northing, lowercase")  # case-insensitive
+        assert not page_may_hold_setout_table("EASTING only, no second keyword")
+        assert not page_may_hold_setout_table("REINFORCEMENT DETAIL — TYPICAL SECTION")
+
+    def test_only_the_schedule_sheet_is_scanned(self, project):
+        scanned = [s for s in project.sheets if s.tables_scanned]
+        assert len(scanned) == 1
+        assert scanned[0].sheet_no == "2871051"
+
+    def test_skipped_sheets_are_marked_not_silently_empty(self, project):
+        """The coverage distinction: `tables == []` on a skipped sheet
+        means "nobody looked", which is not the same claim as "this sheet
+        has no tables". Consumers must be able to tell them apart."""
+
+        skipped = [s for s in project.sheets if not s.tables_scanned]
+        assert len(skipped) == len(project.sheets) - 1
+        assert all(s.tables == [] for s in skipped)
+        assert all(s.to_dict()["tables_scanned"] is False for s in skipped)
+
+    def test_the_real_schedule_still_survives_the_gate(self, project):
+        """Guards the actual risk: gating must not cost us the one table
+        the geometry checks depend on. 28 real piles across 3 locations,
+        the figures every §5b result is anchored to."""
+
+        sheet = project.sheet_by_no("2871051")
+        points, locations = [], {}
+        for table in sheet.tables:
+            points.extend(parse_pile_schedule(table))
+            locations.update(parse_pile_locations(table))
+        assert len(points) == 28
+        assert set(locations.values()) == {"ABUTMENT A", "ABUTMENT B", "OFF STRUCTURE BARRIER"}
+
+    def test_gate_can_be_disabled(self, tmp_path):
+        """`table_scan_keywords=()` restores the old scan-everything
+        behaviour — the escape hatch for a future rule that needs tables
+        this gate would skip (a bar-bending schedule, a materials list)."""
+
+        import fitz
+
+        path = tmp_path / "no_setout_words.pdf"
+        doc = fitz.open()
+        doc.new_page(width=600, height=400).insert_text((72, 72), "REINFORCEMENT SCHEDULE")
+        doc.save(str(path))
+        doc.close()
+
+        gated = ingest_pdf(str(path))
+        assert gated.sheets[0].tables_scanned is False
+
+        ungated = ingest_pdf(str(path), table_scan_keywords=())
+        assert ungated.sheets[0].tables_scanned is True
