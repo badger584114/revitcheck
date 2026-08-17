@@ -75,6 +75,27 @@ def _label_tokens(label: str) -> set[str]:
     return {tok.strip(".:").upper() for tok in label.split()}
 
 
+def _looks_like_a_label(text: str) -> bool:
+    """Is this token itself a field label rather than a value?
+
+    Real bug this exists for (found 2026-08-17 against samples/Flinders/,
+    a different client's title block): `DRAFTED:` sits 17.3pt directly
+    below `DESIGNED:` with dx=0, comfortably inside the `below` search
+    window, so `designed_by` came out as the string `"DRAFTED:"`. The
+    same layout gave `drafted_by == "CHECKED:"`. Nothing had stopped a
+    *label* being taken as a *value* — on the T2DPAA sheets the fields
+    are spaced far enough apart that it never happened, so two samples
+    from one client never exposed it.
+
+    Silently-wrong data is worse than no data here: a missing field is
+    caught by `title_block.required_fields_present`, whereas a plausible
+    wrong value flows into revision cross-checks and the cross-sheet
+    reference graph unchallenged."""
+
+    stripped = text.strip()
+    return stripped.endswith(":") or stripped.upper().rstrip(".:") == "NO"
+
+
 def _value_near(words: list[TextWord], label_rect: fitz.Rect, spec: FieldSpec) -> str | None:
     if spec.direction == "below":
         x_lo, x_hi = label_rect.x0 - 10, label_rect.x0 + spec.max_dx
@@ -97,6 +118,7 @@ def _value_near(words: list[TextWord], label_rect: fitz.Rect, spec: FieldSpec) -
         if x_lo <= w.bbox.x0 <= x_hi
         and y_lo <= w.bbox.y0 <= y_hi
         and w.text.strip(".:").upper() not in label_tokens
+        and not _looks_like_a_label(w.text)
     ]
     if not candidates:
         return None
