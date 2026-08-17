@@ -321,7 +321,51 @@ def _find_header_col(header_row: list[str | None], *substrings: str) -> int | No
     return None
 
 
-def parse_pile_locations(table: Table) -> dict[str, str]:
+# Candidate header names for a setout table's *identifier* column, tried
+# in order. `"SITE ID"` is this client's convention, NOT a general one —
+# confirmed directly by the user 2026-08-17, who flagged that the ID
+# column will not always be called that. It used to be hardcoded, which
+# meant a project naming that column anything else got `[]` back from
+# `parse_pile_schedule` and therefore *silently no setout reconstruction
+# at all* — the failure mode this codebase most wants to avoid.
+#
+# The other two columns need no such list: Easting and Northing are a
+# real domain invariant (a setout table carries them by definition, which
+# is what `extraction/tables.py`'s `SETOUT_TABLE_KEYWORDS` also relies
+# on), so only the ID column varies.
+#
+# Deliberately a candidate *list* rather than a cleverer heuristic (e.g.
+# "the first non-numeric column that isn't Easting/Northing/Location").
+# Only one real naming convention has been seen so far, so anything
+# smarter would be uncalibrated guessing — this codebase's rule is to
+# wait for real data. A new project's column name should be addable here,
+# or passed in by a caller, without touching parsing logic.
+# Note there is deliberately no bare `"ID"` catch-all. `_find_header_col`
+# matches by *substring* (headers carry extra words, units, line breaks),
+# and a two-letter substring is far too loose to be safe — confirmed by a
+# test written for exactly this: `"ID"` matches inside `"WIDGET
+# REFERENCE"`, which would hand reconstruction a fabricated ID column.
+# Every candidate here is long enough that an accidental substring hit is
+# implausible. A project whose header matches none of these gets nothing
+# rather than something wrong, and `id_header_candidates` is the way to
+# add it.
+ID_HEADER_CANDIDATES = ("SITE ID", "POINT ID", "PILE ID", "PILE No", "POINT No", "SETOUT ID", "MARK")
+
+
+def _find_id_col(header_row: list[str | None], candidates=ID_HEADER_CANDIDATES) -> int | None:
+    """The identifier column, by first matching candidate name. Returns
+    `None` if none match — the caller then skips this table rather than
+    guessing a column position, same "skip rather than guess" rule used
+    throughout this module."""
+
+    for candidate in candidates:
+        col = _find_header_col(header_row, candidate.upper())
+        if col is not None:
+            return col
+    return None
+
+
+def parse_pile_locations(table: Table, id_header_candidates=ID_HEADER_CANDIDATES) -> dict[str, str]:
     """Reads the `LOCATION` column (e.g. `"ABUTMENT A"`, `"OFF STRUCTURE
     BARRIER"`) keyed by `SITE ID` — same header-scanning approach as
     `parse_pile_schedule`, kept separate since not every caller needs it.
@@ -330,7 +374,7 @@ def parse_pile_locations(table: Table) -> dict[str, str]:
     for why pure spatial nearest-match isn't reliable enough on its own)."""
 
     for row_idx, header_row in enumerate(table.rows):
-        id_col = _find_header_col(header_row, "SITE ID")
+        id_col = _find_id_col(header_row, id_header_candidates)
         location_col = _find_header_col(header_row, "LOCATION")
         if id_col is None or location_col is None:
             continue
@@ -346,7 +390,7 @@ def parse_pile_locations(table: Table) -> dict[str, str]:
     return {}
 
 
-def parse_pile_schedule(table: Table) -> list[SetoutPoint]:
+def parse_pile_schedule(table: Table, id_header_candidates=ID_HEADER_CANDIDATES) -> list[SetoutPoint]:
     """Reads `SITE ID`/`EASTING (m)`/`NORTHING (m)` columns from any
     `Table` that has them — pdfplumber's ruled-table rows are already
     clean per-column cells (unlike the revision schedule's word-clustered
@@ -372,7 +416,7 @@ def parse_pile_schedule(table: Table) -> list[SetoutPoint]:
 
     points = []
     for row_idx, header_row in enumerate(table.rows):
-        id_col = _find_header_col(header_row, "SITE ID")
+        id_col = _find_id_col(header_row, id_header_candidates)
         easting_col = _find_header_col(header_row, "EASTING")
         northing_col = _find_header_col(header_row, "NORTHING")
         if id_col is None or easting_col is None or northing_col is None:
