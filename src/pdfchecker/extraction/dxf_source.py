@@ -265,42 +265,85 @@ def ingest_dxf(path: str) -> DxfSheet:
     )
 
 
-# Matches the DWG/DXF filename convention seen on the real sample —
-# "...-DRG-101032_0.dxf" — capturing the drawing-number-ish digit run
-# before the trailing "_<revision>" suffix. Only the last 4 digits of
-# that capture are actually used (see attach_dxf_sheets), so a firm with
-# a differently-shaped prefix would still join correctly as long as the
-# sheet-identifying digits are the last 4 before "_<n>.dxf".
-_DXF_FILENAME_NUMBER_RE = re.compile(r"-(\d+)_\d+\.dxf$", re.IGNORECASE)
+# How a DXF filename carries its sheet identifier. Two real conventions
+# confirmed so far, tried most-specific first:
+#
+#   T2DPAA  "...-DRG-101032_0.dxf"  -> 101032   (digits before a _revision suffix)
+#   CS1     "359944.dxf"            -> 359944   (the whole filename)
+#
+# The third pattern is a genuine fallback: the last digit run in the stem,
+# for a naming scheme neither of the above anticipates. It only produces a
+# *candidate*; whether it becomes a match is decided by the join below,
+# which refuses anything ambiguous.
+_DXF_NAME_PATTERNS = (
+    re.compile(r"-(\d+)_\d+$"),   # T2DPAA: trailing _<revision>
+    re.compile(r"^(\d+)$"),       # CS1: bare number
+    re.compile(r"(\d+)$"),        # fallback: trailing digit run
+)
+
+
+def filename_sheet_digits(path: str) -> str | None:
+    """The sheet-identifying digit run in a DXF filename, or `None`."""
+
+    stem = Path(path).stem
+    for pattern in _DXF_NAME_PATTERNS:
+        m = pattern.search(stem)
+        if m:
+            return m.group(1)
+    return None
 
 
 def attach_dxf_sheets(project: Project, dxf_sheets: list[DxfSheet]) -> int:
-    """Matches each `DxfSheet` to its counterpart `Sheet` in `project` and
-    sets `Sheet.dxf_sheet` — the numeric-suffix join PLANNING.md §8
-    confirmed against the real sample: a DWG/DXF filename's own numeric
-    suffix matches the PDF's `sheet_no` on the last 4 digits (e.g.
-    `...-101032_0.dxf` <-> `sheet_no` `"2871032"`), confirmed with no
-    exceptions across all 31 real sheets. Filename-based, not DXF-
-    internal-data-based — deliberately: it works even for sheets with
-    zero dimensions (nothing to read a sheet identifier out of via the
-    `DIMBLOCK` geometry-block-name trick used to spot-check this join
-    during development), and it doesn't depend on the title-block
-    extraction that isn't built yet (see this module's docstring, point
-    3). Returns the number matched, so a caller can tell "ran cleanly,
-    nothing matched" apart from silently doing nothing."""
+    """Matches each `DxfSheet` to its counterpart `Sheet` and sets
+    `Sheet.dxf_sheet`. Returns the number matched, so a caller can tell
+    "ran cleanly, nothing matched" apart from silently doing nothing —
+    `session.run_session` turns that into a coverage warning.
 
-    by_last4: dict[str, object] = {}
+    Filename-based rather than DXF-internal-data-based, deliberately: it
+    works for sheets with zero dimensions, and doesn't depend on
+    title-block extraction from DXF, which isn't built (and is confirmed
+    out of scope — see ir.py's `DxfSheet`).
+
+    **Two matching strengths, strongest first.** A filename's digits are
+    compared against each sheet's own `sheet_no` digits:
+
+    1. *Exact* — the whole identifier matches. This is the CS1/Flinders
+       case, where `359944.dxf` belongs to the sheet printing `359944`.
+    2. *Last four digits* — required for T2DPAA, where the two genuinely
+       differ everywhere else: DWG `...-101051_0.dxf` belongs to the sheet
+       printing `2871051`, agreeing only on `1051`.
+
+    **Ambiguity is refused, not guessed.** Last-four matching is lossy, and
+    an earlier version keyed a plain dict on it, so two sheets sharing
+    their last four digits silently overwrote each other and one DXF got
+    attached to whichever sheet happened to be indexed last. With 116
+    sheets in a set (Flinders) that is a real birthday-problem risk rather
+    than a theoretical one — it happens not to collide on the sets to hand,
+    which is luck, not a guarantee. A key matching more than one sheet now
+    attaches nothing, so the DXF is reported as unmatched rather than
+    attached to the wrong sheet — the same "skip rather than guess" rule
+    used throughout this codebase, and the safer failure here by a wide
+    margin: a wrong attachment silently checks one sheet's geometry
+    against another sheet's drawing."""
+
+    exact: dict[str, list] = {}
+    last4: dict[str, list] = {}
     for sheet in project.sheets:
-        if sheet.sheet_no and len(sheet.sheet_no) >= 4:
-            by_last4[sheet.sheet_no[-4:]] = sheet
+        digits = re.sub(r"\D", "", sheet.sheet_no or "")
+        if not digits:
+            continue
+        exact.setdefault(digits, []).append(sheet)
+        if len(digits) >= 4:
+            last4.setdefault(digits[-4:], []).append(sheet)
 
     matched = 0
     for dxf_sheet in dxf_sheets:
-        m = _DXF_FILENAME_NUMBER_RE.search(Path(dxf_sheet.source_path).name)
-        if not m:
+        digits = filename_sheet_digits(dxf_sheet.source_path)
+        if not digits:
             continue
-        sheet = by_last4.get(m.group(1)[-4:])
-        if sheet is not None:
-            sheet.dxf_sheet = dxf_sheet
-            matched += 1
+        candidates = exact.get(digits) or (last4.get(digits[-4:]) if len(digits) >= 4 else None)
+        if not candidates or len(candidates) > 1:
+            continue  # unmatched, or ambiguous — either way, don't guess
+        candidates[0].dxf_sheet = dxf_sheet
+        matched += 1
     return matched

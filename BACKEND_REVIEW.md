@@ -354,6 +354,22 @@ Stated plainly, because it is the majority of the work and none of the above sho
 
 ---
 
+## 9. Postscript — a third client, 2026-08-17
+
+After this review was written, a third real project (Flinders / `CS1-DRG-*`) was investigated. It is worth recording here because it tests the review's central assumption: that the codebase's careful calibration against real samples means it generalises.
+
+It largely didn't. Six of eight title-block labels absent; a different DXF filename convention; the pile shape heuristic returning **4,966 matches (4,282 rebar) against 28 on BR06**; `IfcSite` coordinates pointing at Massachusetts. Two samples from one client turned out to validate much less than they appeared to.
+
+The pattern is consistent and worth carrying forward: **logic built on domain invariants held; logic built on client conventions broke.** Easting/Northing in a setout table, dimension chains sharing witness points, the sheet identifier being the most prominent text — all survived unchanged. Label vocabulary, filename patterns, column names and override rates all needed work.
+
+Three findings from that session bear on §5's performance items and §4's robustness items, and are recorded in full in `CLAUDE.md` and `PLANNING.md` §5:
+
+- `geometry.dimension_consistency`'s override-only scope is not a defect — overriding dimension text and drawing witness lines are two drafting workarounds for the *same* problem (curved geometry giving sections that aren't perpendicular). The first is checkable from the DXF alone; the second is internally consistent while collectively stale, so only the model can catch it.
+- Section and elevation cutting planes are Revit-only knowledge and cannot be recovered from the DXF export — confirmed directly against real markers.
+- The remaining correspondence problem is solvable deterministically at a cost of an hour or two per project, amortised across every re-check, without the LLM that is unavailable under company policy.
+
+**Project status: paused at the user's direction.** Not blocked technically; the open question is whether the value justifies the effort.
+
 ## 8. Suggested order of work
 
 **Before any frontend work:**
