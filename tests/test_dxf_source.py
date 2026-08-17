@@ -19,9 +19,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from pdfchecker.ir import DxfSheet, Project, Sheet, TitleBlock  # noqa: E402
 from pdfchecker.extraction.dxf_source import (  # noqa: E402
     _DEFAULT_ODA_PATH,
+    attach_dxf_sheets,
     convert_dwg_to_dxf,
+    filename_sheet_digits,
     ingest_dxf,
 )
 
@@ -122,3 +125,87 @@ def test_convert_dwg_to_dxf_real_conversion(tmp_path):
     assert len(converted) == 1
     sheet = ingest_dxf(str(converted[0]))
     assert sheet.units == "m"
+
+
+class TestSheetJoin:
+    """`attach_dxf_sheets` / `filename_sheet_digits` — matching a DXF file
+    to the PDF sheet it belongs to.
+
+    Reworked 2026-08-17 against a second client (Flinders / CS1). Two real
+    filename conventions now, and they need different matching strengths:
+
+      T2DPAA  "...-DRG-101051_0.dxf"  belongs to sheet "2871051"  — the two
+              agree only on the last four digits
+      CS1     "359944.dxf"            belongs to sheet "359944"   — exact
+    """
+
+    def _project(self, *sheet_nos):
+        return Project(
+            source_path="synthetic",
+            sheets=[
+                Sheet(
+                    page_index=i,
+                    page_width=800,
+                    page_height=600,
+                    title_block=TitleBlock(fields={"sheet_no": no}),
+                    revision_schedule=[],
+                    tables=[],
+                    words=[],
+                    paths=[],
+                    raw_text="",
+                )
+                for i, no in enumerate(sheet_nos)
+            ],
+        )
+
+    def _dxf(self, name):
+        return DxfSheet(source_path=f"/tmp/{name}", dimensions=[], viewports=[], units="m")
+
+    def test_filename_patterns(self):
+        assert filename_sheet_digits("T2DPAA-T2D-C3S-BR-DRG-101032_0.dxf") == "101032"
+        assert filename_sheet_digits("/a/b/359944.dxf") == "359944"
+        assert filename_sheet_digits("no-digits-here.dxf") is None
+
+    def test_exact_match(self):
+        """The CS1 case — filename digits are the sheet's own number."""
+
+        project = self._project("359944", "359945")
+        assert attach_dxf_sheets(project, [self._dxf("359944.dxf")]) == 1
+        assert project.sheets[0].dxf_sheet is not None
+        assert project.sheets[1].dxf_sheet is None
+
+    def test_last_four_match(self):
+        """The T2DPAA case — the identifiers differ everywhere else."""
+
+        project = self._project("2871051")
+        assert attach_dxf_sheets(project, [self._dxf("X-DRG-101051_0.dxf")]) == 1
+        assert project.sheets[0].dxf_sheet is not None
+
+    def test_exact_wins_over_last_four(self):
+        project = self._project("101051", "2871051")
+        attach_dxf_sheets(project, [self._dxf("X-DRG-101051_0.dxf")])
+        assert project.sheets[0].dxf_sheet is not None, "should prefer the exact identifier"
+        assert project.sheets[1].dxf_sheet is None
+
+    def test_ambiguous_last_four_attaches_nothing(self):
+        """The bug this replaces: an earlier version keyed a plain dict on
+        the last four digits, so two sheets sharing them silently
+        overwrote each other and the DXF landed on whichever was indexed
+        last. Checking one sheet's geometry against another sheet's
+        drawing is a far worse outcome than reporting it unmatched — and
+        with 116 sheets in a real set this is a birthday-problem risk, not
+        a theoretical one."""
+
+        project = self._project("2871051", "9991051")
+        assert attach_dxf_sheets(project, [self._dxf("X-DRG-101051_0.dxf")]) == 0
+        assert all(s.dxf_sheet is None for s in project.sheets)
+
+    def test_unmatched_filename_is_counted_not_attached(self):
+        project = self._project("2871051")
+        assert attach_dxf_sheets(project, [self._dxf("X-DRG-999999_0.dxf")]) == 0
+        assert project.sheets[0].dxf_sheet is None
+
+    def test_sheets_without_a_sheet_no_are_skipped(self):
+        project = self._project("2871051")
+        project.sheets[0].title_block = TitleBlock(fields={})
+        assert attach_dxf_sheets(project, [self._dxf("X-DRG-101051_0.dxf")]) == 0
