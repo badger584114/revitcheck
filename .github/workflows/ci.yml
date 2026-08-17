@@ -40,11 +40,15 @@ jobs:
           # samples/ is ~310MB of real drawings and nothing here needs it —
           # collection imports conftest.py but never opens a sample (its
           # fixtures resolve paths lazily). Keeps this job genuinely fast.
+          # extensions/ holds the pyRevit package (revitcheck), which
+          # tests/revit/conftest.py puts on sys.path — omit it and this
+          # job fails at collection rather than catching anything.
           sparse-checkout: |
             src
             tests
             scripts
             config
+            extensions
           sparse-checkout-cone-mode: true
 
       - uses: actions/setup-python@v6
@@ -56,8 +60,12 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Byte-compile everything
-        # Catches syntax errors in files no test imports.
-        run: python -m compileall -q src scripts tests
+        # Catches syntax errors in files no test imports. That now
+        # includes the two files nothing here *can* import:
+        # adapters/revit_source.py needs the Revit API, and the pyRevit
+        # button scripts need pyrevit — compiling doesn't import, so this
+        # is the only automated check they get.
+        run: python -m compileall -q src scripts tests extensions
 
       - name: Collect the full test suite
         # The actual regression guard for this review's findings 1.1/1.2.
