@@ -170,6 +170,9 @@ from __future__ import annotations
 
 import ifcopenshell
 import ifcopenshell.geom as ifc_geom
+import ifcopenshell.util.placement as ifc_placement
+import ifcopenshell.util.unit as ifc_unit
+import numpy
 
 from pdfchecker.ir import IfcElement, IfcModel, Point3D
 
@@ -218,13 +221,114 @@ def _bbox(verts: list[float]) -> tuple[Point3D, Point3D]:
     )
 
 
+# IFC4's two explicit tessellated-geometry classes. Both store their
+# vertices as a plain `Coordinates.CoordList` on the entity itself —
+# schema-standard, not a Revit-export convention, so this fast path is
+# as portable as the rest of this module's geometry handling.
+_FACE_SET_CLASSES = ("IfcPolygonalFaceSet", "IfcTriangulatedFaceSet")
+
+
+def _faceset_points(element) -> list:
+    """Every tessellated vertex array on `element`, each paired with the
+    transform that places it into the element's own object space.
+
+    Returns `[]` for anything not made of face sets (swept solids, CSG,
+    B-reps) — the caller falls back to real meshing for those. A partly-
+    tessellated element also returns `[]` rather than a bbox of only its
+    face-set half, which would silently understate the element's extent:
+    "skip rather than guess", the same rule the rest of this codebase
+    follows."""
+
+    arrays = []
+    for representation in element.Representation.Representations:
+        for item in representation.Items:
+            if item.is_a("IfcMappedItem"):
+                # `get_mappeditem_transformation` composes MappingOrigin
+                # and MappingTarget properly — the two halves of IFC's
+                # mapped-item indirection. Hand-rolling this is easy to
+                # get subtly wrong, and wrong here means a bbox in the
+                # wrong place rather than an obvious failure.
+                transform = ifc_placement.get_mappeditem_transformation(item)
+                sub_items = item.MappingSource.MappedRepresentation.Items
+            else:
+                transform = numpy.eye(4)
+                sub_items = [item]
+            for sub in sub_items:
+                if sub.is_a() not in _FACE_SET_CLASSES:
+                    return []  # not purely tessellated — mesh it properly instead
+                arrays.append((numpy.array(sub.Coordinates.CoordList, dtype=float), transform))
+    return arrays
+
+
+def _faceset_bbox(element, unit_scale: float) -> tuple[Point3D, Point3D] | None:
+    """World-space bbox read straight from an element's own coordinate
+    list, skipping `ifcopenshell.geom.create_shape` entirely. `None` when
+    the element isn't purely tessellated (the caller meshes it instead).
+
+    **Why this exists** (profiled 2026-08-17 against BR06's real model):
+    `create_shape` took 208.1s across 152 elements, and *two* of them
+    were 205.8s of that — a pair of `IfcBuildingElementPart` deck pours
+    carrying 5,699 and 4,110 vertices across 10,508 and 7,566 polygonal
+    faces. `create_shape` builds a full BRep from those faces, evaluates
+    booleans and triangulates, and this module then throws all of it away
+    to keep six numbers. The median element meshes in 3.7ms; those two
+    took 132.7s and 73.1s. Reading the coordinate list and applying the
+    placement matrix gives a bbox for both in 28.8ms — and an identical
+    one, confirmed against `create_shape`'s own output on every real
+    face-set element in both sample models (see
+    `tests/test_ifc_source.py`).
+
+    Deliberately not a "read the dimensions from the property sets"
+    shortcut, which is the other thing the file offers: both samples do
+    carry real `Qto_*` quantity sets (schema-standard) and firm-specific
+    `T2D_QTO` properties, but quantities give *size only, with no
+    position or orientation* — and `checks/geometry.py`'s
+    `geometry.ifc_setout_consistency` matches on an element's world-space
+    centroid, so it needs placement that quantities can't supply. The
+    firm properties are also internally inconsistent about units on the
+    real data (a real pile: `T2D_Height = 8050` alongside `T2D_Length =
+    10.550`, `Pile_Length = 10500` alongside `Pile_LengthOverall =
+    10550`), which is its own reason to keep trusting geometry over
+    metadata here."""
+
+    arrays = _faceset_points(element)
+    if not arrays:
+        return None
+
+    placement = ifc_placement.get_local_placement(element.ObjectPlacement)
+    mins, maxs = [], []
+    for coords, transform in arrays:
+        if not len(coords):
+            continue
+        homogeneous = numpy.hstack([coords, numpy.ones((len(coords), 1))])
+        world = (placement @ transform @ homogeneous.T).T[:, :3] * unit_scale
+        mins.append(world.min(axis=0))
+        maxs.append(world.max(axis=0))
+    if not mins:
+        return None
+
+    lo, hi = numpy.min(mins, axis=0), numpy.max(maxs, axis=0)
+    return Point3D(x=lo[0], y=lo[1], z=lo[2]), Point3D(x=hi[0], y=hi[1], z=hi[2])
+
+
 def extract_elements(f) -> list[IfcElement]:
     """Every physical `IfcElement` with real geometry. Elements with no
     `Representation` (confirmed real — a handful on both samples, e.g.
     a Revit floor type with no geometry override) are skipped, not
     guessed at — same "skip rather than misread" convention as
     `extraction/dxf_source.py`'s dim_type=0-but-non-numeric-override
-    case."""
+    case.
+
+    Purely tessellated elements take `_faceset_bbox`'s fast path (see
+    that function for the real profiling behind it); everything else is
+    meshed via `create_shape` as before. `unit_scale` is resolved once
+    per file via `ifcopenshell.util.unit` rather than assumed —
+    `create_shape` always hands back metres regardless of a file's
+    declared unit (see `IfcElement`'s docstring in ir.py), but raw
+    `CoordList` values are in the file's *own* unit, so the two paths
+    only agree if that conversion is applied explicitly."""
+
+    unit_scale = ifc_unit.calculate_unit_scale(f)
 
     elements = []
     for e in f.by_type("IfcElement"):
@@ -232,11 +336,29 @@ def extract_elements(f) -> list[IfcElement]:
             continue
         if e.Representation is None:
             continue
-        try:
-            shape = ifc_geom.create_shape(_geom_settings, e)
-        except RuntimeError:
-            continue
-        bbox_min, bbox_max = _bbox(shape.geometry.verts)
+
+        box = _faceset_bbox(e, unit_scale)
+        if box is None:
+            try:
+                shape = ifc_geom.create_shape(_geom_settings, e)
+            except RuntimeError:
+                continue
+            verts = shape.geometry.verts
+            if not verts:
+                # Defensive, not observed on real data: a full sequential
+                # pass over both sample files produces zero empty meshes.
+                # Worth guarding anyway — `create_shape` can succeed and
+                # still return no vertices, and `_bbox` would then raise
+                # `ValueError` on `min(())`, which nothing catches, so one
+                # such element would abort an entire ingest. Treated as
+                # "no usable geometry", same as the RuntimeError above.
+                # (Noticed while meshing elements *individually* during
+                # verification, where empty results do occur — an
+                # artifact of isolated calls, not of the real pass.)
+                continue
+            box = _bbox(verts)
+        bbox_min, bbox_max = box
+
         elements.append(
             IfcElement(
                 global_id=e.GlobalId,

@@ -41,11 +41,64 @@ def _classify(header_row: list[str | None]) -> str:
 _BOGUS_FULL_PAGE_FRACTION = 0.9
 
 
+# Words that must appear somewhere in a sheet's text for that sheet's
+# tables to be worth extracting at all — see `page_may_hold_setout_table`.
+#
+# Deliberately Easting/Northing and nothing else. The user confirmed
+# (2026-08-17) that a setout table's *ID* column name varies between
+# projects — "SITE ID" is this client's convention, not a general one —
+# but that **any table used for setout will always carry Easting and
+# Northing values**, since that is what makes it a setout table. So these
+# two are the one domain invariant available to filter on, rather than a
+# convention that happened to hold on the sample.
+SETOUT_TABLE_KEYWORDS = ("EASTING", "NORTHING")
+
+
+def page_may_hold_setout_table(page_text: str, keywords=SETOUT_TABLE_KEYWORDS) -> bool:
+    """Cheap text test for "is running the table detector on this sheet
+    worth it" — every keyword must appear somewhere in the page's text.
+
+    **Why this exists.** `pdfplumber`'s `find_tables()` is by far the most
+    expensive step in PDF ingestion — profiled 2026-08-17 at 91.5% of it
+    (97.8s of 106.9s across the real 37-sheet sample). Its cost scales
+    with a page's edge count and is sharply superlinear: a civil drawing
+    sheet's reinforcement detailing and hatching produce tens of thousands
+    of edges (one real sheet: 195,367, taking 22.8s alone), out of which
+    the detector manufactures grids that aren't tables. Across the real
+    sample it returned **733 tables, of which exactly one was a real
+    schedule.**
+
+    Two other approaches were measured and rejected before this one:
+    tuning `edge_min_length` made it *slower* (82s -> 97-102s), and
+    cropping the title block/border out made it slower still (88.4s ->
+    94.1s) *and* changed real extraction results. Skipping whole sheets
+    is what actually pays: 88.4s -> 2.8s, a 32x cut, taking PDF ingestion
+    from ~2.89s to ~0.3s per sheet.
+
+    **The trade-off, stated plainly.** This narrows `Sheet.tables` from
+    "every ruled table on this sheet" to "tables on sheets that could
+    carry setout data". A sheet with some *other* kind of ruled table (a
+    bar-bending schedule, a materials list) now yields none, and any
+    future rule wanting those must widen `keywords` — or this filter —
+    rather than assume `Sheet.tables` is complete. That is a real
+    reduction in what ingestion captures, accepted deliberately (user
+    decision, 2026-08-17) because this project's tables exist to serve
+    geometry checking, and a table with no Easting/Northing cannot.
+    `Sheet.tables_scanned` records which sheets were skipped so this is
+    visible rather than silent."""
+
+    upper = page_text.upper()
+    return all(k.upper() in upper for k in keywords)
+
+
 def extract_tables(pdf_page: pdfplumber.page.Page) -> list[Table]:
     """Generic ruled-table extraction — pile schedules, setout tables, etc.
     (anything with a proper ruling-line grid, which this handles fine).
     The revision schedule is deliberately excluded here; see
-    extract_revision_schedule below for why it needs different handling."""
+    extract_revision_schedule below for why it needs different handling.
+
+    Callers should gate this on `page_may_hold_setout_table` — see that
+    function for why, and for what it costs in coverage."""
 
     tables = []
     for t in pdf_page.find_tables():

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import fitz
 import pdfplumber
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -767,3 +768,57 @@ def test_real_br08_cross_sheet_reconstructs_main_abutment_groups():
         # is confirming — a wide/loose bound here would let a future sign
         # regression (back to the old 1.4m-16m growing spread) slip by.
         assert 1300.0 < delta_mm < 1500.0, f"{point_id}: expected ~1.40m, got {delta_mm:.1f}mm"
+
+
+class TestIdColumnCandidates:
+    """`_find_id_col` / `ID_HEADER_CANDIDATES` — added 2026-08-17 after the
+    user confirmed a setout table's ID column is NOT always called
+    "SITE ID" (this client's convention, not a general one).
+
+    Before this, the name was hardcoded: a project using any other header
+    got `[]` from `parse_pile_schedule` and therefore no setout
+    reconstruction at all, silently. Easting/Northing need no such list —
+    they're a real domain invariant of a setout table."""
+
+    def _table(self, id_header):
+        return Table(
+            bbox=BBox(x0=0, y0=0, x1=100, y1=100),
+            rows=[
+                [id_header, "EASTING", "NORTHING"],
+                ["P1", "278437.803", "6130709.230"],
+                ["P2", "278440.000", "6130712.000"],
+            ],
+        )
+
+    @pytest.mark.parametrize("header", ["SITE ID", "POINT ID", "PILE ID", "MARK", "Point No"])
+    def test_alternative_id_headers_all_parse(self, header):
+        points = parse_pile_schedule(self._table(header))
+        assert [p.point_id for p in points] == ["P1", "P2"]
+        assert points[0].easting == 278437.803
+
+    def test_unrecognised_id_header_is_skipped_not_guessed(self):
+        """No candidate matches -> skip the table rather than guess a
+        column position. A wrong guess would feed fabricated point IDs
+        into reconstruction, which is worse than finding nothing."""
+
+        assert parse_pile_schedule(self._table("WIDGET REFERENCE")) == []
+
+    def test_caller_can_supply_its_own_candidates(self):
+        """The escape hatch: a new project's column name should be usable
+        without editing extraction code."""
+
+        table = self._table("WIDGET REFERENCE")
+        points = parse_pile_schedule(table, id_header_candidates=("WIDGET REFERENCE",))
+        assert [p.point_id for p in points] == ["P1", "P2"]
+
+    def test_real_sample_still_parses_via_the_candidate_list(self):
+        """The regression guard — the real BR06 schedule reaches the same
+        28 points through the candidate list it previously reached through
+        the hardcoded "SITE ID"."""
+
+        with pdfplumber.open(SAMPLE_PDF) as pdf:
+            tables = extract_tables(pdf.pages[14])
+        points = []
+        for table in tables:
+            points.extend(parse_pile_schedule(table))
+        assert len(points) == 28

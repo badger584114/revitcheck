@@ -1,8 +1,28 @@
 {
   "words": [
-    "abutment", "abutments", "chainage", "geotechnical", "alluvium",
-    "reinforcement", "setout", "kerb", "kerbing", "fitment", "fitments",
-    "upstand", "upstands", "precamber", "abelflex", "permadec",
-    "meng", "mengsc", "cpeng", "ceng", "fieaust", "rpeq", "rpev", "knet"
+    "aadt", "abelflex", "abutment", "abutments", "acrs", "affl", "alluvium",
+    "apas", "astm", "autodesk", "axonometric", "backfilled", "bartek",
+    "baseplate", "bituthene", "blockout", "blockouts", "borings", "boxcast",
+    "capwap", "cellflex", "cementitious", "ceng", "chainage", "chainages",
+    "clsm", "comms", "conbextra", "constructability", "cordek", "cordrain",
+    "corkjoint", "corten", "cpbw", "cpeng", "cpst", "crossfall", "cscr", "ctrs",
+    "debonded", "debonding", "demoulding", "denso", "dotmar", "dpti",
+    "draincoil", "dramix", "elastomeric", "elec", "erico", "exceedance", "expy",
+    "ezystrut", "faying", "fibreboard", "fibres", "fieaust", "fitment",
+    "fitments", "floodwall", "flowtite", "fosroc", "fpbb", "fpbw", "gabions",
+    "galv", "geofabric", "geopolymer", "geosheet", "geotechnical", "geotextile",
+    "gfrp", "hdpe", "headwall", "hilti", "hydrocor", "insar", "kerb", "kerbing",
+    "knet", "lightpole", "ligs", "loctite", "luminaire", "megaflo", "meng",
+    "mengsc", "metre", "metres", "midspan", "mnop", "monolithically", "ncrn",
+    "nitoseal", "noisewalls", "nsop", "nutsert", "nutserts", "openable",
+    "overcoated", "overspray", "parchem", "permadec", "pilecap", "pilecaps",
+    "polysulphide", "precamber", "prestressing", "pretensioned", "ptfe",
+    "puraflex", "qdpe", "rebar", "rebending", "reinforcement", "roadbound",
+    "rpeq", "rpev", "saas", "sami", "sapn", "sawcut", "scabbled", "setout",
+    "setouts", "sfrc", "shldr", "shotcrete", "shotcreting", "sikaflex",
+    "simseal", "situ", "soflon", "stabilisation", "stormwater", "struc", "stsp",
+    "thck", "throwscreen", "throwscreens", "underbored", "undesignated",
+    "unilift", "unistrut", "unreinforced", "upstand", "upstands", "vicroads",
+    "visualisation", "waterstop", "wingwall", "worksafe"
   ]
 }

@@ -12,7 +12,7 @@ execute into the engine itself.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, Optional
 
 from pdfchecker.checks.issue import Issue
 from pdfchecker.ir import Project
@@ -47,7 +47,19 @@ class RuleConfig:
     PLANNING.md §4; fields get promoted out of `params` as more rules
     need strongly-typed access to them."""
 
-    enabled_rule_ids: set[str] = field(default_factory=lambda: set(all_rule_ids()))
+    # `None` means "every rule currently in the catalog", resolved at
+    # *run* time by `resolved_rule_ids()` — NOT snapshotted here at
+    # construction time. That distinction is the fix for a real bug
+    # (2026-08-17 backend review, finding 1.3): this used to default to
+    # `set(all_rule_ids())`, so a `RuleConfig()` built before a rule
+    # module had been imported silently excluded that module's rules
+    # forever, even once they registered. Rule registration is an import
+    # side-effect (see this package's `__init__.py`), so making the
+    # default depend on import *order* is a trap — a caller has no way
+    # to know it needs to import a rule module before constructing a
+    # config. An explicit set still means exactly what it says: only
+    # these rules, whatever else is registered.
+    enabled_rule_ids: Optional[set[str]] = None
     required_title_block_fields: list[str] = field(
         default_factory=lambda: ["drawing_no", "sheet_no", "amend_no"]
     )
@@ -141,7 +153,21 @@ class RuleConfig:
     ifc_beam_aspect_ratio_max: float = 0.5
 
     def is_enabled(self, rule_id: str) -> bool:
-        return rule_id in self.enabled_rule_ids
+        return self.enabled_rule_ids is None or rule_id in self.enabled_rule_ids
+
+    def resolved_rule_ids(self) -> set[str]:
+        """The rule ids this config will actually run, against the
+        catalog as it stands *now* — `enabled_rule_ids` when set
+        explicitly, otherwise every registered rule (see that field's
+        comment). Intersected with the live catalog either way, so a
+        config naming a rule that doesn't exist yet (§6's spec-derived
+        ids, accepted by `session_config.py` rather than rejected)
+        reports what will really run, not what was asked for."""
+
+        catalog_ids = set(_CATALOG)
+        if self.enabled_rule_ids is None:
+            return catalog_ids
+        return self.enabled_rule_ids & catalog_ids
 
 
 def run_checks(project: Project, config: RuleConfig) -> list[Issue]:

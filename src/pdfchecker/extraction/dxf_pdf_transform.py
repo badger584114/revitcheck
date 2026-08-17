@@ -57,11 +57,16 @@ before this was built:
    untested-on-real-data fallback, in case a future sample's viewports
    really do overlap.
 
-**`pdf_to_paper` added 2026-08-15** (PLANNING.md §8's DXF/DWG redline
-export) — the exact inverse of `paper_to_pdf`, needing no new
-calibration since it's the same fixed, universal, no-offset scale in the
-other direction; see its own docstring for why redline placement doesn't
-need the viewport/model-space half of this module at all.
+**A `pdf_to_paper` inverse existed here 2026-08-15 to 2026-08-17** for
+§8's DXF/DWG redline export (paper space *is* the printed sheet, so a
+redline needed no viewport lookup at all — only this module's fixed
+paper<->PDF scale, in reverse). That export was removed once the user
+confirmed all drafting is done in Revit and the drafting team never
+opens AutoCAD, leaving the inverse with no caller and no test, so it
+went with it — per CLAUDE.md's "no point building it ahead of a
+consumer". It's a one-line inverse of `paper_to_pdf` if something needs
+it again; a frontend mapping a click on a rendered page back to a sheet
+location is the likely candidate.
 
 **Not confirmed / left for a sample that needs it:** a sheet whose real
 content viewport has a nonzero `view_twist_angle` (this module still
@@ -158,26 +163,6 @@ def paper_to_pdf(paper_x_m: float, paper_y_m: float, page_height_pt: float) -> t
     top-left/Y-down convention (`ir.py`'s `BBox` docstring)."""
 
     return paper_x_m * _PT_PER_M, page_height_pt - paper_y_m * _PT_PER_M
-
-
-def pdf_to_paper(pdf_x_pt: float, pdf_y_pt: float, page_height_pt: float) -> tuple[float, float]:
-    """The exact inverse of `paper_to_pdf` — PDF page-space (points) ->
-    paper-space (meters). Added 2026-08-15 for §8's DXF/DWG redline
-    export: since paper space *is* "what's literally printed on the
-    sheet" (module docstring point 1 — a fixed, universal, no-offset
-    scale, confirmed against real data), any Issue's already-computed
-    PDF page-space `bbox` converts straight back to a real paper-space
-    location to draw a redline onto, with no viewport lookup or model-
-    space involved at all — unlike `model_to_pdf_point`'s forward chain,
-    this doesn't need to know *which* viewport a point came from, because
-    a redline marker only ever needs to land in the right place on the
-    printed sheet, not inside a specific model-space window. This is
-    also why DXF/DWG redline export can cover *every* Issue, not just
-    geometry-check ones — a drafting Issue's bbox (spelling, title block,
-    ...) never had a DXF-space origin to begin with, but it still has a
-    real PDF page-space one, which is all this needs."""
-
-    return pdf_x_pt / _PT_PER_M, (page_height_pt - pdf_y_pt) / _PT_PER_M
 
 
 def model_to_pdf_point(

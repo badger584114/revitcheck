@@ -34,9 +34,14 @@ layout — two Issues flagged close together on a dense sheet can produce
 overlapping notes. Worth revisiting once this runs against a real sheet
 dense enough to show it, not guessed at ahead of that.
 
-Tag numbering (`markup/tags.py`'s `assign_tags`) moved out to its own
-module 2026-08-15, once `dxf_markup.py` needed the exact same order — a
-tag has to mean the same Issue whichever markup format it appears in.
+Tag numbering (`assign_tags`, below) briefly lived in its own
+`markup/tags.py` module (2026-08-15), shared with a DXF/DWG redline
+exporter so a tag would mean the same Issue in either format. That
+exporter was removed 2026-08-17 — all drafting here is done in Revit and
+the drafting team never opens AutoCAD, so a CAD-native redline had no
+audience (see PLANNING.md §8). With one markup format again, the shared
+module had one caller and nothing to stay in sync with, so it's folded
+back in here.
 """
 
 from __future__ import annotations
@@ -49,7 +54,31 @@ import fitz
 from pdfchecker.checks.issue import Issue
 from pdfchecker.ir import BBox, Project
 from pdfchecker.markup.notes import markup_note
-from pdfchecker.markup.tags import assign_tags
+
+# PLANNING.md §8 doesn't specify a tag order; page-then-severity-then-
+# rule_id groups a sheet's most actionable issues first, matching how an
+# engineer would triage a printed set page by page.
+_SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+
+def assign_tags(issues: list[Issue]) -> list[tuple[str, Issue]]:
+    """`[(tag, issue), ...]` in a deterministic order — PLANNING.md §8:
+    "each issue gets a short reference tag (e.g. #014) ... matching an
+    entry in the full exported report."
+
+    Note the tag is positional: it identifies an Issue only relative to
+    the exact list passed in. Re-running with a different subset
+    renumbers everything. That's fine while one call renders the sheets
+    and the report together, but it's why §8's engineer-issue-selection
+    step needs a stable per-Issue id first — see BACKEND_REVIEW.md §3.1.
+    """
+
+    ordered = sorted(
+        issues,
+        key=lambda i: (i.page_index, _SEVERITY_ORDER.get(i.severity, len(_SEVERITY_ORDER)), i.rule_id),
+    )
+    return [(f"#{idx:03d}", issue) for idx, issue in enumerate(ordered, start=1)]
+
 
 # PLANNING.md §8 doesn't specify a palette — high/medium/low mapped to a
 # real red/orange/olive traffic-light scale, distinguishable at a glance
