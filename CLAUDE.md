@@ -196,6 +196,9 @@ pdfchecker/
     markup.py                      # CLI: runs Stage 2 checks + burns them onto a marked-up PDF copy,
                                     # same --config option as check.py
                                     # (drafting-only, same scope as check.py)
+    check_capture.py               # CLI: runs the *Revit* checks against a captured model
+                                    # (JSON from the Capture Model button) — the offline half
+                                    # of the two-machine loop. Imports no Revit API
     run_session.py                 # CLI: the whole pipeline via pdfchecker.session.run_session —
                                     # PDF + --dwg/--dxf/--ifc + --config/--scope, optional --markup
                                     # (PDF + per-sheet DXF redlines) and --json run record. The
@@ -264,6 +267,25 @@ pdfchecker/
                                     # Also the regression guard for the rule-registration bug
                                     # (geometry.* missing from checks/__init__.py) — deliberately
                                     # imports only `pdfchecker.checks`, never checks.geometry
+  extensions/                      # the pyRevit toolbar (2026-08-17 direction change, see
+    RevitCheck.extension/          # that section above and this folder's own README)
+      lib/revitcheck/              # the package — lives here, not under src/, because
+        __init__.py                # pyRevit puts <extension>/lib on sys.path automatically.
+        ir.py                      # ONE copy: the files the buttons import are the files
+        issue.py                   # the tests import. A src/ tree plus a sync step was
+        catalog.py                 # rejected — editing in one place and debugging stale
+        capture.py                 # code in another is bad, and worse across two machines
+        report.py
+        adapters/revit_source.py   # the ONLY module that imports the Revit API. Extracts
+                                   # facts, judges nothing — so a capture stays valid when
+                                   # a classification is retuned, no re-capture needed
+        checks/dimensions.py       # revit.dimension_provenance — model vs. detail linework
+        checks/coverage.py         # revit.capture_coverage — extraction failures as Issues
+      RevitCheck.tab/Checks.panel/ # the buttons; thin by design, anything that grows in a
+                                   # script.py is logic only debuggable inside Revit
+  tests/revit/                     # 54 tests, 0.07s, no Revit needed — conftest.py puts the
+                                   # extension's lib/ on sys.path and holds the synthetic-IR
+                                   # builders so tests read as scenarios
   requirements.txt                 # frozen from .venv — see the Python 3.9 note below
 ```
 
@@ -335,6 +357,24 @@ The first real data from outside T2DPAA. Two samples from one client validated f
 **Corrected along the way:** Flinders' IFC *is* usable despite not being georeferenced to MGA. Its local project grid is the same grid the drawings' setout points use — `SOP1` at `E 69390.802, N 138372.310` sits 0.27m from a bearing plinth and 1.5m from the nearest Abutment A pile, and exactly 8 piles at 1050mm diameter cluster within 15m, matching the schedule's `PA-1..PA-8`. An earlier conclusion here that the coordinate frames were incompatible was wrong.
 
 **Status: paused 2026-08-17 at the user's direction.** The open question is no longer technical viability but whether the effort is worth it — see PLANNING.md §5 for the geometry check's real purpose (catching 2D details drift from the model), the section-cutting-plane boundary, and the deterministic per-view correspondence route that works without an LLM (which is unavailable: locked-down machines, blanket company policy, not worth contesting).
+
+## Direction change — the checks move into Revit, 2026-08-17
+
+**Decided by the user, and it supersedes the delivery mechanism for everything above, not the domain knowledge in it.** The PDF/DWG path was chosen because that is what the team has traditionally reviewed, with the IFC added later as a source of truth. That inverted the real situation: all of this information originates in Revit, where the full context still exists, and the export is a lossy projection of it. `extensions/RevitCheck.extension/` is a pyRevit toolbar building the same checks where the data lives. **Scope confirmed by the user: internal projects only, so the model is always available** — the "you can only check what you have a model for" objection does not apply here.
+
+**What this dissolves, concretely.** The blocker that paused the project was that section/elevation cutting planes are Revit-only knowledge, unrecoverable from the export (confirmed directly — no section-marker blocks in any DXF, and the 55 markers the reference graph finds carry tag/position/target with no cut line, direction or depth). The planned workaround was a deterministic ranked shortlist plus a per-view human confirm, an hour or two per project. Inside Revit a `ViewSection` carries its own origin and direction, and a `Dimension`'s `References` resolve to real element ids — so the view→element correspondence problem that lexical matching could not solve (one right, one confidently wrong, one blank against real Flinders titles) does not arise. Several other pieces collapse the same way: three title-block extraction strategies → `sheet.SheetNumber`; revision-cloud scallop-arc vector clustering → `OfClass(RevisionCloud)`; the bearing + chained-dimension setout walk → `FamilyInstance.Location.Point` plus shared coordinates, which also disposes of the `IfcSite`-says-Massachusetts problem. **The Flinders lesson holds and is the reason this works:** logic built on domain invariants survived a second client, logic built on client conventions broke — and the Revit API *is* an invariant. Also gone: the API/DB/queue/frontend build (BACKEND_REVIEW.md §8's "majority of the work"), §2's stateless-by-design purge machinery, and §11's purge-timing question, since nothing leaves the machine.
+
+**Built, 2026-08-17 — the backbone plus the first tool** (`extensions/RevitCheck.extension/`, see its README):
+- **The layering is the load-bearing decision, because development happens on a Mac with no Revit.** `adapters/revit_source.py` is the *only* module that imports the Revit API; `ir.py` holds plain dataclasses (raw facts, millimetres — Revit's internal unit is always decimal feet, so conversion is `× 304.8` with no `UnitUtils` call and therefore no `UnitTypeId`/`DisplayUnitType` version branching); `checks/*.py` are pure `(RevitModel, RuleConfig) -> [Issue]`. This is CLAUDE.md's own existing IR rule applied to a third extractor, and it is what makes every rule testable offline.
+- **The adapter extracts facts and judges nothing** — it records that an element is `ViewSpecific`, not that this means "drafted". Classification lives in `checks/`. Deliberate: a capture taken at work stays valid when a classification is retuned, so tuning never costs a trip back to a Revit machine.
+- **`capture.py` + the Capture Model button + `scripts/check_capture.py` are the development workflow, not a convenience.** Dump the extracted IR to JSON at work, develop and test against it anywhere — the same loop `samples/BR06/dxf/` already provides for DXF. `tests/revit/` (54 tests) runs in 0.07s with no Revit present.
+- **`revit.dimension_provenance`** — the first tool. For each dimension, do its references resolve to model geometry or to view-specific linework? That is the direct form of the drift problem PLANNING.md §5 describes, replacing the DXF-side layer-name proxy (`D-BDGE` vs `A-DETL`) with Revit's own `ViewSpecific` flag. Four-way classification (`model`/`datum`/`drafted`/`mixed`, plus `unknown`): grids, levels and reference planes are **datums, not risks** — dimensioning to a grid is good practice and must not be lumped in with linework; `ImportInstance` **is** a risk despite not being view-specific, because an imported DWG is a static snapshot of someone else's file. Output rolls up per view: a wholly-drafted view is one finding, not twenty, because it is a larger and different finding *and* it is the unit the follow-up tool operates on (`drafted_views()` returns exactly that list). Drafting views are reported with different wording and severity — a section could have been live and someone chose otherwise; a drafting view never had a model behind it.
+- **`revit.capture_coverage`** — extraction failures are isolated per element and surfaced as an Issue, per this file's own "report a coverage indicator, don't fail silently" rule. `run_checks` also isolates per *rule*, which the PDF side deliberately does not (a known gap in `session.py`'s docstring); there the cost was a failed CLI run, here it would be a toolbar button dying mid-review.
+- Inherited fixes worth not losing: `RuleConfig.enabled_rule_ids` resolves at run time rather than snapshotting the catalog at construction (the 2026-08-17 import-order bug), and `tests/revit/` guards rule registration by importing only `revitcheck.checks`, never a rule module directly.
+
+**Next, confirmed with the user:** verify the drafted dimensions themselves against the model — the harder half, deliberately sequenced second so the easy wins land first and the workflow is established. `revit.dimension_provenance` produces its input.
+
+**Still PDF-side and not ported:** `src/pdfchecker/` is untouched and still green. It is not deleted — the decision was to build the Revit path first and converge later, rather than refactor a working, tested package in the same move as a pivot. What carries over when the drafting checks are ported is mostly data and semantics, not code: the firm/project glossaries (the 128/30/40 hand-classification is the load-bearing part), `en_gb_variants.py`, and precise check definitions like the revision cross-check ("sheets sharing a date should share a revision ID"). What dies is the extraction layer — PDF, DXF, IFC, the DXF→PDF transform, PDF markup.
 
 ## Intended stack (see PLANNING.md §1 for rationale)
 
