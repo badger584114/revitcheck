@@ -275,13 +275,12 @@ class DxfSheet:
     building it ahead of a consumer" convention. `source_path` is the
     converted DXF's path, not the original DWG's.
 
-    Title-block extraction from DXF isn't attempted yet even though the
-    real geometry was inspected for it (see extraction/dxf_source.py's
-    docstring) — confirmed feasible via fixed paper-space text position
-    (no ATTRIB attributes exist to key off, unlike PLANNING.md §4
-    originally assumed) but not yet needed by the first geometry check
-    (single-sheet dimensional consistency, PLANNING.md §9 step 3), which
-    only needs `dimensions` and `units`.
+    Title-block extraction from DXF isn't attempted — confirmed feasible
+    via fixed paper-space text position (no ATTRIB attributes exist to
+    key off, unlike PLANNING.md §4 originally assumed, see extraction/
+    dxf_source.py's docstring), but confirmed by the user 2026-08-15 not
+    needed: title-block extraction stays PDF-only for good, not a gap
+    waiting on a consumer.
 
     `inserts`/`texts` were added for §5b (extraction/setout_reconstruction.py)
     — modelspace `INSERT`/`TEXT`/`MTEXT` entities, the same "no ATTRIB,

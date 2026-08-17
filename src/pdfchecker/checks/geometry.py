@@ -897,22 +897,47 @@ def check_ifc_superstructure_coverage(project: Project, config: RuleConfig) -> l
       element's real-world Easting can be compared to a reconstructed
       LOCATION group's mean Easting, schema-general, no reliance on
       either side's naming convention holding on a different project.
-      This closes the naming-mismatch half of the blocker (and, more
-      valuably, gives `check_ifc_setout_consistency`'s own documented
-      "no confirmed IFC-side location signal to scope by" gap a real
-      answer, not just this rule) — not yet wired into either rule's
-      matching logic, since neither real sample's pile/beam spacing
-      makes the gap live today; see `check_ifc_setout_consistency`'s
-      docstring for that gap's current status. The *other* half of this
-      rule's own blocker — no independently-derived real-world value to
-      compare deck/beam *magnitude* against — is untouched by this and
-      stays open.
+      This closes the naming-mismatch half of the blocker, and gives
+      `check_ifc_setout_consistency`'s own documented "no confirmed
+      IFC-side location signal to scope by" gap a real answer too —
+      **wired into that rule's matching, same day** (`_location_
+      centroids`/`_nearest_location`, see its docstring); doesn't change
+      either real sample's output since neither sample's pile/beam
+      spacing makes the gap live today, but closes it for a future
+      tighter-spaced project.
     - Matching a specific DXF `DIMENSION` on a general-arrangement/
       elevation sheet to "the" overall deck length, with no schedule or
       label to anchor on, is exactly the kind of spatial-proximity
       guessing PLANNING.md §1 already found unreliable for PDF dimension
       reconstruction — not attempted here without first exploring real
       sheet data to see if anything better than proximity exists.
+
+    **The deck-magnitude half is resolved as out of scope, confirmed by
+    the user 2026-08-15 — a boundary this tool doesn't need to cross,
+    not a gap left to close.** Deck geometry/design is the roads team's
+    responsibility, not this tool's, which is exactly why no
+    independently-derived comparison value was ever found: it was never
+    this team's data to reconcile. This coverage-only check is the
+    confirmed intended final form for the deck half of this rule, not a
+    stepping stone toward a magnitude check. Real, separate fallback the
+    user flagged: **if** the roads team hasn't done the deck design for
+    a given project, a deck setout table exists and could in principle
+    be compared against the same way `geometry.setout_reconstruction`
+    compares piles — a real, potential future data source, not built
+    (no sample to calibrate against yet), and only relevant in that
+    specific "roads team hasn't done it" case.
+
+    **Abutment beams are a different story, confirmed by the user
+    2026-08-15 — still this tool's responsibility, genuinely open, and
+    now better-scoped than the deck-length-style magnitude proxy
+    originally speculated.** The critical thing to verify is beam
+    *placement*, specifically real-world height/elevation (bearing seat
+    / soffit level) — not a length or span comparison. A steel-girder
+    superstructure (this sample's is concrete) comes with more/different
+    detail drawings, a real project-type variable this rule doesn't
+    handle yet. Not buildable yet — waiting on a real sample to
+    calibrate a height-based check against, same "wait for real data"
+    discipline as everywhere else in this codebase.
 
     So this rule reports only what's actually confirmed: whether the
     attached IFC model has *any* element matching each shape category in
