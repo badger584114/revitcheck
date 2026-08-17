@@ -58,7 +58,9 @@ def ingest_pdf(path: str, *, table_scan_keywords=SETOUT_TABLE_KEYWORDS) -> Proje
 
             words = extract_words(fitz_page)
             paths = extract_paths(fitz_page)
-            title_block = extract_title_block(fitz_page, words)
+            # `paths` enables the cell-based fallback for title blocks whose
+            # labels DEFAULT_FIELD_SPECS doesn't know (see titleblock.py).
+            title_block = extract_title_block(fitz_page, words, paths=paths)
             # Revision schedule is extracted by word-clustering over its
             # own bottom-left region, not pdfplumber's table detector —
             # see tables.py for why (no reliable ruling-line grid there).
