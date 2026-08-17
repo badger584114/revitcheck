@@ -310,7 +310,31 @@ python -m pytest tests/ -v
 
 `samples/` holds real PDF/DWG sheet sets (bridges, retaining walls) for reference — actual title block layouts, setout table formats, callout/revision conventions, and drafting quirks. Check here before making assumptions about how any of this is actually laid out on real sheets; it's a better source of truth than the generic descriptions in this file and PLANNING.md. When extraction or check logic is built, use these as the first real test fixtures.
 
+**A third real project, `samples/Flinders/`, was investigated 2026-08-17 but is NOT committed** (201MB, and the DWG set is incomplete — see below). A different client entirely (`CS1-DRG-*`, "Flinders Link" viaduct, South Australia): 116-page A1 PDF, 93 DWGs, a 9,493-element IFC. It is the first real data from outside T2DPAA and it broke most convention-dependent extraction at once — see the generalisation findings below and PLANNING.md §5. Note the DWG set starts at `359944`, so the sheets most worth testing against (`359898`, carrying the SOP setout schedule, and `359902`, carrying the abutment dimensions taken from SOP1) have **no CAD file**, which is what blocked an end-to-end reconstruction attempt.
+
 Samples are organized per-project under `samples/<project>/` (e.g. `samples/BR06/`, `samples/BR08/`). `samples/BR06/dwg/` holds the real DWG set (31 files, one per sheet — a different structure from the PDF's single 37-page file). `samples/BR06/dxf/` holds two of those, pre-converted to DXF via ODA File Converter and committed directly so tests don't need ODA installed — regenerate/expand via `extraction.dxf_source.convert_dwg_to_dxf`, or manually: `ODAFileConverter <in_dir> <out_dir> ACAD2018 DXF 0 1`. `samples/BR08/` is a second, larger, multi-discipline bridge project (133 DWGs across `-BR-` and `-DU-` sheet series) — added but not yet used to calibrate anything. Both `BR06` and `BR08` now also carry a `.ifc` 3D-model export (`T2DPAA-T2D-C3S-BR-M3D-*.ifc`) — see PLANNING.md §5's IFC proposal, not yet built against.
+
+## What a third client (Flinders) revealed about generalisation — 2026-08-17
+
+The first real data from outside T2DPAA. Two samples from one client validated far less than assumed, and the failures fall into a clear pattern: **convention-dependent logic broke; invariant-based logic held.**
+
+**Broke on the second client:**
+- **Title-block labels** — 6 of 8 expected labels absent, including all three `RuleConfig` requires (`REVISION:` not `AMEND No.`, `SHEET: 6 OF 23` not `SHEET No.`). Two labels that did match returned *the next label as the value*. Fixed — see the title-block section above.
+- **DXF filename convention** — bare `359944.dwg` vs `...-DRG-101032_0.dwg`. Fixed.
+- **`geometry.dimension_consistency` scope** — 54% of BR06's dimensions carry a numeric override against 4.5% (and 0 numeric) on Flinders, so the rule is structurally inert there. See PLANNING.md §5: this is a *different drafting workaround for the same underlying problem*, not a defect.
+- **IFC shape heuristics** — `_is_slender_vertical` finds 28 real piles on BR06 with zero false positives, and **4,966 matches on Flinders, 4,282 of them `IfcReinforcingBar`**. A reinforcing bar *is* "small footprint, tall"; BR06 simply contained no rebar. `IfcReinforcingBar` is IFC4-standard so excluding it is schema-general — **not yet done**, and `geometry.ifc_setout_consistency` is unsafe on any rebar-carrying model until it is.
+- **`IfcSite` lat/long** — reports 42.41°N, −71.26°W (Massachusetts). A Revit template default. `extraction/ifc_source.py` calls this "a portable, if rougher, real-world anchor" based on BR06 being ~1.7km off; here it is ~16,000km off. That wording needs downgrading to "may be a template default with no relation to the site".
+
+**Held across both clients:**
+- Easting/Northing as the invariant of a setout table (the user's own insight)
+- Dimension chains linking by shared witness points
+- The sheet identifier being the most prominent text in the title block (37/37 BR06, 116/116 Flinders, with no label to key on)
+- Cell-based value extraction from the title block's own ruled grid
+- Colon-terminated and `<WORD> No.` label conventions
+
+**Corrected along the way:** Flinders' IFC *is* usable despite not being georeferenced to MGA. Its local project grid is the same grid the drawings' setout points use — `SOP1` at `E 69390.802, N 138372.310` sits 0.27m from a bearing plinth and 1.5m from the nearest Abutment A pile, and exactly 8 piles at 1050mm diameter cluster within 15m, matching the schedule's `PA-1..PA-8`. An earlier conclusion here that the coordinate frames were incompatible was wrong.
+
+**Status: paused 2026-08-17 at the user's direction.** The open question is no longer technical viability but whether the effort is worth it — see PLANNING.md §5 for the geometry check's real purpose (catching 2D details drift from the model), the section-cutting-plane boundary, and the deterministic per-view correspondence route that works without an LLM (which is unavailable: locked-down machines, blanket company policy, not worth contesting).
 
 ## Intended stack (see PLANNING.md §1 for rationale)
 
