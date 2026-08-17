@@ -34,6 +34,11 @@ from pdfchecker.ir import TextWord, TitleBlock
 # reference graph territory — deliberately not this module's job).
 TITLE_BLOCK_BAND_FRACTION = 0.10
 
+# Band scanned by the cell-based reader below. Wider than the spec band
+# because title blocks vary in depth — T2DPAA's occupies ~7% of the sheet,
+# Flinders' closer to 20%.
+DISCOVERY_BAND_FRACTION = 0.25
+
 
 @dataclass(frozen=True)
 class FieldSpec:
@@ -93,6 +98,11 @@ def _looks_like_a_label(text: str) -> bool:
     reference graph unchallenged."""
 
     stripped = text.strip()
+    # A bare ":" is punctuation, not a label — it appears inside real
+    # values (a scale reads "1 : 100"), and treating it as a label dropped
+    # the separator, giving "1 100".
+    if not any(c.isalnum() for c in stripped):
+        return False
     return stripped.endswith(":") or stripped.upper().rstrip(".:") == "NO"
 
 
@@ -136,7 +146,25 @@ def extract_title_block(
     page: fitz.Page,
     words: list[TextWord],
     field_specs: list[FieldSpec] = DEFAULT_FIELD_SPECS,
+    paths=None,
 ) -> TitleBlock:
+    """Title-block fields, by two strategies in order of precision.
+
+    1. `field_specs` — calibrated label + direction + window per field.
+       Precise where the labels match, which is every T2DPAA sheet.
+    2. `extract_by_cells` — reads whatever labels the sheet has and bounds
+       each value with the title block's own ruled grid. This is what
+       covers a client whose labels the spec list has never seen, and it
+       only runs where a real grid exists (see that function).
+
+    Specs win on conflict: they are calibrated against a known layout,
+    while the cell reader infers one. Cells fill in whatever specs
+    missed — which on a foreign title block is everything.
+
+    `paths` is the page's vector paths (`extraction/pdf_source.py`); the
+    caller already has them, so they're passed rather than re-extracted.
+    Omitted, strategy 2 is skipped and behaviour is exactly as before."""
+
     band_y0 = page.rect.height * (1 - TITLE_BLOCK_BAND_FRACTION)
     fields: dict[str, str] = {}
     for spec in field_specs:
@@ -146,4 +174,186 @@ def extract_title_block(
         value = _value_near(words, label_rect, spec)
         if value:
             fields[spec.name] = value
+
+    if paths:
+        # A wider band than the spec path uses: title blocks vary in depth
+        # (T2DPAA's is ~7% of sheet height, Flinders' closer to 20%), and
+        # the grid requirement in extract_by_cells is what keeps this from
+        # wandering into drawing-body linework.
+        discovery_band = page.rect.height * (1 - DISCOVERY_BAND_FRACTION)
+        canonical, _discovered = extract_by_cells(words, paths, discovery_band)
+        for name, value in canonical.items():
+            fields.setdefault(name, value)
+
     return TitleBlock(fields=fields)
+
+
+# --- Cell-based extraction (dynamic, layout-driven) ---------------------
+#
+# `DEFAULT_FIELD_SPECS` above says *which labels to look for*, which only
+# covers title blocks that use those exact labels. Confirmed inadequate
+# 2026-08-17 against a second client (Flinders / CS1-DRG-*): six of the
+# eight expected labels don't appear on those sheets at all, including all
+# three fields `RuleConfig` requires — that client writes `REVISION:`
+# where T2DPAA writes `AMEND No.`, and `SHEET: 6 OF 23` where T2DPAA
+# writes `SHEET No.`.
+#
+# This half works the other way round: read whatever labels the sheet
+# actually has, and use the title block's **own ruled cells** to bound
+# each value.
+#
+# **Why cells rather than proximity.** A text-proximity version was built
+# first and rejected: title blocks pack fields side by side, so a
+# "nearest text, same row" rule cannot tell where one field's value ends
+# and the neighbour's label begins. It produced `amend_no = "0 6 OF 23"`
+# and `date = "28.03.26 IN ACCORDANCE WITH DP013 SHEET LATITUDE ..."` —
+# roughly half the fields right, which is worse than useless for feeding
+# checks. A cell bounds the value exactly: the same sheet gives
+# `REVISION: -> "0"`, `SIZE: -> "A1"`, `DATE: -> "21/03/2019"`.
+#
+# **Not universally available, which is why this is a strategy and not a
+# replacement.** Flinders' title block is a real ruled grid (51 vertical
+# and 40 horizontal rules on a sheet). BR06's is not — it has 5 vertical
+# rules in the whole band, and its box-shaped paths are full-width bands
+# (the smallest one containing both the "DRAWING No." label and its
+# "8011" value is 2130x40pt, i.e. the entire block) plus small text
+# background fills. So BR06 is laid out positionally, and the calibrated
+# specs above remain the right mechanism there. `extract_title_block`
+# tries specs first and falls back to cells for whatever they missed.
+
+# A grid needs enough rules in both directions to be a grid rather than a
+# few decorative lines. BR06 has 5 vertical rules (not a grid), Flinders
+# 43 (clearly one) — 8 sits well clear of both.
+MIN_GRID_LINES = 8
+
+# Rules drawn as separate segments can be a fraction of a point apart;
+# snap coordinates together before treating them as one grid line.
+_GRID_SNAP_PT = 2.0
+
+# Discovered label text (normalised) -> canonical field name. The one
+# place client vocabulary lives, and deliberately data rather than logic
+# so a new client's wording is a one-line addition rather than new code.
+# Sources: T2DPAA (BR06/BR08) and CS1 (Flinders) real sheets, plus common
+# industry variants that cost nothing to accept.
+LABEL_SYNONYMS: dict[str, str] = {
+    "DRAWING NO": "drawing_no", "DRG NO": "drawing_no", "DWG NO": "drawing_no",
+    "DRAWING NUMBER": "drawing_no",
+    "SHEET NO": "sheet_no", "SHEET NUMBER": "sheet_no",
+    "AMEND NO": "amend_no", "AMENDMENT NO": "amend_no", "REVISION": "amend_no",
+    "REV": "amend_no", "REV NO": "amend_no", "ISSUE": "amend_no",
+    "DESIGNED": "designed_by", "DESIGNED BY": "designed_by",
+    "ORIGINATE/DESIGN": "designed_by",
+    "DRAFTED": "drafted_by", "DRAWN": "drafted_by", "DRAFTED BY": "drafted_by",
+    "CHECKED": "checked_by", "CHECK": "checked_by",
+    "ACCEPTED": "accepted_by", "ACCEPTED FOR USE": "accepted_by",
+    "SCALE": "scale", "SCALES": "scale", "SCALE(S)": "scale",
+    "DATE": "date",
+    "SIZE": "sheet_size",
+    "SHEET": "sheet_of",  # Flinders' "SHEET: 6 OF 23" — an index, not a sheet id
+}
+
+
+def _normalise_label(text: str) -> str:
+    return " ".join(text.replace(":", " ").split()).upper().rstrip(".")
+
+
+def _snap(values: list[float]) -> list[float]:
+    """Collapses near-identical coordinates into single grid lines."""
+
+    out: list[float] = []
+    for v in sorted(values):
+        if not out or v - out[-1] > _GRID_SNAP_PT:
+            out.append(v)
+    return out
+
+
+def build_grid(paths, band_y0: float) -> tuple[list[float], list[float]]:
+    """`(horizontal_ys, vertical_xs)` for the title block's ruled grid.
+
+    Rules are recognised by shape — a path far longer in one axis than the
+    other — rather than by any per-client convention."""
+
+    hs = [p.bbox.y0 for p in paths if p.bbox.y0 >= band_y0 and p.bbox.height < 2 and p.bbox.width > 20]
+    vs = [p.bbox.x0 for p in paths if p.bbox.y0 >= band_y0 and p.bbox.width < 2 and p.bbox.height > 8]
+    return _snap(hs), _snap(vs)
+
+
+def has_usable_grid(hs: list[float], vs: list[float]) -> bool:
+    return len(hs) >= MIN_GRID_LINES and len(vs) >= MIN_GRID_LINES
+
+
+def _cell_bounds(cx: float, cy: float, hs: list[float], vs: list[float]):
+    """The grid cell containing a point, or `None` at the grid's edge."""
+
+    left = max((x for x in vs if x <= cx), default=None)
+    right = min((x for x in vs if x >= cx), default=None)
+    top = max((y for y in hs if y <= cy), default=None)
+    bottom = min((y for y in hs if y >= cy), default=None)
+    if None in (left, right, top, bottom):
+        return None
+    return left, top, right, bottom
+
+
+def _text_in_cell(words: list[TextWord], cell, exclude_ids: set) -> str | None:
+    left, top, right, bottom = cell
+    inside = [
+        w for w in words
+        if id(w) not in exclude_ids
+        and left <= (w.bbox.x0 + w.bbox.x1) / 2 <= right
+        and top <= (w.bbox.y0 + w.bbox.y1) / 2 <= bottom
+        and w.text.strip()
+        and not _looks_like_a_label(w.text)
+    ]
+    if not inside:
+        return None
+    inside.sort(key=lambda w: (round(w.bbox.y0 / 4), w.bbox.x0))
+    return " ".join(w.text for w in inside).strip() or None
+
+
+def extract_by_cells(words: list[TextWord], paths, band_y0: float) -> tuple[dict, dict]:
+    """`(canonical_fields, all_discovered)` read off the ruled grid.
+
+    A label's value is normally in its own cell; where the cell holds only
+    the label, the cell directly below and then to the right are tried,
+    which is the other common title-block arrangement (confirmed on
+    Flinders, where `ACCEPTED:` labels a cell whose value sits beneath).
+
+    `all_discovered` keeps every label/value pair found, keyed by the
+    label as printed — an unrecognised label is real information (it is
+    how you learn a client writes `ORIGINATE/DESIGN:`) and dropping it
+    would hide exactly what's needed to extend `LABEL_SYNONYMS`."""
+
+    hs, vs = build_grid(paths, band_y0)
+    if not has_usable_grid(hs, vs):
+        return {}, {}
+
+    label_words = [
+        w for w in words
+        if w.bbox.y0 >= band_y0 and w.text.strip() and _looks_like_a_label(w.text)
+    ]
+    label_ids = {id(w) for w in label_words}
+
+    canonical: dict[str, str] = {}
+    discovered: dict[str, str] = {}
+    for w in label_words:
+        cx, cy = (w.bbox.x0 + w.bbox.x1) / 2, (w.bbox.y0 + w.bbox.y1) / 2
+        cell = _cell_bounds(cx, cy, hs, vs)
+        if cell is None:
+            continue
+        value = _text_in_cell(words, cell, label_ids)
+        if value is None:  # label-only cell — look below, then right
+            below = _cell_bounds(cx, cell[3] + 1, hs, vs)
+            right = _cell_bounds(cell[2] + 1, cy, hs, vs)
+            for neighbour in (below, right):
+                if neighbour is not None:
+                    value = _text_in_cell(words, neighbour, label_ids)
+                    if value:
+                        break
+        if not value:
+            continue
+        label = _normalise_label(w.text)
+        discovered.setdefault(label, value)
+        name = LABEL_SYNONYMS.get(label)
+        if name and name not in canonical:
+            canonical[name] = value
+    return canonical, discovered
