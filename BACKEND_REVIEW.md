@@ -146,7 +146,7 @@ Retrofitting deletion semantics after a frontend exists is how confidentiality g
 
 ## 3. Data-model gaps the UI will hit immediately
 
-### 3.1 `Issue` has no stable identity — and §8's core flow depends on one
+### 3.1 `Issue` has no stable identity — and §8's core flow depends on one — **fixed 2026-08-17**
 
 PLANNING §8 step 2 is *"Engineer selects which issues to include"*. On a stateless server with no run persistence, that means the client must send the selected subset back. But:
 
@@ -154,11 +154,17 @@ PLANNING §8 step 2 is *"Engineer selects which issues to include"*. On a statel
 - `assign_tags` (in `markup/pdf_markup.py`) numbers by **position after sorting**, so `#014` identifies an issue only relative to one exact list. Send back a subset and every tag shifts — the tags in the marked-up PDF would no longer match the tags in the report.
 - `Issue.to_dict()` exists; there is no `from_dict`. Nothing can round-trip.
 
-**Fix:** give `Issue` a deterministic, content-derived id at construction (hash of `rule_id` + `page_index` + `bbox` + `description`), have `assign_tags` sort by it, and add `from_dict`. Small change, but everything in the markup flow depends on it, and it is much cheaper now than after the UI has opinions.
+**Fix — applied 2026-08-17.** `Issue.issue_id` is a derived property (sha256 of rule/sheet/page/bbox/description, 16 hex chars), not a stored field, so it cannot go stale. Page coordinates are rounded to 0.01pt before hashing — bboxes come out of a transform chain and the IFC work in this same branch moved some by ~1e-9m while being deliberately equivalent, which must not re-identify every geometry finding. Severity and `suggested_fix` are excluded: a config change that re-tiers a rule, or a reworded fix, shouldn't turn one finding into a different one.
 
-### 3.2 No report exporter
+`assign_tags` now ends its sort on `issue_id`, which matters more than it sounds — the old key (page, severity, rule_id) left genuine ties (a sheet with twenty spelling issues has twenty identical keys), and Python's stable sort broke them by *input list order*, so tags depended on the order the caller accumulated issues in. `Issue.from_dict` and `checks.issue.select_by_id` complete the round-trip; `from_dict` deliberately ignores any client-supplied `issue_id` and recomputes it.
+
+Verified on the real BR06 run: 0 collisions across the issue set, ids identical across runs, and tags unchanged across 5 shuffles of the input order.
+
+### 3.2 No report exporter — **fixed 2026-08-17**
 
 §8 specifies the markup set and the full report are downloaded together. `MarkupReportEntry.to_dict()` exists, but nothing writes a report artifact — no JSON, CSV, or PDF. The UI needs a defined report format to render *and* to offer as a download.
+
+**Fix — applied 2026-08-17.** `markup/report.py`'s `build_report(session_result) -> CheckReport`, with `to_json()`, `to_csv()` and `write(stem)`. JSON is the machine-readable artifact (API response, the frontend's filterable issue list, and — because every entry carries `issue_id` — the input §7 names for a stateless cross-run diff if that capability ever returns). CSV covers §7's "Excel report" with no new dependency. Tags come from the same `assign_tags` the markup uses, so `#014` on a sheet and `#014` in the report are the same finding; `marked_up` joins on `issue_id`, not tag, since a caller may render markup for a whole run and report a selected subset. `scripts/run_session.py --report <stem>` drives it. A PDF report is deliberately not built — see the module docstring.
 
 ### 3.3 Two rules emit issues with no location
 

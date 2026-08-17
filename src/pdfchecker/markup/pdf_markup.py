@@ -66,16 +66,28 @@ def assign_tags(issues: list[Issue]) -> list[tuple[str, Issue]]:
     "each issue gets a short reference tag (e.g. #014) ... matching an
     entry in the full exported report."
 
-    Note the tag is positional: it identifies an Issue only relative to
-    the exact list passed in. Re-running with a different subset
-    renumbers everything. That's fine while one call renders the sheets
-    and the report together, but it's why §8's engineer-issue-selection
-    step needs a stable per-Issue id first — see BACKEND_REVIEW.md §3.1.
-    """
+    The sort ends on `issue_id` (2026-08-17). Without it the key
+    (page, severity, rule_id) leaves genuine ties — a sheet with twenty
+    spelling issues has twenty identical keys — which Python's stable
+    sort then breaks by *input list order*. That made tags depend on the
+    order the caller happened to accumulate issues in, so the same run
+    could tag the same finding differently. Ending on a content-derived
+    id makes this a total order, and the numbering reproducible.
+
+    The tag itself is still positional and always will be: it's a
+    human-readable index into one report ("see #014"), so a selected
+    subset legitimately renumbers from #001. `Issue.issue_id` is the
+    thing that identifies a finding across runs and selections; the tag
+    identifies its row in one exported package."""
 
     ordered = sorted(
         issues,
-        key=lambda i: (i.page_index, _SEVERITY_ORDER.get(i.severity, len(_SEVERITY_ORDER)), i.rule_id),
+        key=lambda i: (
+            i.page_index,
+            _SEVERITY_ORDER.get(i.severity, len(_SEVERITY_ORDER)),
+            i.rule_id,
+            i.issue_id,
+        ),
     )
     return [(f"#{idx:03d}", issue) for idx, issue in enumerate(ordered, start=1)]
 
@@ -103,9 +115,15 @@ class MarkupReportEntry:
     note carries, matched to the complete detail a drafter or engineer
     can look up if the terse sheet note isn't enough. `rendered=False`
     means this Issue has no `bbox` to draw (see module docstring) — it
-    still has a tag and a report entry, just no mark on any sheet."""
+    still has a tag and a report entry, just no mark on any sheet.
+
+    Carries `issue_id` (2026-08-17) as well as `tag`: the tag indexes one
+    exported package and renumbers with the list, while the id is stable
+    across runs and selections, so anything joining this to other run
+    output — `markup/report.py` does — should join on the id."""
 
     tag: str
+    issue_id: str
     rule_id: str
     category: str
     severity: str
@@ -118,6 +136,7 @@ class MarkupReportEntry:
     def to_dict(self) -> dict:
         return {
             "tag": self.tag,
+            "issue_id": self.issue_id,
             "rule_id": self.rule_id,
             "category": self.category,
             "severity": self.severity,
@@ -203,6 +222,7 @@ def render_markup(project: Project, issues: list[Issue], output_path: str) -> li
         report.append(
             MarkupReportEntry(
                 tag=tag,
+                issue_id=issue.issue_id,
                 rule_id=issue.rule_id,
                 category=issue.category,
                 severity=issue.severity,
