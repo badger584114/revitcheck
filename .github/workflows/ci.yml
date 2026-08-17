@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # samples/ is ~310MB of real drawings and nothing here needs it —
           # collection imports conftest.py but never opens a sample (its
@@ -47,7 +47,7 @@ jobs:
             config
           sparse-checkout-cone-mode: true
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.9"
           cache: pip
@@ -69,13 +69,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           sparse-checkout: |
             src
           sparse-checkout-cone-mode: true
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.9"
 
@@ -109,9 +109,9 @@ jobs:
     # large checkout without letting a genuine hang burn the budget.
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.9"
           cache: pip
@@ -147,11 +147,14 @@ jobs:
     #     DeprecationWarning on 3.9 but a SyntaxWarning on 3.13 — i.e. on
     #     its way to a SyntaxError. Exactly the drift this job exists to
     #     catch early; fixed with a raw docstring.
-    #   * 3.13 ran the suite in 3m16s against 3.9's 5m51s. Some of that is
-    #     this dev machine's 3.9 being an x86_64 build under Rosetta
-    #     (CLAUDE.md's environment note), but it is a standing hint that
-    #     the containerised deployment target (PLANNING.md §10) should not
-    #     inherit the 3.9 floor without measuring.
+    #   * a performance signal that turned out smaller than it first
+    #     looked. Locally 3.13 ran the suite in 3m16s against 3.9's
+    #     5m51s, but on CI — same runner, same architecture, a fair
+    #     comparison — it is 5m07s against 5m52s. So most of that local
+    #     gap was this dev machine's 3.9 being an x86_64 build under
+    #     Rosetta (CLAUDE.md's environment note), not the interpreter.
+    #     ~13%% is still worth having, but the 3.9 floor is not the
+    #     performance problem a naive local read would suggest.
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -159,9 +162,9 @@ jobs:
         python-version: ["3.13"]
     steps:
       # Full checkout: this runs the real suite, so it needs samples/.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
