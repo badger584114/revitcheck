@@ -1,0 +1,171 @@
+name: CI
+
+# Added 2026-08-17. The repo had no CI at all, and the two breakages that
+# prompted this review were both invisible because of it:
+#
+#   * PyYAML was pinned in requirements.txt but missing from the dev venv,
+#     so `import yaml` in checks/__init__.py killed both CLIs *and* the
+#     whole test suite at import.
+#   * tests/test_dxf_markup.py used `str | None` with no
+#     `from __future__ import annotations`, which Python 3.9 can't
+#     evaluate. A single collection error aborts the entire pytest run, so
+#     that one file silently suppressed all test feedback.
+#
+# Both are import-time failures, which is why the `fast` job below is
+# `--collect-only`: it reproduces that whole class of problem in under a
+# second, and gives a signal long before the sample-backed suite finishes.
+
+on:
+  push:
+  pull_request:
+
+# A new push supersedes an in-flight run on the same ref — the full suite
+# checks out ~310MB of real drawing samples, so stale runs aren't free.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Every gating job pins Python 3.9: pyproject.toml declares >=3.9 and the
+# dev environment is 3.9.5, so that's the floor. The non-gating
+# forward-compat job below is the only one that varies it.
+
+jobs:
+  fast:
+    name: Import & collection (no sample data)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # samples/ is ~310MB of real drawings and nothing here needs it —
+          # collection imports conftest.py but never opens a sample (its
+          # fixtures resolve paths lazily). Keeps this job genuinely fast.
+          sparse-checkout: |
+            src
+            tests
+            scripts
+            config
+          sparse-checkout-cone-mode: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      - name: Byte-compile everything
+        # Catches syntax errors in files no test imports.
+        run: python -m compileall -q src scripts tests
+
+      - name: Collect the full test suite
+        # The actual regression guard for this review's findings 1.1/1.2.
+        # Any import-time failure in any test module fails here.
+        run: python -m pytest tests/ --collect-only -q
+
+  packaging:
+    name: Installs from pyproject.toml alone
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            src
+          sparse-checkout-cone-mode: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      # Deliberately does NOT use requirements.txt. pyproject.toml's
+      # dependency list had drifted from what the code imports (it omitted
+      # ezdxf, ifcopenshell and numpy, so `pip install .` produced a
+      # package that couldn't import itself). Installing from the manifest
+      # alone and importing every module is what stops that recurring —
+      # requirements.txt would mask it by pulling the missing packages in.
+      - run: pip install .
+
+      - name: Import every module from the installed package
+        # Runs from a directory with no source tree on sys.path, so this
+        # exercises the installed distribution rather than the checkout.
+        working-directory: /tmp
+        run: |
+          python -c "
+          import importlib, pkgutil, pdfchecker
+          mods = [m.name for m in pkgutil.walk_packages(pdfchecker.__path__, 'pdfchecker.')]
+          for m in sorted(mods):
+              importlib.import_module(m)
+          from pdfchecker.checks import all_rule_ids
+          assert [r for r in all_rule_ids() if r.startswith('geometry.')], 'geometry rules not registered'
+          print(f'imported {len(mods)} modules; {len(all_rule_ids())} rules registered')
+          "
+
+  tests:
+    name: Full suite against real samples
+    runs-on: ubuntu-latest
+    # ~6 minutes locally; the ceiling allows for a slower runner and the
+    # large checkout without letting a genuine hang burn the budget.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      # ODA File Converter is a manual install, not a pip dependency, so
+      # it is absent here — the one test needing it skips itself
+      # (tests/test_dxf_source.py). Everything else runs against the real
+      # PDFs, DXFs and IFC models committed under samples/.
+      - name: Run tests
+        run: python -m pytest tests/ -q --durations=10
+
+  forward-compat:
+    name: Full suite on newer Python (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # NOT gating, and installs *unpinned* — requirements.txt is frozen
+    # against 3.9, so a failure here should read as "the pins or a
+    # dependency don't support this interpreter yet", not "the code is
+    # broken". Worth running: this codebase leans on
+    # `from __future__ import annotations` throughout for 3.9
+    # compatibility, and deployment (PLANNING.md §10, containerised) is
+    # not pinned to 3.9, so drift in either direction matters.
+    #
+    # Verified locally on 3.13.15 before this workflow was committed:
+    # `pip install . pytest` resolves and the *full* suite passes, 276/276
+    # — so this runs the whole suite rather than just collection, which is
+    # what makes it a real forward-compat signal instead of an import
+    # smoke test. Two things that run surfaced:
+    #   * the `\P` invalid escape in extraction/dxf_source.py, a
+    #     DeprecationWarning on 3.9 but a SyntaxWarning on 3.13 — i.e. on
+    #     its way to a SyntaxError. Exactly the drift this job exists to
+    #     catch early; fixed with a raw docstring.
+    #   * 3.13 ran the suite in 3m16s against 3.9's 5m51s. Some of that is
+    #     this dev machine's 3.9 being an x86_64 build under Rosetta
+    #     (CLAUDE.md's environment note), but it is a standing hint that
+    #     the containerised deployment target (PLANNING.md §10) should not
+    #     inherit the 3.9 floor without measuring.
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      # Full checkout: this runs the real suite, so it needs samples/.
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install unpinned (requirements.txt is 3.9-frozen)
+        run: pip install . pytest
+
+      - run: python -m pytest tests/ -q

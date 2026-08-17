@@ -288,7 +288,7 @@ Even with §5.1 fixed, ingestion alone is tens of seconds per sheet set. Celery 
 
 ## 6. Hygiene
 
-### 6.1 No CI — the root cause of §1
+### 6.1 No CI — the root cause of §1 — **fixed 2026-08-17**
 
 Both §1.1 and §1.2 are the kind of failure a single `pytest` run on push catches immediately. With no automation, a test suite that cannot even *collect* went unnoticed into `main`.
 
@@ -300,6 +300,17 @@ The full suite takes **12m50s** *(verified)*, dominated by real-sample ingestion
 - **Pre-merge or nightly:** the full suite including the real-sample fixtures.
 
 The collect-only lane is worth adding even on its own — it is near-instant and catches the entire class of failure that produced §1.
+
+**Built** — `.github/workflows/ci.yml`, four jobs:
+
+| Job | Gating | What it does |
+|---|---|---|
+| `fast` | yes | Sparse checkout without `samples/`, `compileall` + `pytest --collect-only`. 276 tests collect in 0.8s locally. Catches §1.1 and §1.2 outright. |
+| `packaging` | yes | `pip install .` from `pyproject.toml` alone, then imports every module from the installed distribution. Catches §6.2's manifest drift. |
+| `tests` | yes | Full checkout, whole suite (~6 min). |
+| `forward-compat` | no | Unpinned install on 3.13, collect-only. |
+
+Two review findings were fixed to make CI meaningful rather than decorative: §6.2's stale `pyproject.toml` dependency list (it omitted `ezdxf`, `ifcopenshell` and `numpy`, so `pip install .` built a package that could not import itself — the `packaging` job would have failed on arrival otherwise), and §6.4's invalid `\P` escape, which the 3.13 run showed has already escalated from `DeprecationWarning` to `SyntaxWarning`.
 
 ### 6.2 Packaging is stale and the package is not installed
 
@@ -342,7 +353,7 @@ Stated plainly, because it is the majority of the work and none of the above sho
 **Before any frontend work:**
 
 1. ~~Fix §1.1, §1.2, §1.3 — the three live breakages.~~ **Done 2026-08-17.**
-2. **Add CI (§6.1).** Now the top item. Prevents the next §1.
+2. ~~**Add CI (§6.1).**~~ **Done 2026-08-17** — see §6.1.
 3. ~~Build `run_session()` (§2.1) — the orchestrator.~~ **Done 2026-08-17.**
 
 **Then, in parallel with early frontend work:**
@@ -355,7 +366,7 @@ Stated plainly, because it is the majority of the work and none of the above sho
 **Lower priority, but do not lose:**
 
 8. Bboxes for the two revision rules (§3.3).
-9. Packaging cleanup (§6.2), docstring drift (§6.3) — especially the unblocked `setout_critical` promotion — and the escape sequence (§6.4).
+9. ~~Packaging cleanup (§6.2)~~ and ~~the escape sequence (§6.4)~~ — **both done 2026-08-17**, as prerequisites for CI being meaningful. Docstring drift (§6.3) remains, especially the now-unblocked `setout_critical` promotion.
 
 ---
 

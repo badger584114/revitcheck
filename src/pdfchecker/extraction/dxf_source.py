@@ -1,4 +1,4 @@
-"""DXF ingestion — PLANNING.md §5's geometry-check input. Reads an
+r"""DXF ingestion — PLANNING.md §5's geometry-check input. Reads an
 already-converted DXF via `ezdxf`; DWG→DXF conversion is a separate step
 (`convert_dwg_to_dxf`, below) since it shells out to the ODA File
 Converter rather than parsing anything itself.

@@ -3,11 +3,29 @@ name = "pdfchecker"
 version = "0.1.0"
 description = "PDF ingestion + IR for automated civil drawing review (Stage 1 — see PLANNING.md §9)"
 requires-python = ">=3.9"
+# Every third-party module `src/pdfchecker` actually imports. This list
+# was stale until 2026-08-17 (it omitted ezdxf, ifcopenshell and numpy,
+# all imported by Stage 3 code), which meant `pip install .` produced a
+# package that couldn't import itself. CI's `packaging` job now installs
+# from this file alone and imports every module, so the manifest can't
+# silently drift from the code again.
+#
+# Deliberately unpinned here, unlike requirements.txt: this is the
+# "what does the library need" declaration, while requirements.txt is a
+# frozen, reproducible dev/CI environment (see CLAUDE.md's note on the
+# `cryptography<43` constraint this environment's old interpreter forces).
 dependencies = [
-    "pymupdf",
-    "pdfplumber",
+    "pymupdf",       # fitz — PDF text/vector extraction
+    "pdfplumber",    # ruled-table extraction
     "pyspellchecker",
-    "pyyaml",
+    "pyyaml",        # session rules files
+    "ezdxf",         # DXF ingestion + geometry checks
+    "ifcopenshell",  # IFC model ingestion
+    "numpy",         # IFC placement maths, geometry
+    # Not listed: shapely. PLANNING.md §1 names it in the intended stack
+    # and requirements.txt has it (frozen from the dev venv), but nothing
+    # under src/ imports it yet — declaring it here would make this
+    # manifest wrong in the other direction.
 ]
 
 [project.optional-dependencies]
