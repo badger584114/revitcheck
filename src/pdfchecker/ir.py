@@ -78,6 +78,15 @@ class BBox:
     def to_dict(self) -> dict:
         return {"x0": self.x0, "y0": self.y0, "x1": self.x1, "y1": self.y1}
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "BBox":
+        """Inverse of `to_dict` — added 2026-08-17 so an `Issue` can
+        round-trip through JSON (see `checks/issue.py`'s `from_dict`).
+        PLANNING.md §8's engineer-selection step means a client sends a
+        chosen subset back to a server that, per §2, kept nothing."""
+
+        return cls(x0=d["x0"], y0=d["y0"], x1=d["x1"], y1=d["y1"])
+
 
 @dataclass
 class TextWord:

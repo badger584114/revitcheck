@@ -68,6 +68,12 @@ def main() -> None:
     )
     parser.add_argument("--markup", metavar="DIR", help="also write a marked-up PDF here")
     parser.add_argument("--json", metavar="PATH", help="write the full run record as JSON")
+    parser.add_argument(
+        "--report",
+        metavar="STEM",
+        help="write PLANNING.md §7's report as <STEM>.json and <STEM>.csv "
+        "(the detailed companion to --markup; download them together)",
+    )
     args = parser.parse_args()
 
     if args.config:
@@ -123,15 +129,26 @@ def main() -> None:
             Path(args.json).write_text(json.dumps(result.to_dict(), indent=2))
             print(f"\nRun record -> {args.json}")
 
+        markup_entries = None
         if args.markup:
             from pdfchecker.markup.pdf_markup import render_markup
 
             out_dir = Path(args.markup)
             out_dir.mkdir(parents=True, exist_ok=True)
             pdf_out = out_dir / (Path(args.pdf_path).stem + "_markup.pdf")
-            report = render_markup(result.project, result.issues, str(pdf_out))
-            drawn = sum(1 for r in report if r.rendered)
-            print(f"\nMarked-up PDF -> {pdf_out}  ({drawn} of {len(report)} drawn)")
+            markup_entries = render_markup(result.project, result.issues, str(pdf_out))
+            drawn = sum(1 for r in markup_entries if r.rendered)
+            print(f"\nMarked-up PDF -> {pdf_out}  ({drawn} of {len(markup_entries)} drawn)")
+
+        if args.report:
+            from pdfchecker.markup.report import build_report
+
+            # markup_entries is passed when --markup also ran, so the
+            # report's `marked_up` column reflects what actually got drawn
+            # rather than guessing from whether a bbox exists.
+            written = build_report(result, markup_entries=markup_entries).write(args.report)
+            for path in written:
+                print(f"Report        -> {path}")
 
 
 if __name__ == "__main__":
