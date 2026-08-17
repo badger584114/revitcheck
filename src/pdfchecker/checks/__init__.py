@@ -17,4 +17,22 @@ from pdfchecker.checks.session_config import LoadedSessionConfig, load_session_c
 
 # Import for registration side-effects — each module's @register calls
 # populate catalog._CATALOG when imported.
-from pdfchecker.checks import cross_sheet, revisions, spelling, title_block  # noqa: F401,E402
+#
+# `geometry` (Stage 3, PLANNING.md §5) belongs in this list just as much
+# as the Stage 2 rule modules, and its absence was a real bug — fixed
+# 2026-08-17 (backend review, finding 1.3). Without it the catalog held
+# only the six drafting rules unless a caller happened to import
+# `pdfchecker.checks.geometry` themselves, which meant a session config
+# asking for `check_scope: drafting_and_geometry` silently ran *zero*
+# geometry rules: no error, no warning, and an empty geometry result
+# indistinguishable from "checked, nothing found". Importing every rule
+# module here is what makes `all_rule_ids()` mean "every rule this
+# codebase has", which is what both `RuleConfig.resolved_rule_ids()` and
+# `session_config.py`'s catalog-membership warning assume.
+from pdfchecker.checks import (  # noqa: F401,E402
+    cross_sheet,
+    geometry,
+    revisions,
+    spelling,
+    title_block,
+)

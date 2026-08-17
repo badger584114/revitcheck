@@ -185,6 +185,21 @@ def load_session_config(path: str | Path) -> LoadedSessionConfig:
             )
     if check_scope == "drafting_only":
         enabled = {rule_id for rule_id in enabled if not rule_id.startswith("geometry.")}
+    elif not any(rule_id.startswith("geometry.") for rule_id in catalog_ids):
+        # Defence in depth against the real 2026-08-17 bug this loader
+        # sat downstream of (backend review finding 1.3): rule
+        # registration is an import side-effect, so a catalog missing
+        # `checks/geometry.py` entirely made `drafting_and_geometry`
+        # silently equivalent to `drafting_only`. `checks/__init__.py`
+        # now imports it, so this should be unreachable — but a scope
+        # that asks for geometry and gets none is exactly the kind of
+        # thing this codebase reports rather than swallows, and a
+        # warning here costs nothing if the import list ever drifts again.
+        warnings.append(
+            "check_scope: 'drafting_and_geometry' was requested, but no geometry.* rules are "
+            "registered in the catalog — geometry checks will produce nothing. This means a rule "
+            "module failed to import (see checks/__init__.py), not that the drawings are clean."
+        )
     config.enabled_rule_ids = enabled
 
     # --- title_block ---
