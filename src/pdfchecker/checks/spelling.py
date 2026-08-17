@@ -36,12 +36,41 @@ def _build_checker(glossary: set[str]) -> SpellChecker:
     return sc
 
 
+def _decide(sc: SpellChecker, word: str, cache: dict) -> tuple:
+    """`(is_unknown, correction)` for one lowercased token, computed once
+    per distinct word rather than once per occurrence.
+
+    `SpellChecker.correction()` runs an edit-distance search over the
+    dictionary, and drawing sets repeat vocabulary heavily: on the real
+    37-sheet sample it was called 212 times for 93 distinct words, with
+    `'Autodesk'` alone triggering 37 identical searches because it
+    appears once per sheet. The ratio only improves with set size —
+    distinct vocabulary saturates while occurrences keep growing — so
+    this matters more as drawing sets get larger, not less.
+
+    `cache` is passed in by the caller and lives for exactly one check
+    run. Deliberately NOT a module-level cache: the decision depends on
+    the glossary this run was configured with (firm + project + session
+    additions, `checks/glossary.py`), so a process-global cache keyed on
+    the word alone would leak one session's glossary into the next —
+    the same class of bug as `checks/geometry.py`'s id-keyed
+    reconstruction cache, avoided here rather than repeated."""
+
+    if word not in cache:
+        # `unknown()` is a cheap set difference; `correction()` is the
+        # expensive part, so it's only reached for genuinely unknown words.
+        cache[word] = (True, sc.correction(word)) if sc.unknown([word]) else (False, None)
+    return cache[word]
+
+
 @register("spelling.en_gb")
 def check_spelling(project: Project, config: RuleConfig) -> list[Issue]:
     glossary = load_glossary(
         config.firm_glossary_path, config.project_glossary_path, extra_words=config.session_glossary_words
     )
     sc = _build_checker(glossary)
+    # One run's memo of the per-word dictionary decision — see _decide.
+    decisions: dict[str, tuple] = {}
 
     issues = []
     for sheet in project.sheets:
@@ -71,8 +100,8 @@ def check_spelling(project: Project, config: RuleConfig) -> list[Issue]:
                 )
                 continue
 
-            if sc.unknown([lower]):
-                correction = sc.correction(lower)
+            is_unknown, correction = _decide(sc, lower, decisions)
+            if is_unknown:
                 issues.append(
                     Issue(
                         rule_id="spelling.en_gb",

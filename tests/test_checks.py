@@ -10,6 +10,7 @@ completeness, revision consistency, spelling. Two kinds of test here:
   parsing) and precise about what triggers each rule.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from pdfchecker.checks.revisions import (  # noqa: E402
     check_schedule_matches_title_block,
     check_sequential_numbering,
 )
+from pdfchecker.checks import spelling as spelling_module  # noqa: E402
 from pdfchecker.checks.spelling import check_spelling  # noqa: E402
 from pdfchecker.checks.title_block import check_required_fields  # noqa: E402
 from pdfchecker.ir import (  # noqa: E402
@@ -331,3 +333,70 @@ def test_en_gb_variant_map_has_no_self_mappings():
     self_mapped = [w for w, mapped in BRITISH_TO_AMERICAN.items() if w == mapped]
     assert self_mapped == []
     assert AMERICAN_TO_BRITISH["millimeters"] == "millimetres"
+
+
+# --- synthetic: spelling correction memoization ----------------------------
+
+
+class TestSpellingCorrectionCache:
+    """`_decide`'s per-run memo (2026-08-17). `SpellChecker.correction()`
+    runs an edit-distance search per call; drawing sets repeat vocabulary
+    heavily, so it was being asked the same question many times. On the
+    real 37-sheet sample this took the rule from 55.9s to 25.9s with
+    identical output, cutting correction() calls from 212 to 91."""
+
+    def _project(self, words):
+        return Project(source_path="synthetic", sheets=[_word_sheet(w) for w in words])
+
+    def _count_corrections(self, monkeypatch):
+        calls = []
+        original = spelling_module.SpellChecker.correction
+
+        def counting(self, word):
+            calls.append(word)
+            return original(self, word)
+
+        monkeypatch.setattr(spelling_module.SpellChecker, "correction", counting)
+        return calls
+
+    def test_repeated_word_is_corrected_once_but_flagged_every_time(self, monkeypatch):
+        """The whole point: one dictionary lookup, but still one Issue per
+        occurrence — PLANNING.md §8's markup needs a location per instance,
+        so occurrences must not be deduplicated into one Issue."""
+
+        calls = self._count_corrections(monkeypatch)
+        issues = check_spelling(self._project(["mispelt"] * 8), RuleConfig())
+        assert len(issues) == 8
+        assert calls.count("mispelt") == 1
+
+    def test_distinct_words_each_get_one_lookup(self, monkeypatch):
+        calls = self._count_corrections(monkeypatch)
+        check_spelling(self._project(["mispelt", "wrongword", "mispelt", "wrongword"]), RuleConfig())
+        assert sorted(calls) == ["mispelt", "wrongword"]
+
+    def test_known_words_never_reach_correction(self, monkeypatch):
+        """`unknown()` is a cheap set difference and `correction()` is the
+        expensive part, so correctly-spelled text must not pay for it."""
+
+        calls = self._count_corrections(monkeypatch)
+        issues = check_spelling(self._project(["concrete", "bridge", "reinforcement"]), RuleConfig())
+        assert issues == []
+        assert calls == []
+
+    def test_cache_does_not_leak_between_runs_with_different_glossaries(self, tmp_path):
+        """The reason the memo is a per-run local rather than a module
+        global: the decision depends on this run's glossary, so a
+        process-wide cache keyed on the word alone would leak one
+        session's terms into the next — exactly the class of bug
+        checks/geometry.py's id-keyed reconstruction cache has."""
+
+        project = self._project(["mispelt"])
+        assert check_spelling(project, RuleConfig()), "expected a flag with no glossary"
+
+        glossary = tmp_path / "g.json"
+        glossary.write_text(json.dumps({"words": ["mispelt"]}))
+        assert check_spelling(project, RuleConfig(project_glossary_path=str(glossary))) == []
+
+        # ...and back again, in the same process — a stale global would
+        # keep returning the glossary-suppressed answer here.
+        assert check_spelling(project, RuleConfig()), "second no-glossary run should flag again"
