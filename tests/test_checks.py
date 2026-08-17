@@ -14,6 +14,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from pdfchecker.checks import RuleConfig  # noqa: E402
@@ -333,6 +335,52 @@ def test_en_gb_variant_map_has_no_self_mappings():
     self_mapped = [w for w, mapped in BRITISH_TO_AMERICAN.items() if w == mapped]
     assert self_mapped == []
     assert AMERICAN_TO_BRITISH["millimeters"] == "millimetres"
+
+
+class TestCentreFamilyVariants:
+    """The "centre" word family, added 2026-08-17 after profiling a real
+    run showed `centerline` being reported as a generic "possible
+    misspelling" rather than as an American spelling — the latter is the
+    actual point of the en-GB requirement (PLANNING.md §4/§10).
+
+    Only bare "centre" had been mapped. `centreline`/`centred` carry a
+    *medial* "-re", so `_RE_ER`'s mechanical "-re" -> "-er" rewrite can
+    never reach them; `centres` could have been reached and simply wasn't
+    listed. That one matters most in practice: "AT 200 CENTRES" is
+    standard reinforcement-spacing notation."""
+
+    @pytest.mark.parametrize(
+        "american,british",
+        [
+            ("center", "centre"),
+            ("centers", "centres"),
+            ("centerline", "centreline"),
+            ("centerlines", "centrelines"),
+            ("centered", "centred"),
+        ],
+    )
+    def test_american_form_is_flagged_with_the_british_suggestion(self, american, british):
+        project = Project(source_path="synthetic", sheets=[_word_sheet(american)])
+        issues = check_spelling(project, RuleConfig())
+        assert len(issues) == 1
+        assert "American spelling" in issues[0].description
+        assert issues[0].suggested_fix["corrected"] == british
+
+    @pytest.mark.parametrize(
+        "british", ["centre", "centres", "centreline", "centrelines", "centred"]
+    )
+    def test_british_form_is_never_flagged(self, british):
+        project = Project(source_path="synthetic", sheets=[_word_sheet(british)])
+        assert check_spelling(project, RuleConfig()) == []
+
+    def test_centring_is_deliberately_excluded(self):
+        """"centring" is a real construction noun (temporary formwork
+        supporting an arch), not just a spelling of "centering" — the
+        dual-meaning case this module's docstring rules out. Asserting the
+        absence so nobody "completes" the family without reading why."""
+
+        assert "centring" not in BRITISH_TO_AMERICAN
+        assert "centering" not in AMERICAN_TO_BRITISH
 
 
 # --- synthetic: spelling correction memoization ----------------------------

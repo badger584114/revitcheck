@@ -69,7 +69,7 @@ _OUR_OR = [
 # en-GB requirement exists to prevent, so worth calling out here rather
 # than folding in silently.
 _RE_ER = [
-    "centre", "theatre", "fibre", "calibre", "sombre", "manoeuvre", "litre",
+    "centre", "centres", "theatre", "fibre", "calibre", "sombre", "manoeuvre", "litre",
     "millimetre", "millimetres", "centimetre", "centimetres",
     "kilometre", "kilometres", "decimetre", "decimetres",
 ]
@@ -103,6 +103,22 @@ _MISC = [
     ("gauged", "gaged"),
     ("favourite", "favorite"), ("favourites", "favorites"),  # "fav-our-ite" —
     # doesn't end in "our", so the -our/-or suffix rule below never reaches it.
+    # The "centre" family, found 2026-08-17 by profiling a real run: only the
+    # bare "centre" was mapped, so "centerline" was being reported as a generic
+    # "possible misspelling" instead of an American spelling with "centreline"
+    # suggested — the actual point of the en-GB requirement. "centreline" and
+    # "centred" have a *medial* "-re", not a terminal one, so _RE_ER's
+    # mechanical "-re" -> "-er" rewrite can't reach them; "centres" could be
+    # reached and simply wasn't listed. Worth having beyond correctness:
+    # "AT 200 CENTRES" is standard reinforcement-spacing notation, so this
+    # family appears constantly on real structural sheets.
+    ("centreline", "centerline"), ("centrelines", "centerlines"),
+    ("centred", "centered"),
+    # Deliberately NOT here: "centring"/"centering". In construction
+    # "centring" is a specific technical noun (temporary formwork
+    # supporting an arch during casting), not merely a spelling variant of
+    # "centering" — exactly the dual-meaning case this module's docstring
+    # rules out, alongside program/programme and metre/meter.
     ("programme", "program"), ("programmes", "programs"),  # "programme" (a
     # schedule/plan) is the one sense that's unambiguous in a drafting
     # context — software's "program" isn't something a drawing set's text
