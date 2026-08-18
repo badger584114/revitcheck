@@ -6,6 +6,8 @@ tooltip: >-
   value no longer matches what the model measures by more than rounding
   explains. Overriding is legitimate — curved geometry means sections
   cannot always be cut perpendicular — so the test is whether the
-  difference is explainable, not whether the two agree exactly. Always
-  reports how much of the model was actually checkable.
+  difference is explainable, not whether the two agree exactly. A
+  stated limit such as "500 MIN." is checked against the limit
+  instead. Always reports how much of the model was actually
+  checkable.
 highlight: new

@@ -14,6 +14,7 @@ import pytest
 from revitcheck import RuleConfig
 from revitcheck.checks.dimensions import (
     check_dimension_override_consistency,
+    parse_override_bound,
     parse_override_mm,
 )
 from revitcheck.ir import Provenance
@@ -69,7 +70,7 @@ class TestParseOverride:
             "VARIES",
             "TYP",
             "A",  # a bar-mark letter keying into a schedule table
-            "500 MIN.",
+            "500 MIN.",  # a limit, not a value — parse_override_bound's job
             "1200-1400",
             "1,2",  # decimal comma is a different convention — not guessed at
         ],
@@ -267,7 +268,9 @@ class TestCoverageIsAlwaysReported:
         view = make.view(10)
         dims = [
             make.dimension(1, 10, [make.model_ref()], override="EQ"),
-            make.dimension(2, 10, [make.model_ref()], override="500 MIN."),
+            # A real Flinders override. Not a number, not a limit — it is
+            # AutoCAD field syntax that survived the round trip.
+            make.dimension(2, 10, [make.model_ref()], override="<>\\XMIN"),
             make.dimension(3, 10, [make.model_ref()], override="VARIES"),
         ]
         model = make.model(views=[view], dimensions=dims)
@@ -275,5 +278,89 @@ class TestCoverageIsAlwaysReported:
         description = coverage(
             check_dimension_override_consistency(model, RuleConfig())
         ).description
-        for form in ("'EQ'", "'500 MIN.'", "'VARIES'"):
+        for form in ("'EQ'", "XMIN", "'VARIES'"):
             assert form in description
+
+
+class TestLimitOverrides:
+    """`500 MIN.` — a stated limit rather than a restated measurement.
+
+    The parked pipeline skipped these, and its own notes flag that as
+    arguably wrong: on the client where almost no override was numeric,
+    the ones that existed were limits. Treating them as uncheckable
+    discarded most of what that client's drawings assert.
+    """
+
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("500 MIN.", (500.0, ">=")),
+            ("500 MIN", (500.0, ">=")),
+            ("500MIN", (500.0, ">=")),
+            ("MIN 500", (500.0, ">=")),
+            ("MIN. 500", (500.0, ">=")),
+            ("min 500", (500.0, ">=")),
+            ("1200 MAX", (1200.0, "<=")),
+            ("1200 MAX.", (1200.0, "<=")),
+            ("500 MIN. mm", (500.0, ">=")),
+        ],
+    )
+    def test_recognised_forms(self, text, expected):
+        assert parse_override_bound(text) == expected
+
+    @pytest.mark.parametrize(
+        "text", [None, "", "1200", "EQ", "MIN", "500 MINIMUM", "500 MIN 600"]
+    )
+    def test_everything_else_is_still_not_guessed(self, text):
+        assert parse_override_bound(text) is None
+
+    def test_a_satisfied_minimum_is_not_a_finding(self, make):
+        model = one_dimension(make, 620.0, "500 MIN.")
+        assert findings(check_dimension_override_consistency(model, RuleConfig())) == []
+
+    def test_a_violated_minimum_is_flagged(self, make):
+        model = one_dimension(make, 480.0, "500 MIN.")
+        issues = findings(check_dimension_override_consistency(model, RuleConfig()))
+        assert len(issues) == 1
+        assert issues[0].suggested_fix["comparator"] == ">="
+        assert issues[0].suggested_fix["stated_limit_mm"] == 500.0
+        assert issues[0].suggested_fix["measured_mm"] == 480.0
+        assert "at least 500mm" in issues[0].description
+
+    def test_a_violated_maximum_is_flagged(self, make):
+        model = one_dimension(make, 1250.0, "1200 MAX")
+        issues = findings(check_dimension_override_consistency(model, RuleConfig()))
+        assert len(issues) == 1
+        assert issues[0].suggested_fix["comparator"] == "<="
+        assert "at most 1200mm" in issues[0].description
+
+    def test_the_rounding_grid_does_not_apply_to_a_limit(self, make):
+        """2mm below a stated minimum is a violation, even though the
+        same 2mm on an exact override would be inside the default grid.
+        A limit is not a rounded restatement of anything, so allowing
+        grid slack below it would invent tolerance the drawing does not
+        offer. Only measurement noise is allowed."""
+
+        exact = one_dimension(make, 498.0, "500")
+        assert findings(check_dimension_override_consistency(exact, RuleConfig())) == []
+
+        limit = one_dimension(make, 498.0, "500 MIN.")
+        assert len(findings(check_dimension_override_consistency(limit, RuleConfig()))) == 1
+
+    def test_measurement_noise_is_still_allowed(self, make):
+        # 0.2mm under, inside measurement_epsilon_mm (0.5).
+        model = one_dimension(make, 499.8, "500 MIN.")
+        assert findings(check_dimension_override_consistency(model, RuleConfig())) == []
+
+    def test_limits_are_counted_separately_in_coverage(self, make):
+        view = make.view(10)
+        dims = [
+            make.dimension(1, 10, [make.model_ref()], value_mm=1200.0, override="1200"),
+            make.dimension(2, 10, [make.model_ref()], value_mm=620.0, override="500 MIN."),
+        ]
+        model = make.model(views=[view], dimensions=dims)
+
+        summary = coverage(check_dimension_override_consistency(model, RuleConfig()))
+        assert summary.suggested_fix["checked"] == 2
+        assert summary.suggested_fix["bounds"] == 1
+        assert "MIN/MAX limit" in summary.description

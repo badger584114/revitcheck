@@ -69,7 +69,8 @@ what gets checked.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+import re
+from typing import Dict, List, Optional, Tuple
 
 from revitcheck.catalog import RuleConfig, register
 from revitcheck.ir import DimensionInfo, Provenance, ReferenceInfo, RevitModel, ViewInfo
@@ -453,6 +454,59 @@ def parse_override_mm(text: Optional[str]) -> Optional[float]:
         return None
 
 
+# `500 MIN.`, `MIN 500`, `1200 MAX`. A real override form from the
+# Flinders sample, and a common one: the drafter is stating a limit the
+# built work must respect, not a value they measured.
+_BOUND_RE = re.compile(
+    r"^(?:(?P<lead>MIN|MAX)\.?\s*(?P<lead_value>-?[\d.,]+)"
+    r"|(?P<value>-?[\d.,]+)\s*(?P<trail>MIN|MAX)\.?)$",
+    re.IGNORECASE,
+)
+
+# Which way each keyword constrains the measured value.
+_BOUND_COMPARATOR = {"MIN": ">=", "MAX": "<="}
+
+
+def parse_override_bound(text: Optional[str]) -> Optional[Tuple[float, str]]:
+    """A limit-style override as `(value_mm, ">=" | "<=")`, or None.
+
+    Separate from `parse_override_mm` because the two are different
+    claims and get compared differently. An exact override says "this
+    measures 1200" and is checked against the rounding grid, since
+    rounding is exactly what produced it. `500 MIN.` says nothing about
+    rounding at all — it is a limit, so the only slack that applies is
+    measurement noise.
+
+    Built because the parked pipeline skipped these outright, and its
+    own notes flag that as arguably wrong: on the client where almost no
+    override was numeric, the ones that existed were `'500 MIN.'` and
+    `'<>\\XMIN'` — so treating a stated limit as uncheckable threw away
+    most of what that client's drawings actually assert.
+    """
+    if text is None:
+        return None
+
+    cleaned = text
+    for char in _FORMAT_CHARS:
+        cleaned = cleaned.replace(char, "")
+    cleaned = cleaned.strip()
+
+    for suffix in _UNIT_SUFFIXES:
+        if cleaned.endswith(suffix):
+            cleaned = cleaned[: -len(suffix)].strip()
+
+    match = _BOUND_RE.match(cleaned)
+    if match is None:
+        return None
+
+    keyword = (match.group("lead") or match.group("trail")).upper()
+    raw_value = match.group("lead_value") or match.group("value")
+    value = parse_override_mm(raw_value)
+    if value is None:
+        return None
+    return value, _BOUND_COMPARATOR[keyword]
+
+
 def _dimension_tier(dim: DimensionInfo, config: RuleConfig) -> str:
     """Which rounding grid applies to this dimension.
 
@@ -508,6 +562,10 @@ def check_dimension_override_consistency(
     a deliberate assertion that the model is wrong. All three are worth
     a look and the file cannot tell them apart.
 
+    Limit-style overrides (`500 MIN.`) are checked too, but against the
+    limit rather than the grid — see `_bound_issue` for why those are a
+    different kind of claim.
+
     Always emits one coverage Issue saying how much was actually
     checkable. That is not padding: on a real second client this rule's
     DXF ancestor was **structurally inert** — 4.5% of dimensions
@@ -520,6 +578,7 @@ def check_dimension_override_consistency(
     segments_seen = 0
     overridden = 0
     checked = 0
+    bounds_checked = 0
     unparsed_forms: Dict[str, int] = {}
 
     for view in views_in_scope(model, config):
@@ -533,7 +592,12 @@ def check_dimension_override_consistency(
                 overridden += 1
 
                 stated_mm = parse_override_mm(segment.value_override)
-                if stated_mm is None:
+                bound = (
+                    None
+                    if stated_mm is not None
+                    else parse_override_bound(segment.value_override)
+                )
+                if stated_mm is None and bound is None:
                     form = (segment.value_override or "").strip()
                     unparsed_forms[form] = unparsed_forms.get(form, 0) + 1
                     continue
@@ -541,6 +605,14 @@ def check_dimension_override_consistency(
                 if segment.value_mm is None:
                     # Revit reports no value for some spot dimension
                     # types. Nothing to compare against; not an error.
+                    continue
+
+                if bound is not None:
+                    checked += 1
+                    bounds_checked += 1
+                    issue = _bound_issue(dim, index, view, segment, bound, provenance, config)
+                    if issue is not None:
+                        issues.append(issue)
                     continue
 
                 checked += 1
@@ -591,12 +663,83 @@ def check_dimension_override_consistency(
                     )
                 )
 
-    issues.append(_override_coverage_issue(segments_seen, overridden, checked, unparsed_forms))
+    issues.append(
+        _override_coverage_issue(
+            segments_seen, overridden, checked, bounds_checked, unparsed_forms
+        )
+    )
     return issues
 
 
+def _bound_issue(
+    dim: DimensionInfo,
+    index: int,
+    view: ViewInfo,
+    segment,
+    bound: Tuple[float, str],
+    provenance: str,
+    config: RuleConfig,
+) -> Optional[Issue]:
+    """Check a measured value against a stated MIN/MAX limit.
+
+    **The rounding grid deliberately does not apply here.** An exact
+    override is a rounded restatement of a measurement, so the grid is
+    exactly the right slack. `500 MIN.` is not a restatement of anything
+    — it is a limit the built work has to respect, and allowing 2.5mm of
+    "rounding" below a stated minimum would be inventing tolerance the
+    drawing does not offer. The only slack applied is
+    `measurement_epsilon_mm`, for noise in the measurement itself.
+    """
+    limit, comparator = bound
+    measured = segment.value_mm
+    epsilon = config.measurement_epsilon_mm
+
+    if comparator == ">=":
+        violated = measured < limit - epsilon
+        wording = "at least"
+    else:
+        violated = measured > limit + epsilon
+        wording = "at most"
+
+    if not violated:
+        return None
+
+    return Issue(
+        rule_id="revit.dimension_override_consistency",
+        category="geometry",
+        description=(
+            "{0} in {1} is annotated as {2} {3:g}mm, but the model measures "
+            "{4:.1f}mm — the stated limit is not met."
+        ).format(
+            _segment_label(dim, index),
+            _describe_view(view),
+            wording,
+            limit,
+            measured,
+        ),
+        severity="high",
+        element_id=dim.element_id,
+        view_id=dim.view_id,
+        view_name=view.name,
+        sheet_no=view.sheet_no,
+        suggested_fix={
+            "stated_limit_mm": limit,
+            "comparator": comparator,
+            "measured_mm": round(measured, 3),
+            "epsilon_mm": epsilon,
+            "provenance": provenance,
+            "segment": index + 1,
+            "segments": len(dim.segments),
+        },
+    )
+
+
 def _override_coverage_issue(
-    segments_seen: int, overridden: int, checked: int, unparsed_forms: Dict[str, int]
+    segments_seen: int,
+    overridden: int,
+    checked: int,
+    bounds_checked: int,
+    unparsed_forms: Dict[str, int],
 ) -> Issue:
     """State how much of the model this rule could actually check.
 
@@ -610,8 +753,13 @@ def _override_coverage_issue(
     else:
         detail = (
             "{0} of {1} dimension segments carry a typed override, and {2} of "
-            "those parsed as a number and were compared against the model."
+            "those were compared against the model."
         ).format(overridden, segments_seen, checked)
+        if bounds_checked:
+            detail += (
+                " {0} of those stated a MIN/MAX limit rather than an exact "
+                "value, and were checked against the limit."
+            ).format(bounds_checked)
 
     if unparsed_forms:
         ordered = sorted(unparsed_forms.items(), key=lambda kv: (-kv[1], kv[0]))
@@ -641,6 +789,7 @@ def _override_coverage_issue(
             "segments": segments_seen,
             "overridden": overridden,
             "checked": checked,
+            "bounds": bounds_checked,
             "unparsed": sum(unparsed_forms.values()),
         },
     )
