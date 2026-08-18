@@ -1,0 +1,11 @@
+title: |-
+  Dimension
+  Values
+tooltip: >-
+  Find dimensions whose text a drafter has typed over, where the typed
+  value no longer matches what the model measures by more than rounding
+  explains. Overriding is legitimate — curved geometry means sections
+  cannot always be cut perpendicular — so the test is whether the
+  difference is explainable, not whether the two agree exactly. Always
+  reports how much of the model was actually checkable.
+highlight: new

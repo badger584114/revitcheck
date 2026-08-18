@@ -60,7 +60,8 @@ extensions/RevitCheck.extension/     # the pyRevit extension
                                      # landed ahead of its rule, rescued from
                                      # the parked tree (see its docstring)
     adapters/revit_source.py         # the ONLY module importing the Revit API
-    checks/dimensions.py             # revit.dimension_provenance
+    checks/dimensions.py             # revit.dimension_provenance +
+                                     #   revit.dimension_override_consistency
     checks/coverage.py               # revit.capture_coverage
   RevitCheck.tab/Checks.panel/       # the buttons — thin by design
 config/                              # firm_glossary.json, project_glossary.json
@@ -141,6 +142,7 @@ git.
 | Rule | What it does |
 | --- | --- |
 | `revit.dimension_provenance` | For each dimension, do its references resolve to model geometry, a datum, or view-specific linework? Four-way classification, rolled up per view. |
+| `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? Always reports how much was checkable. |
 | `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue. |
 
 Notes worth not rediscovering:
