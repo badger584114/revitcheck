@@ -386,6 +386,39 @@ Deliberately a **coverage** check only — confirms whether the attached IFC mod
 
 `src/pdfchecker/` was left in place for the pivot itself — the decision was to stand the Revit path up first and converge afterwards, rather than refactor a working, tested package mid-pivot — and was **parked on 2026-08-18** once that path was standing: tagged `pdf-dwg-final` and removed from the tree, with the glossaries and the en-GB variant list rescued into the live tree because their content is hand-made judgement. See `ARCHIVE-pdf-dwg.md` for the full account and `extensions/RevitCheck.extension/README.md` + CLAUDE.md for the built state.
 
+### 5d. Revit 2026, and the reporting decision (2026-08-18) — BCF
+
+**Platform.** Work continues in **Revit 2026**. pyRevit 5.1.0 is the release that added 2026 support (.NET 8); the buttons already carry the `#! python3` shebang selecting the CPython engine, and CI already gates 3.12, so no version work is expected. `adapters/revit_source.py`'s `_eid` already prefers `ElementId.Value` over the `IntegerValue` deprecated in 2024, which is the usual source of version breakage.
+
+**The reporting question is open.** §5c retired §7/§8's markup export on the grounds that "a check that runs where the fix happens can select and zoom the element instead", and `output.linkify(ElementId)` in the pyRevit output window has been the delivery mechanism since. What that does not give is **persistence** — nothing survives closing the output window, so there is no record of what was reviewed, what was accepted as intentional, or what was dismissed as a false positive. That gap is what reopened the question.
+
+**Autodesk Forma issues were proposed as the answer and are a candidate, not a decision.** The user's position is that report output should be worked through — several options rendered and compared — before committing. Research done 2026-08-18, recorded here so it is not repeated:
+
+- **The Forma Issues API cannot create element-pinned issues.** Autodesk's GA documentation states plainly that *"Document specific issues (a.k.a. pushpin issues) are not supported"* and that *"Issues API supports 3-legged authentication only."* The `linkedDocuments` field — which carries exactly what would be wanted, `details.objectId` (the element id), `details.externalId` (the element GUID), `details.position` and `details.viewable` — exists in the schema but is **not writable on creation**. Pushpins are placed by a human in the Docs viewer or the Revit Issues Add-in, not by an API client.
+- **What an API-created issue *can* carry** is the full workflow object: `title` and `description` (10,000 chars each), `status`, `issueSubtypeId`, `assignedTo`/`assignedToType`, `dueDate`, `watchers`, `rootCauseId`, `customAttributes`, and `locationDetails` as free text (8,300 chars). So it can be assigned, dated, tracked and closed — it simply has no notion of *where*.
+- **The Revit Issues Add-in requires Revit Cloud Worksharing.** Autodesk documents that issues are not visible in locally-workshared files opened through Desktop Connector. Not a constraint for this firm, whose models are cloud-workshared, but it is a hard one for anybody else's.
+
+**Why this is a genuine trade rather than an upgrade.** Element-level targeting is the core of this project's Issue model — `issue.py`'s docstring is explicit that the whole point of the pivot was that "a location is an `element_id`" which pyRevit turns into a click-to-zoom link, and that §8's markup apparatus existed to bridge a gap that no longer exists. Filing findings as project-level Forma issues trades that away for tracking and for visibility to people without Revit. That may well be worth it — but it is a trade, and the decision should be made from rendered examples rather than in the abstract. Other candidates to compare: a richer in-Revit output, a standalone HTML report, BCF export (element-pinned via viewpoints, and an open standard), and a plain CSV review register.
+
+**Decision: BCF, taken 2026-08-18** after rendering all six candidates side by side with real output from the three built rules. The comparison is what settled it — the options were argued in the abstract first and it did not resolve; seeing them did.
+
+**Why BCF wins on this project's own terms.** It is the only off-machine format that keeps the element anchor. A BCF `Component` carries both an `IfcGuid` (for every other tool) and an `AuthoringToolId` (which can hold the raw Revit element id, so a BCF opened Revit-side lands back on the exact dimension). Every other persistent option — HTML, CSV, Forma issues via API — degrades the location to a number a human retypes into Select by ID. Given that §5c's whole argument for moving into Revit was that "a location is an `element_id`" the tool can select and zoom, a delivery format that throws that away would be spending the pivot's main winnings.
+
+It is also **vendor-neutral and offline**, so it survives whatever Autodesk does to its APIs — which matters more than usual here, given that the Issues API's inability to write `linkedDocuments` is precisely the kind of platform limit that made the PDF/DWG route painful.
+
+**The Forma leg is real but not yet GA — plan accordingly.**
+
+- **BCF *export from* Forma/ACC is generally available**, carrying comments, image attachments, selected model elements, camera view and thumbnail, capped at 250 issues per file, for RVT and IFC.
+- **BCF *import into* Forma/ACC is in beta.** Announced "coming soon" in the September 2025 release notes and still described as a limited beta programme through 2026, requiring Manage permission or higher. Model Coordination's Navisworks path is documented as *not* supported, with BIMcollab's Navisworks add-in given as the workaround.
+
+So the Forma round trip is an **upside arriving on Autodesk's schedule, not a dependency**. BCF earns its place on day one through Navisworks/Solibri/BIMcollab/Revizto, and if import goes GA the same file flows in unchanged.
+
+**What this means for the build.** BCF needs a durable per-element identifier, which the IR does not currently carry — see the `unique_id` addition in the adapter work. That field was already justified independently as the identity that survives model versions; this decision makes it load-bearing rather than insurance. Target **BCF 2.1** as the widest-supported version (confirm against the tools actually in use before committing). `report.py` gains a sink alongside `to_json`/`to_markdown` rather than being restructured — the issue list and its rendering are already separate.
+
+**Not chosen, and why it is still worth doing:** the richer in-Revit output (grouping, severity chips, coverage promoted out of the trailing position) solves *reading* rather than *remembering*, and remains the cheapest real improvement to the working loop. It is complementary to BCF, not an alternative — findings get triaged in Revit where click-to-zoom is native, and BCF carries out what survives.
+
+**Also relevant:** §10's air-gap constraint was withdrawn on the same date, so cloud options are no longer ruled out by it. See §10 for that correction.
+
 ## 6. Client specification check
 
 **Probably not needed — confirmed by the user 2026-08-15, downgraded from "deferred pending a real sample" to "unlikely to be worth building at all."** Recorded here rather than deleted, per this doc's own convention of keeping a trail of *why* a decision changed (§1, §4, §11). Revisit only if a real, concrete need for it actually shows up — not a default assumption anymore the way the rest of this section below still describes it.
@@ -493,6 +526,12 @@ This means the `Issue` object (produced by every rule, `(IR, config) -> [Issue]`
 8. Markup export (§8) once the check engines are reliable enough that auto-generated redlines are trustworthy to send to drafting unreviewed-in-detail — this is a trust-dependent feature, sequence it after the checks it depends on are proven. **PDF markup built 2026-08-14, DXF/DWG redline export built 2026-08-15** — see §8 above; the engineer-selection UI step isn't built
 
 ## 10. Self-contained / offline-capable deployment
+
+> **Superseded 2026-08-18 — the hard constraint below is withdrawn.** Confirmed by the user: the firm's Revit models are **cloud-workshared in Autodesk Forma**, which already holds all Revit project information for these jobs and is the approved, secure store. Drawing data is therefore on Autodesk's cloud as a matter of course, and the "zero outbound internet / air-gappable" rule stated below forbids nothing that is actually at risk while forbidding directions the user has approved — including persistent check state between runs, which the tool may now keep.
+>
+> **The underlying concern was real and is still answered**, just by a different mechanism: confidentiality is handled by Forma being an approved store with the firm's own access control, rather than by the deployment having no egress. Note also that §5c already deleted most of what this section was written to protect — there is no web stack, no Docker Compose, no worker queue, and the table below describes components this project no longer has.
+>
+> Kept rather than deleted, per this doc's convention of preserving *why* a decision changed (§1, §4, §6, §11). CLAUDE.md's matching "nothing leaves the machine" line was corrected at the same time. The reporting mechanism was decided separately on the same date — **BCF**, see §5d.
 
 This should run with **zero outbound internet access at runtime**, deployable on an internal network or fully air-gapped machine. Worth locking in as a hard constraint given client-confidentiality/data-residency concerns (see §11) — engineering drawing sets are exactly the kind of data firms don't want touching an external service.
 
