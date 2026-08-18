@@ -66,7 +66,7 @@ extensions/RevitCheck.extension/     # the pyRevit extension
   RevitCheck.tab/Checks.panel/       # the buttons — thin by design
 config/                              # firm_glossary.json, project_glossary.json
 scripts/check_capture.py             # run the checks against a captured model
-tests/revit/                         # 62 tests, ~0.15s, no Revit needed
+tests/revit/                         # 119 tests, ~0.1s, no Revit needed
 ```
 
 `extensions/RevitCheck.extension/README.md` covers installing the
@@ -114,7 +114,7 @@ Capture Model  ->  BR06.capture.json
 
 # anywhere, as often as you like
 python scripts/check_capture.py BR06.capture.json
-python -m pytest tests/ -q          # 62 tests, ~0.15s, no dependencies
+python -m pytest tests/ -q          # 119 tests, ~0.1s, no dependencies
 ```
 
 No install step, no virtualenv needed for the tests: `revitcheck` is
