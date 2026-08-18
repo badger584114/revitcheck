@@ -39,6 +39,7 @@ engine.
 | Button | What it does |
 | --- | --- |
 | **Dimension Provenance** | Flags dimensions measuring detail linework instead of model geometry, and lists views with no model-derived dimensions at all. |
+| **Dimension Values** | Flags dimensions whose typed-over text no longer matches what the model measures by more than rounding explains. Reports how much of the model was actually checkable. |
 | **Capture Model** | Writes the extracted data to JSON so checks can be developed off a Revit machine. |
 
 ## The development loop
@@ -76,6 +77,14 @@ ir.py                      plain dataclasses, raw facts, millimetres
 checks/*.py                pure (RevitModel, RuleConfig) -> [Issue]
 ```
 
+One file sits outside that stack: `en_gb_variants.py`, a curated
+British/American spelling-variant list with **no rule importing it yet**.
+It was rescued from the parked PDF/DWG tree because its content is
+hand-made judgement built up against real issued drawings — including
+the `centring`/`centering` exclusion and its guarding test — and a Revit
+`TextNote` spelling check will want exactly it. `config/*_glossary.json`
+sits in the repo root for the same reason. See `ARCHIVE-pdf-dwg.md`.
+
 **Nothing below the adapter knows Revit exists.** Two consequences that
 are easy to erode and worth defending in review:
 
@@ -99,13 +108,22 @@ ways, with very different checkability:
 
 1. **Overwrite the dimension text** — the model's measurement survives
    alongside the override, so the discrepancy is visible in the file.
+   **Dimension Values** is this one.
 2. **Draw witness lines and dimension to those** — the dimension agrees
    perfectly with the line it measures, so the file is *internally
    consistent while collectively stale*. Nothing in it reveals the drift.
+   **Dimension Provenance** is this one.
 
 Case 2 was undetectable from a DXF export except by proxy (the CAD layer
 nearest each witness point — BR06 44/60 on `D-BDGE`, Flinders 50/52 on
 `A-DETL`). Here it is a direct property lookup.
+
+The two are complementary rather than alternatives, and a client tends
+to do one or the other: a real DXF sample from one client was 54%
+overridden, and one from another 4.5% — with none of those 4.5% numeric.
+Which is why Dimension Values reports its own coverage: on the second
+client it would have nothing to check, and must say so rather than
+return a clean-looking empty list.
 
 The check reports **triage, not verdicts**. It says the file cannot
 answer whether a dimension is right, not that it is wrong — per the

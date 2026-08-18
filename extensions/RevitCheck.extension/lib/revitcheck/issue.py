@@ -1,6 +1,7 @@
 """The Issue schema, Revit edition.
 
-Carried over from `pdfchecker.checks.issue` with one deliberate change,
+Carried over from the parked `pdfchecker.checks.issue`
+(ARCHIVE-pdf-dwg.md) with one deliberate change,
 and it is the change that makes the whole pivot worth it. The PDF Issue
 located a finding as `page_index` + `bbox` in page points, because the
 check ran on an export and the fix happened somewhere else — so the

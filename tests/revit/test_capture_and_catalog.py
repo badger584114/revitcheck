@@ -23,6 +23,7 @@ class TestRuleRegistration:
 
     def test_expected_rules_are_registered(self):
         assert "revit.dimension_provenance" in all_rule_ids()
+        assert "revit.dimension_override_consistency" in all_rule_ids()
         assert "revit.capture_coverage" in all_rule_ids()
 
     def test_default_config_enables_rules_registered_after_it_was_built(self):

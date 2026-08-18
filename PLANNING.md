@@ -1,5 +1,21 @@
 # PDF Checker — Architecture & Planning
 
+> **Current direction: §5c.** The checks now run **inside Revit** as a
+> pyRevit toolbar (`extensions/RevitCheck.extension/`), not over
+> PDF/DWG/IFC exports. §5c records that decision and what it dissolves;
+> CLAUDE.md describes the built state.
+>
+> **Everything before §5c is still worth reading, and is not obsolete.**
+> §1-§4 and §5a/§5b are where the domain knowledge lives — what real
+> drawing sets look like, why drawn dimensions legitimately differ from
+> the model, what a setout table is for, which assumptions broke when a
+> second client's files arrived. The *delivery mechanism* changed; the
+> reasoning did not. This document is deliberately kept as a trail of why
+> decisions changed rather than rewritten to look like it always knew.
+>
+> The pipeline §1-§5b describes was built, worked, and was parked on
+> 2026-08-18 — see `ARCHIVE-pdf-dwg.md` and `git checkout pdf-dwg-final`.
+
 A web app that ingests PDF or DWG sets of civil engineering drawings (bridges, retaining walls) and runs two categories of automated review: a **drafting check** (standards, annotation, cross-sheet, spelling/revisions) and a **geometry check** (dimensional consistency, full structure reconstruction from setout data, cross-checking against setout tables). A third input, an uploaded **client specification document**, can auto-generate project-specific rules that feed both engines (§6).
 
 ## 1. Recommended stack
@@ -362,13 +378,13 @@ Deliberately a **coverage** check only — confirms whether the attached IFC mod
 
 **Why it should generalise better, not just be easier.** §5's own Flinders finding was that logic built on domain invariants held across clients while logic built on client conventions broke. The Revit API is an invariant. `Element.ViewSpecific` replaces the CAD-layer proxy (`D-BDGE` vs `A-DETL`) that stood in for "is this drafted linework?"; `sheet.SheetNumber` replaces three title-block extraction strategies with synonym tables and prominence tie-breaks; `OfClass(RevisionCloud)` replaces scallop-arc vector clustering; `FamilyInstance.Location.Point` plus shared coordinates replaces the bearing + chained-dimension walk *and* the `IfcSite`-says-Massachusetts problem.
 
-**What §5a becomes.** The two drafting workarounds for non-perpendicular sections stay exactly as characterised above, and the distinction still matters — but both become directly observable. `Dimension.ValueOverride` sits next to the model's own `Value` with no DXF export in between (workaround 1), and whether a dimension measures model geometry or view-specific linework is a property lookup rather than an inference (workaround 2). The first tool built, `revit.dimension_provenance`, is the second of those; the check that verifies drafted dimensions against the model is sequenced next, and consumes this one's per-view output.
+**What §5a becomes.** The two drafting workarounds for non-perpendicular sections stay exactly as characterised above, and the distinction still matters — but both become directly observable. `Dimension.ValueOverride` sits next to the model's own `Value` with no DXF export in between (workaround 1), and whether a dimension measures model geometry or view-specific linework is a property lookup rather than an inference (workaround 2). `revit.dimension_provenance` covers the second (2026-08-17) and `revit.dimension_override_consistency` the first (2026-08-18) — the latter is a direct port of §5a's rounding-grid comparison, and needed no new adapter code, since Revit hands over `ValueOverride` and the model's own `Value` on the same segment in millimetres. It also closes a gap §5a had: a client whose overrides are never numeric got a clean-looking zero-finding result from a rule that checked nothing, so the Revit version always reports how much was in scope. The check that verifies *drafted* dimensions against the model is sequenced next, and consumes the provenance rule's per-view output.
 
 **What it does not change.** The standing position that classification is triage, not a filter — *assume nothing is trustworthy or you will be caught out* — is unaffected, and is why the provenance rule reports that the file cannot answer a question rather than that a dimension is wrong. Multi-hop survey-tolerance scaling remains open and still awaits a retaining-wall sample.
 
 **What it removes from the plan.** §1's web stack, §2's stateless-by-design purge machinery, §7/§8's markup export as the delivery mechanism (a check that runs where the fix happens can select and zoom the element instead), and §11's purge-timing question. §10's offline constraint is satisfied trivially. BACKEND_REVIEW.md §8's API/DB/queue/frontend — "the majority of the work" — is no longer on the path.
 
-`src/pdfchecker/` is left in place and still passing. Not deleted: the decision was to stand the Revit path up first and converge afterwards, rather than refactor a working, tested package during a pivot. See `extensions/RevitCheck.extension/README.md` and CLAUDE.md's "Direction change" section for the built state.
+`src/pdfchecker/` was left in place for the pivot itself — the decision was to stand the Revit path up first and converge afterwards, rather than refactor a working, tested package mid-pivot — and was **parked on 2026-08-18** once that path was standing: tagged `pdf-dwg-final` and removed from the tree, with the glossaries and the en-GB variant list rescued into the live tree because their content is hand-made judgement. See `ARCHIVE-pdf-dwg.md` for the full account and `extensions/RevitCheck.extension/README.md` + CLAUDE.md for the built state.
 
 ## 6. Client specification check
 

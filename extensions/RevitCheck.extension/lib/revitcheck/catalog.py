@@ -1,6 +1,7 @@
 """Rule catalog — `(RevitModel, RuleConfig) -> [Issue]`.
 
-Same shape as `pdfchecker.checks.catalog`, and kept for the same reason
+Same shape as the parked `pdfchecker.checks.catalog`
+(ARCHIVE-pdf-dwg.md), and kept for the same reason
 CLAUDE.md gives: "New drafting rules go in the rule catalog, not
 hardcoded into pipeline logic", so a project-specific check is a config
 change rather than a code change. With two rules that is mild overkill;
@@ -77,6 +78,38 @@ class RuleConfig:
     # A dimension mixing model geometry and detail linework across its
     # own witness points. Rarer and usually accidental.
     mixed_provenance_severity: str = "medium"
+
+    # --- overridden-dimension tolerance (revit.dimension_override_consistency)
+    #
+    # A drafter overriding a dimension's text is asserting the intended
+    # value over the measured one, and doing so is legitimate: bridge
+    # geometry is curved, sections cannot always be cut perpendicular,
+    # and the model's own measurement lands a few mm off a buildable
+    # number. So the test is not "do these agree" but "is the difference
+    # explainable as rounding to a sensible grid" — `grid/2 + epsilon`.
+    # A flat delta cannot do that job: loose enough to allow real
+    # rounding also allows a stale override, and tight enough to catch a
+    # stale override flags every rounded dimension on the sheet.
+    #
+    # **These three figures are inherited, not calibrated.** They come
+    # from the parked PDF/DWG pipeline (PLANNING.md §5's rounding-grid
+    # design), where §5 itself calls the setout_critical figure "a
+    # placeholder — confirm the real figure against samples". No Revit
+    # model has been measured against them yet. The coverage Issue the
+    # rule emits is what will make the first real run say how much it
+    # actually checked.
+    rounding_grid_default_mm: float = 5.0
+    rounding_grid_setout_critical_mm: float = 1.0
+    measurement_epsilon_mm: float = 0.5
+
+    # Dimension *types* (Revit's `DimensionType.Name`) whose values are
+    # setout-critical and get the tighter grid. Revit's dimension style
+    # is the direct analogue of the CAD layer/dimstyle the PDF pipeline
+    # keyed on, and PLANNING.md §4 names dimension-style as a
+    # classification source explicitly. Empty by default: an unlisted
+    # type gets the default grid rather than a guess, and no client's
+    # naming is assumed.
+    setout_critical_type_names: List[str] = field(default_factory=list)
 
     params: Dict[str, dict] = field(default_factory=dict)
 

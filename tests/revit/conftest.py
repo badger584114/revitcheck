@@ -68,13 +68,42 @@ def unresolved_ref(element_id=400):
     return ReferenceInfo(element_id=element_id, resolved=False)
 
 
-def dimension(element_id, view_id, references, value_mm=1000.0, override=None, spot=False):
+def dimension(
+    element_id,
+    view_id,
+    references,
+    value_mm=1000.0,
+    override=None,
+    spot=False,
+    type_name=None,
+):
     return DimensionInfo(
         element_id=element_id,
         view_id=view_id,
         is_spot=spot,
         references=list(references),
         segments=[DimensionSegmentInfo(value_mm=value_mm, value_override=override)],
+        type_name=type_name,
+    )
+
+
+def chain(element_id, view_id, references, segments, type_name=None):
+    """A dimension chain: one Revit element carrying many segments.
+
+    Revit models a chain as a single `Dimension` with `Segments`, not as
+    several dimensions — the opposite of the DXF side, where chains had
+    to be reassembled from shared witness points. `segments` here is a
+    list of `(value_mm, override)` pairs.
+    """
+    return DimensionInfo(
+        element_id=element_id,
+        view_id=view_id,
+        references=list(references),
+        segments=[
+            DimensionSegmentInfo(value_mm=value, value_override=override)
+            for value, override in segments
+        ],
+        type_name=type_name,
     )
 
 
@@ -109,6 +138,7 @@ def make():
         datum_ref = staticmethod(datum_ref)
         unresolved_ref = staticmethod(unresolved_ref)
         dimension = staticmethod(dimension)
+        chain = staticmethod(chain)
         view = staticmethod(view)
         model = staticmethod(build_model)
 

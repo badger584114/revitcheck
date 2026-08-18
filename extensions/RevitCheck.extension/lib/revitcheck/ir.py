@@ -1,9 +1,10 @@
 """The Revit-side Intermediate Representation.
 
-Same discipline as `pdfchecker.ir` and for the same reason (CLAUDE.md:
-"Any new extractor must normalize into this IR — don't build
-format-specific downstream logic in the check engines"). Revit is simply
-a third extractor. What changes is the *location model*: a PDF Issue
+Same discipline as the parked `pdfchecker.ir` (ARCHIVE-pdf-dwg.md; the
+code is at `git checkout pdf-dwg-final`) and for the same reason —
+CLAUDE.md's standing rule that any new extractor must normalize into the
+IR rather than build format-specific downstream logic into the check
+engines. Revit is simply a third extractor. What changes is the *location model*: a PDF Issue
 points at a page and a bounding box because the fix happened somewhere
 else, in Revit. Here the check runs where the fix happens, so a location
 is an element id plus the view it lives in — which pyRevit can turn into

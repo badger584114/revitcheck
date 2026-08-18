@@ -1,4 +1,17 @@
 {
+  "_note": [
+    "Firm-wide engineering vocabulary: materials, product trade names,",
+    "standards bodies, drafting abbreviations, qualifications. Seeded",
+    "2026-08-17 by running a spellcheck over two complete real drawing sets",
+    "(170 sheets) and hand-classifying 198 distinct flagged words. READ THIS",
+    "BEFORE RE-SEEDING: 40 of those words were deliberately LEFT OUT because",
+    "they are genuine spelling errors in issued drawings - CEMENTITOUS,",
+    "UNITSTRUT, BAREWELL, LUMAINAIRE, ABLEFLEX - each a misspelling of a term",
+    "that appears correctly spelled elsewhere in the same set. Bulk-adding",
+    "every flagged word would permanently suppress real findings. The",
+    "classification is the load-bearing part, not the word count; repeat the",
+    "judgement, never automate it. See ARCHIVE-pdf-dwg.md."
+  ],
   "words": [
     "aadt", "abelflex", "abutment", "abutments", "acrs", "affl", "alluvium",
     "apas", "astm", "autodesk", "axonometric", "backfilled", "bartek",
