@@ -215,10 +215,23 @@ Also open, carried over from PLANNING.md:
 
 ## Environment quirks worth knowing
 
-- The system Python here is **3.9.5, an x86_64 build under Rosetta on an
-  arm64 Mac** (no Homebrew/pyenv). It is slow, but `revitcheck` has no
-  dependencies so nothing needs building. Note that a local 3.9-vs-3.13
-  speed comparison mostly measures Rosetta, not the interpreter.
+- **`.venv` is Python 3.13 and holds only `pytest`** (26MB). Rebuilt
+  from scratch on 2026-08-18: a virtualenv hardcodes its own path and
+  does not survive the folder rename. The one it replaced was 359MB of
+  PyMuPDF/pdfplumber/ezdxf/ifcopenshell, all of it for the parked
+  pipeline.
+- 3.13 rather than the 3.9.5 this project used to run on — that is an
+  **x86_64 build under Rosetta on an arm64 Mac** and correspondingly
+  slow. CI still gates 3.9, so the floor is covered without paying for
+  it locally. Worth knowing before reading anything into an interpreter
+  benchmark taken here: a local 3.9-vs-3.13 comparison mostly measures
+  Rosetta. On CI, same runner both sides, the real gap was ~13%.
+- **The project folder is `~/projects/revitcheck`**, renamed from
+  `pdf checker` on 2026-08-18 along with the repo. Claude Code keys its
+  per-project state on the path, so
+  `~/.claude/projects/-Users-petergriggs-projects-pdf-checker` was moved
+  to `...-revitcheck` at the same time — memory included. Anything still
+  naming the old path is stale.
 - **Git remote** is `https://github.com/badger584114/revitcheck.git`
   (private, renamed from `pdf-dwg-checker` on 2026-08-18 — GitHub keeps
   a redirect, so an old clone's remote still works). Two failure modes seen on this machine: (1) a GitHub HTTP/2
