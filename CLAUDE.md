@@ -36,6 +36,13 @@ that checked PDF/DWG/IFC *exports* instead. It was parked on 2026-08-18.
   suite, and the real BR06/BR08 sample sets.
 - **`BACKEND_REVIEW.md`** — a review of that backend taken just before
   the pivot.
+- **`git show frontend-plan-final:FRONTEND_PLAN.md`** — the frontend
+  implementation plan, never merged. §5c took the web stack off the
+  path; tagged rather than deleted because it was the only copy.
+
+Both tags are the only surviving reference to their branches: every
+merged branch was deleted on 2026-08-18 and `main` is now the sole
+branch, so nothing is recoverable by branch name any more.
 
 The one lesson from it that governs new work: **logic built on domain
 invariants survived a second client; logic built on client conventions
