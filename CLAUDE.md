@@ -15,13 +15,23 @@ toolbar (`extensions/RevitCheck.extension/`). Two categories of check:
    whether what a drawing states matches what the model actually says.
 
 Scope is **internal projects only**, confirmed by the user, so a Revit
-model is always available. Nothing leaves the machine.
+model is always available. Models are **cloud-workshared in Autodesk
+Forma**, which is the firm's approved and secure store for project
+information — so persistent state living off the machine is legitimate,
+and the tool may keep memory between runs.
+
+> This **corrects** the earlier "nothing leaves the machine" position
+> stated here until 2026-08-18. That was never a client requirement; it
+> was inherited from PLANNING.md §10's air-gap design for the parked
+> web stack. See §10 for the correction and why the underlying
+> confidentiality concern is still answered.
 
 **Read `PLANNING.md` before making structural changes** — it holds the
 reasoning, not just the "what". §5c records why the checks moved into
-Revit; §5 (all of it) is the domain knowledge about what actually goes
-wrong on real drawing sets, and remains correct regardless of where the
-checks run.
+Revit and §5d the open reporting question; §5 (all of it) is the domain
+knowledge about what actually goes wrong on real drawing sets, and
+remains correct regardless of where the checks run. §10 is **withdrawn**
+— read its superseded note before treating anything in it as a rule.
 
 ### There is a large archive, and you should know what is in it
 
@@ -206,6 +216,22 @@ produces its input. It needs new adapter geometry (witness points in
 model space, the view's own cut plane and direction, nearby model
 elements), so it needs a Revit machine to debug and a real capture to
 calibrate.
+
+**Export findings as BCF** — decided 2026-08-18 after rendering six
+candidate formats side by side with real output (PLANNING.md §5d).
+Today's output is a markdown list in the pyRevit window that vanishes
+when the window closes. BCF is the only off-machine format that keeps
+the element anchor: a `Component` carries an `IfcGuid` for other tools
+*and* an `AuthoringToolId` that can hold the Revit element id, so a
+finding stays clickable rather than degrading to a number someone
+retypes into Select by ID. It needs `unique_id` from the adapter work
+above, which is why that field is load-bearing rather than insurance.
+
+Two things not to re-litigate: **the Forma Issues API cannot create
+element-pinned issues** (`linkedDocuments` is not writable on creation),
+which is what ruled it out as the primary sink; and **BCF import into
+Forma is still in beta**, so treat the Forma round trip as upside on
+Autodesk's schedule, not a dependency. BCF export *from* Forma is GA.
 
 Also open, carried over from PLANNING.md:
 
