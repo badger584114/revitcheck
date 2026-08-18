@@ -219,8 +219,9 @@ Also open, carried over from PLANNING.md:
   arm64 Mac** (no Homebrew/pyenv). It is slow, but `revitcheck` has no
   dependencies so nothing needs building. Note that a local 3.9-vs-3.13
   speed comparison mostly measures Rosetta, not the interpreter.
-- **Git remote** is `https://github.com/badger584114/pdf-dwg-checker.git`
-  (private). Two failure modes seen on this machine: (1) a GitHub HTTP/2
+- **Git remote** is `https://github.com/badger584114/revitcheck.git`
+  (private, renamed from `pdf-dwg-checker` on 2026-08-18 — GitHub keeps
+  a redirect, so an old clone's remote still works). Two failure modes seen on this machine: (1) a GitHub HTTP/2
   push bug (`RPC failed; HTTP 400`) — fixed by `git config http.version
   HTTP/1.1` plus a larger `http.postBuffer`, already set in this repo's
   `.git/config`, so a fresh clone needs it re-applied; (2) GitHub accepts
