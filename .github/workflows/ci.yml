@@ -1,182 +1,65 @@
 name: CI
 
-# Added 2026-08-17. The repo had no CI at all, and the two breakages that
-# prompted this review were both invisible because of it:
+# One job, because there is now only one thing to check and it takes no
+# time. This replaced a four-job workflow (fast / packaging / tests /
+# forward-compat, ~6 minutes) when the PDF/DWG pipeline was parked
+# (ARCHIVE-pdf-dwg.md): `packaging` went with the distribution it tested,
+# and the sample-backed suite went with the 510MB of samples it read.
 #
-#   * PyYAML was pinned in requirements.txt but missing from the dev venv,
-#     so `import yaml` in checks/__init__.py killed both CLIs *and* the
-#     whole test suite at import.
-#   * tests/test_dxf_markup.py used `str | None` with no
-#     `from __future__ import annotations`, which Python 3.9 can't
-#     evaluate. A single collection error aborts the entire pytest run, so
-#     that one file silently suppressed all test feedback.
+# What has NOT changed is why the byte-compile step exists, and it is the
+# most important line here. Two modules in this repo cannot be imported
+# on any machine without Revit installed —
+# `adapters/revit_source.py` and the pyRevit button scripts — so no test
+# will ever touch them. `compileall` does not import, so it is the only
+# automated check they get, and a syntax error in the adapter would
+# otherwise reach a Revit machine before anything caught it.
 #
-# Both are import-time failures, which is why the `fast` job below is
-# `--collect-only`: it reproduces that whole class of problem in under a
-# second, and gives a signal long before the sample-backed suite finishes.
+# The original reason for a `--collect-only` step also still applies: the
+# two breakages that prompted CI in the first place were both import-time
+# failures, and a single collection error aborts the *entire* pytest run,
+# so one bad file can silently suppress all test feedback. Here the whole
+# suite runs in well under a second, so running it outright covers that.
 
 on:
   push:
   pull_request:
 
-# A new push supersedes an in-flight run on the same ref — the full suite
-# checks out ~310MB of real drawing samples, so stale runs aren't free.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Every gating job pins Python 3.9: pyproject.toml declares >=3.9 and the
-# dev environment is 3.9.5, so that's the floor. The non-gating
-# forward-compat job below is the only one that varies it.
-
 jobs:
-  fast:
-    name: Import & collection (no sample data)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          # samples/ is ~310MB of real drawings and nothing here needs it —
-          # collection imports conftest.py but never opens a sample (its
-          # fixtures resolve paths lazily). Keeps this job genuinely fast.
-          # extensions/ holds the pyRevit package (revitcheck), which
-          # tests/revit/conftest.py puts on sys.path — omit it and this
-          # job fails at collection rather than catching anything.
-          sparse-checkout: |
-            src
-            tests
-            scripts
-            config
-            extensions
-          sparse-checkout-cone-mode: true
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.9"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - run: pip install -r requirements.txt
-
-      - name: Byte-compile everything
-        # Catches syntax errors in files no test imports. That now
-        # includes the two files nothing here *can* import:
-        # adapters/revit_source.py needs the Revit API, and the pyRevit
-        # button scripts need pyrevit — compiling doesn't import, so this
-        # is the only automated check they get.
-        run: python -m compileall -q src scripts tests extensions
-
-      - name: Collect the full test suite
-        # The actual regression guard for this review's findings 1.1/1.2.
-        # Any import-time failure in any test module fails here.
-        run: python -m pytest tests/ --collect-only -q
-
-  packaging:
-    name: Installs from pyproject.toml alone
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          sparse-checkout: |
-            src
-          sparse-checkout-cone-mode: true
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.9"
-
-      # Deliberately does NOT use requirements.txt. pyproject.toml's
-      # dependency list had drifted from what the code imports (it omitted
-      # ezdxf, ifcopenshell and numpy, so `pip install .` produced a
-      # package that couldn't import itself). Installing from the manifest
-      # alone and importing every module is what stops that recurring —
-      # requirements.txt would mask it by pulling the missing packages in.
-      - run: pip install .
-
-      - name: Import every module from the installed package
-        # Runs from a directory with no source tree on sys.path, so this
-        # exercises the installed distribution rather than the checkout.
-        working-directory: /tmp
-        run: |
-          python -c "
-          import importlib, pkgutil, pdfchecker
-          mods = [m.name for m in pkgutil.walk_packages(pdfchecker.__path__, 'pdfchecker.')]
-          for m in sorted(mods):
-              importlib.import_module(m)
-          from pdfchecker.checks import all_rule_ids
-          assert [r for r in all_rule_ids() if r.startswith('geometry.')], 'geometry rules not registered'
-          print(f'imported {len(mods)} modules; {len(all_rule_ids())} rules registered')
-          "
-
   tests:
-    name: Full suite against real samples
-    runs-on: ubuntu-latest
-    # ~6 minutes locally; the ceiling allows for a slower runner and the
-    # large checkout without letting a genuine hang burn the budget.
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.9"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - run: pip install -r requirements.txt
-
-      # ODA File Converter is a manual install, not a pip dependency, so
-      # it is absent here — the one test needing it skips itself
-      # (tests/test_dxf_source.py). Everything else runs against the real
-      # PDFs, DXFs and IFC models committed under samples/.
-      - name: Run tests
-        run: python -m pytest tests/ -q --durations=10
-
-  forward-compat:
-    name: Full suite on newer Python (informational)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # NOT gating, and installs *unpinned* — requirements.txt is frozen
-    # against 3.9, so a failure here should read as "the pins or a
-    # dependency don't support this interpreter yet", not "the code is
-    # broken". Worth running: this codebase leans on
-    # `from __future__ import annotations` throughout for 3.9
-    # compatibility, and deployment (PLANNING.md §10, containerised) is
-    # not pinned to 3.9, so drift in either direction matters.
+    # The matrix is a real signal now rather than the informational
+    # forward-compat job it replaces. `revitcheck` has to run on whatever
+    # CPython pyRevit ships with — 3.8/3.9 on pyRevit 4.8, 3.12 on
+    # pyRevit 5 — and that is not a version this repo chooses. 3.9 is the
+    # floor (the dev machine's interpreter) and 3.13 is the ceiling.
     #
-    # Verified locally on 3.13.15 before this workflow was committed:
-    # `pip install . pytest` resolves and the *full* suite passes, 276/276
-    # — so this runs the whole suite rather than just collection, which is
-    # what makes it a real forward-compat signal instead of an import
-    # smoke test. Two things that run surfaced:
-    #   * the `\P` invalid escape in extraction/dxf_source.py, a
-    #     DeprecationWarning on 3.9 but a SyntaxWarning on 3.13 — i.e. on
-    #     its way to a SyntaxError. Exactly the drift this job exists to
-    #     catch early; fixed with a raw docstring.
-    #   * a performance signal that turned out smaller than it first
-    #     looked. Locally 3.13 ran the suite in 3m16s against 3.9's
-    #     5m51s, but on CI — same runner, same architecture, a fair
-    #     comparison — it is 5m07s against 5m52s. So most of that local
-    #     gap was this dev machine's 3.9 being an x86_64 build under
-    #     Rosetta (CLAUDE.md's environment note), not the interpreter.
-    #     ~13%% is still worth having, but the 3.9 floor is not the
-    #     performance problem a naive local read would suggest.
-    continue-on-error: true
+    # Cheap enough to gate on all three: the package is stdlib-only, so
+    # there is nothing to resolve but pytest, and the suite is ~0.15s.
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.9", "3.12", "3.13"]
     steps:
-      # Full checkout: this runs the real suite, so it needs samples/.
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install unpinned (requirements.txt is 3.9-frozen)
-        run: pip install . pytest
+      # No requirements.txt and no `pip install .`: `revitcheck` is
+      # stdlib-only and is imported from `extensions/.../lib` by
+      # `tests/revit/conftest.py`, exactly as pyRevit imports it.
+      - run: pip install pytest
 
-      - run: python -m pytest tests/ -q
+      - name: Byte-compile everything
+        # Including what no test can import. See the header comment.
+        run: python -m compileall -q extensions scripts tests
+
+      - name: Run tests
+        run: python -m pytest -q

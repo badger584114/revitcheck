@@ -1,5 +1,21 @@
 # PDF Checker — Architecture & Planning
 
+> **Current direction: §5c.** The checks now run **inside Revit** as a
+> pyRevit toolbar (`extensions/RevitCheck.extension/`), not over
+> PDF/DWG/IFC exports. §5c records that decision and what it dissolves;
+> CLAUDE.md describes the built state.
+>
+> **Everything before §5c is still worth reading, and is not obsolete.**
+> §1-§4 and §5a/§5b are where the domain knowledge lives — what real
+> drawing sets look like, why drawn dimensions legitimately differ from
+> the model, what a setout table is for, which assumptions broke when a
+> second client's files arrived. The *delivery mechanism* changed; the
+> reasoning did not. This document is deliberately kept as a trail of why
+> decisions changed rather than rewritten to look like it always knew.
+>
+> The pipeline §1-§5b describes was built, worked, and was parked on
+> 2026-08-18 — see `ARCHIVE-pdf-dwg.md` and `git checkout pdf-dwg-final`.
+
 A web app that ingests PDF or DWG sets of civil engineering drawings (bridges, retaining walls) and runs two categories of automated review: a **drafting check** (standards, annotation, cross-sheet, spelling/revisions) and a **geometry check** (dimensional consistency, full structure reconstruction from setout data, cross-checking against setout tables). A third input, an uploaded **client specification document**, can auto-generate project-specific rules that feed both engines (§6).
 
 ## 1. Recommended stack
@@ -368,7 +384,7 @@ Deliberately a **coverage** check only — confirms whether the attached IFC mod
 
 **What it removes from the plan.** §1's web stack, §2's stateless-by-design purge machinery, §7/§8's markup export as the delivery mechanism (a check that runs where the fix happens can select and zoom the element instead), and §11's purge-timing question. §10's offline constraint is satisfied trivially. BACKEND_REVIEW.md §8's API/DB/queue/frontend — "the majority of the work" — is no longer on the path.
 
-`src/pdfchecker/` is left in place and still passing. Not deleted: the decision was to stand the Revit path up first and converge afterwards, rather than refactor a working, tested package during a pivot. See `extensions/RevitCheck.extension/README.md` and CLAUDE.md's "Direction change" section for the built state.
+`src/pdfchecker/` was left in place for the pivot itself — the decision was to stand the Revit path up first and converge afterwards, rather than refactor a working, tested package mid-pivot — and was **parked on 2026-08-18** once that path was standing: tagged `pdf-dwg-final` and removed from the tree, with the glossaries and the en-GB variant list rescued into the live tree because their content is hand-made judgement. See `ARCHIVE-pdf-dwg.md` for the full account and `extensions/RevitCheck.extension/README.md` + CLAUDE.md for the built state.
 
 ## 6. Client specification check
 

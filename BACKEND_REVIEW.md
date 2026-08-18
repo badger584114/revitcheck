@@ -1,5 +1,15 @@
 # Backend Review — pre-frontend readiness
 
+> **Historical.** This reviews `src/pdfchecker/`, the PDF/DWG/IFC
+> pipeline, which was parked the day after this review was written — see
+> `ARCHIVE-pdf-dwg.md`; the code is at `git checkout pdf-dwg-final`. It
+> is kept because it is part of why the pivot happened: §8's finding that
+> the API/DB/queue/frontend build was "the majority of the work" still
+> ahead is one of the things that made moving the checks into Revit the
+> cheaper path. Two fixes it produced *did* carry over into
+> `extensions/RevitCheck.extension/` — run-time rule-id resolution
+> instead of a construction-time snapshot, and per-rule error isolation.
+
 **Reviewed:** 2026-08-17 · **Commit:** `614ce07` (main) · **Scope:** everything under `src/pdfchecker/`, `scripts/`, `tests/`, packaging and environment.
 
 **Method:** read the full source tree, then executed against the real BR06 sample — CLI entry points, the full 230-test pytest suite, the session-config loader, and per-rule timing. Findings below marked *(verified)* were reproduced by running the code, not inferred from reading it.

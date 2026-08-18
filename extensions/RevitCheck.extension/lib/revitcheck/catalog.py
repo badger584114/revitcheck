@@ -1,6 +1,7 @@
 """Rule catalog — `(RevitModel, RuleConfig) -> [Issue]`.
 
-Same shape as `pdfchecker.checks.catalog`, and kept for the same reason
+Same shape as the parked `pdfchecker.checks.catalog`
+(ARCHIVE-pdf-dwg.md), and kept for the same reason
 CLAUDE.md gives: "New drafting rules go in the rule catalog, not
 hardcoded into pipeline logic", so a project-specific check is a config
 change rather than a code change. With two rules that is mild overkill;

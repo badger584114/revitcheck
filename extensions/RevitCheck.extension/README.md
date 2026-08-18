@@ -76,6 +76,14 @@ ir.py                      plain dataclasses, raw facts, millimetres
 checks/*.py                pure (RevitModel, RuleConfig) -> [Issue]
 ```
 
+One file sits outside that stack: `en_gb_variants.py`, a curated
+British/American spelling-variant list with **no rule importing it yet**.
+It was rescued from the parked PDF/DWG tree because its content is
+hand-made judgement built up against real issued drawings — including
+the `centring`/`centering` exclusion and its guarding test — and a Revit
+`TextNote` spelling check will want exactly it. `config/*_glossary.json`
+sits in the repo root for the same reason. See `ARCHIVE-pdf-dwg.md`.
+
 **Nothing below the adapter knows Revit exists.** Two consequences that
 are easy to erode and worth defending in review:
 
