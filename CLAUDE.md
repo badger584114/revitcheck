@@ -227,11 +227,19 @@ finding stays clickable rather than degrading to a number someone
 retypes into Select by ID. It needs `unique_id` from the adapter work
 above, which is why that field is load-bearing rather than insurance.
 
-Two things not to re-litigate: **the Forma Issues API cannot create
+One thing not to re-litigate: **the Forma Issues API cannot create
 element-pinned issues** (`linkedDocuments` is not writable on creation),
-which is what ruled it out as the primary sink; and **BCF import into
-Forma is still in beta**, so treat the Forma round trip as upside on
-Autodesk's schedule, not a dependency. BCF export *from* Forma is GA.
+which is what ruled it out as the primary sink.
+
+**BCF import into Forma is now available** — confirmed in the firm's own
+Forma on 2026-08-19, no longer the beta this file previously warned
+about. The round trip is therefore real rather than speculative, and the
+"upside on Autodesk's schedule, not a dependency" caveat is withdrawn.
+Two things that does *not* change: BCF is still the right target for the
+reasons above (the element anchor), not because Forma takes it; and it
+still needs `unique_id` from the adapter work, which remains the actual
+blocker. Worth confirming what Forma does with `AuthoringToolId` on
+import before relying on the anchor surviving the trip.
 
 Also open, carried over from PLANNING.md:
 
