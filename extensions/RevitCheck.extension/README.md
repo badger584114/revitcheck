@@ -63,7 +63,9 @@ no Revit present.
 
 A capture contains sheet numbers, view names and coordinates. Treat it
 as client data (PLANNING.md §2) — check before it leaves a machine or
-lands in git.
+lands in git. The route off the Revit machine is Forma: upload the
+capture alongside the model it came from, the same store the project
+already lives in (CLAUDE.md's §10 correction).
 
 ## Layout, and the one rule that matters
 

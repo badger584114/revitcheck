@@ -21,7 +21,9 @@ Two consequences worth keeping in mind when extending the IR:
   and view names all travel in the file. Treat a capture the way the
   rest of this project treats uploaded drawings (PLANNING.md §2's
   stateless-by-design reasoning); don't commit one from a live job
-  without checking that is acceptable.
+  without checking that is acceptable. The route off the Revit machine
+  is Forma — upload the capture alongside the model it came from, the
+  same store the project already lives in (CLAUDE.md's §10 correction).
 """
 
 from __future__ import annotations
