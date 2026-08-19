@@ -1,0 +1,6 @@
+title: CPython Test
+tooltip: >-
+  Same as Test Button, but forced onto the CPython 3 engine via the
+  shebang, to isolate whether CPython 3 itself is broken on this machine
+  versus something specific to RevitCheck.extension.
+author: Peter Griggs
