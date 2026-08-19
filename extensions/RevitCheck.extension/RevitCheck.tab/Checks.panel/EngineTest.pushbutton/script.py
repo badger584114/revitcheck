@@ -1,18 +1,22 @@
 #! python3
+# -*- coding: utf-8 -*-
 """Diagnostic only — not a real check.
 
-Deliberately imports nothing from `revitcheck`, to isolate whether the
-CPython 3 engine can launch *any* `#! python3` script on this machine at
-all, versus something specific to the real buttons' scripts. Delete this
-whole EngineTest.pushbutton folder once the real buttons work.
+Deliberately touches nothing from the Revit API or `revitcheck` — just
+forms.alert, same as the working test button. Isolates whether CPython 3
+itself fails inside RevitCheck.extension, or whether it's specifically
+touching `revit.doc` (as the original version of this script, and the
+three real buttons, all do) that triggers the failure.
 """
 
-import sys
+from pyrevit import script
+from pyrevit import forms
 
-from pyrevit import revit, script
+forms.alert(
+    "Hello from pyRevit (CPython 3, RevitCheck.extension, no revit.doc)!",
+    title="Engine Test",
+    warn_icon=False
+)
 
-output = script.get_output()
-output.set_title("Engine Test")
-output.print_md("### CPython engine launched successfully")
-output.print_md("- `sys.version`: `{0}`".format(sys.version))
-output.print_md("- open document title: `{0}`".format(revit.doc.Title))
+logger = script.get_logger()
+logger.info("Engine Test executed successfully.")
