@@ -34,6 +34,43 @@ No other install step: pyRevit puts `RevitCheck.extension/lib` on
 The scripts declare `#! python3`, so they run on pyRevit's CPython
 engine.
 
+## Three CPython gotchas, all of which cost a day to find
+
+Every button here runs on CPython (`#! python3`) because the package
+uses dataclasses and `from __future__ import annotations` — IronPython
+2.7 cannot parse most of the tree, so running on the default engine is
+not an option. Three consequences, each of which produced a
+confusing failure before being understood:
+
+1. **`pyrevit.forms` does not work under CPython.** Its module-level
+   `__getattr__` raises `PyRevitCPythonNotSupported` for *every* name,
+   so even `forms.alert` fails. `CaptureModel` therefore uses WPF's
+   `Microsoft.Win32.SaveFileDialog` directly. `script.get_output()` and
+   `revit.doc` are fine — it is `forms` specifically.
+   The trap: a script that drops `#! python3` "works", because it falls
+   back to IronPython where `forms` *is* supported — and then fails on
+   the first `dataclass` import instead.
+
+2. **Use Reload once, then restart Revit.** pythonnet can only
+   initialize the Python runtime once per process, and Revit is one
+   long-lived process. A pyRevit **Reload** after any CPython script has
+   run throws `This property must be set before runtime is initialized`
+   (pythonnet's `Runtime.set_PythonDLL`) and leaves *every* CPython
+   button dead for the rest of the session. Restart Revit after
+   changing files; Reload is only safe for IronPython extensions.
+
+3. **The CPython engine needs the Python version pyRevit expects.**
+   A machine with 3.14 installed where pyRevit wanted 3.12 failed at
+   engine startup with `Input string was not in a correct format` — a
+   .NET `FormatException` from parsing the version, before any script
+   ran, so no pyRevit traceback appeared at all. Installing the expected
+   version and reinstalling pyRevit fixed it.
+
+A useful tell: a **native Revit "Command Failure" dialog** means the
+failure happened before pyRevit's Python layer got control (cases 2 and
+3). A **pyRevit output window with a traceback** means the script ran
+and something in it raised (case 1).
+
 ## Buttons
 
 | Button | What it does |
