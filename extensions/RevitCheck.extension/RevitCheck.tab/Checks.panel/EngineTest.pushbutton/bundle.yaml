@@ -7,3 +7,4 @@ tooltip: >-
   whether the "Input string was not in a correct format" failure is
   specific to RevitCheck's own scripts or affects any #! python3 script.
   Safe to delete once the real buttons work.
+author: Peter Griggs

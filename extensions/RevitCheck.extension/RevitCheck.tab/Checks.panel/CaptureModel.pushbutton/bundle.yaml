@@ -5,3 +5,4 @@ tooltip: >-
   Write this model's extracted data to a JSON file, so checks can be
   developed and tested on a machine without Revit. Contains sheet numbers,
   view names and coordinates — treat it as client data.
+author: Peter Griggs
