@@ -96,6 +96,21 @@ DRAFTED_CLASSES = frozenset({"ImportInstance"})
 # per-dimension reporting instead.
 _MIN_DIMS_FOR_VIEW_ROLLUP = 2
 
+# Fraction of a view's dimensions that must classify as DRAFTED before
+# the view rolls up to one issue instead of reporting each dimension.
+# **Calibrated against the first real capture** (T2DPAA-T2D-C3S-BR-M3D
+# -100304, 2026-08-21, 134 sheets / 1566 views / 17117 dimensions), not
+# inherited as a placeholder. The rollup originally required literally
+# every dimension to be DRAFTED, which sounds equivalent to "the view is
+# drafted" but is not: on that capture, one elevation view had 946
+# drafted dimensions and 4 model-backed ones, so the 100% rule fell
+# through to 946 individual issues for a view whose story is one
+# sentence long. At this default (0.9) the same run's dimension_provenance
+# volume drops from 4434 to 1042 issues with no finding actually lost —
+# see `_issue_for_view_rollup`'s docstring for what still gets reported
+# individually inside a rolled-up view.
+_DEFAULT_ROLLUP_THRESHOLD = 0.9
+
 
 def classify_reference(ref: ReferenceInfo) -> str:
     """Classify one dimension endpoint.
@@ -268,21 +283,86 @@ def _issue_for_dimension(
     return None
 
 
+def _view_rollup_issue(
+    view: ViewInfo, dims: List[DimensionInfo], drafted: List[DimensionInfo], config: RuleConfig
+) -> Issue:
+    """One issue standing in for a view whose dimensions are (almost)
+    all drafted.
+
+    Two wordings, not one, because "every" and "946 of 950" are
+    different claims and a reader should not have to open the model to
+    find out which one this is. The drafting-view branch of each still
+    has to read differently from the model-view branch — see the
+    docstring on `check_dimension_provenance`.
+    """
+    fully_drafted = len(drafted) == len(dims)
+    if fully_drafted:
+        subject = "Every dimension in {0} ({1} of them)".format(
+            _describe_view(view), len(drafted)
+        )
+        verb = "is"
+    else:
+        subject = "{0} of {1} dimensions in {2}".format(
+            len(drafted), len(dims), _describe_view(view)
+        )
+        verb = "are"
+
+    if view.is_drafting_view:
+        summary = (
+            "{0} {1} taken from detail linework. A drafting view has no "
+            "model behind it, so that is expected for a standard detail "
+            "— but if this view carries project-specific setout, nothing "
+            "in the file can show whether it has drifted."
+        ).format(subject, verb)
+    else:
+        summary = (
+            "{0} {1} taken from detail linework. Nothing in {2} tracks "
+            "the model, and nothing in the file can show whether it has "
+            "drifted — it can only be verified against the model itself."
+        ).format(subject, verb, "this view" if fully_drafted else "that part of the view")
+
+    return Issue(
+        rule_id="revit.dimension_provenance",
+        category="geometry",
+        description=summary,
+        severity=_drafted_severity(view, config),
+        element_id=view.element_id,
+        view_id=view.element_id,
+        view_name=view.name,
+        sheet_no=view.sheet_no,
+        suggested_fix={
+            "provenance": Provenance.DRAFTED,
+            "dimensions": len(dims),
+            "drafted_dimensions": len(drafted),
+            "scope": "view",
+            "action": "verify this view's setout against the model",
+        },
+    )
+
+
 @register("revit.dimension_provenance")
 def check_dimension_provenance(model: RevitModel, config: RuleConfig) -> List[Issue]:
     """Flag dimensions that measure linework rather than the model.
 
-    Output is rolled up per view where that is the honest summary: if
-    *every* dimension in a view is drafted, one view-level issue is
-    reported instead of twenty identical dimension-level ones. That is
-    not just noise control — a wholly-drafted view is a different and
+    Output is rolled up per view where that is the honest summary: once
+    at least `rollup_threshold` (default `_DEFAULT_ROLLUP_THRESHOLD`,
+    0.9) of a view's dimensions are drafted, one view-level issue is
+    reported instead of one per dimension. That is not just noise
+    control — a wholly- or almost-wholly-drafted view is a different and
     larger finding than a stray drafted dimension in an otherwise live
     view, and it is the unit the follow-up "verify these against the
-    model" tool will operate on. Set `roll_up_fully_drafted_views` off
-    in config to get the per-dimension form regardless.
+    model" tool will operate on. The threshold is deliberately not 100%:
+    see `_DEFAULT_ROLLUP_THRESHOLD`'s comment for the real capture that
+    showed why a single live dimension in an otherwise-drafted view
+    should not suppress the rollup. Set `roll_up_fully_drafted_views` off
+    in config to get the per-dimension form regardless, or tune
+    `rollup_threshold` (0.0-1.0) directly.
     """
     roll_up = config.params.get("dimension_provenance", {}).get(
         "roll_up_fully_drafted_views", True
+    )
+    threshold = config.params.get("dimension_provenance", {}).get(
+        "rollup_threshold", _DEFAULT_ROLLUP_THRESHOLD
     )
 
     issues: List[Issue] = []
@@ -299,52 +379,29 @@ def check_dimension_provenance(model: RevitModel, config: RuleConfig) -> List[Is
         verdicts = dict((d.element_id, classify_dimension(d)) for d in dims)
         drafted = [d for d in dims if verdicts[d.element_id] == Provenance.DRAFTED]
 
-        fully_drafted = (
+        rolls_up = (
             roll_up
             and len(dims) >= _MIN_DIMS_FOR_VIEW_ROLLUP
-            and len(drafted) == len(dims)
+            and drafted
+            and len(drafted) / len(dims) >= threshold
         )
 
-        if fully_drafted:
-            # The drafting-view case has to read differently here too,
-            # not just in the per-dimension path. A section with no live
-            # dimensions is someone's choice; a drafting view never had
-            # a model behind it to begin with, and describing the two
-            # identically would make the more serious one easy to skip.
-            if view.is_drafting_view:
-                summary = (
-                    "Every dimension in {0} ({1} of them) is taken from detail "
-                    "linework. A drafting view has no model behind it, so that "
-                    "is expected for a standard detail — but if this view "
-                    "carries project-specific setout, nothing in the file can "
-                    "show whether it has drifted."
-                ).format(_describe_view(view), len(dims))
-            else:
-                summary = (
-                    "Every dimension in {0} ({1} of them) is taken from detail "
-                    "linework. Nothing in this view tracks the model, and "
-                    "nothing in the file can show whether it has drifted — it "
-                    "can only be verified against the model itself."
-                ).format(_describe_view(view), len(dims))
-
-            issues.append(
-                Issue(
-                    rule_id="revit.dimension_provenance",
-                    category="geometry",
-                    description=summary,
-                    severity=_drafted_severity(view, config),
-                    element_id=view.element_id,
-                    view_id=view.element_id,
-                    view_name=view.name,
-                    sheet_no=view.sheet_no,
-                    suggested_fix={
-                        "provenance": Provenance.DRAFTED,
-                        "dimensions": len(dims),
-                        "scope": "view",
-                        "action": "verify this view's setout against the model",
-                    },
-                )
-            )
+        if rolls_up:
+            issues.append(_view_rollup_issue(view, dims, drafted, config))
+            # A rolled-up view can still hold the rarer verdicts — MIXED
+            # or UNKNOWN dimensions that survived because they are not
+            # DRAFTED and so were not counted towards the threshold.
+            # Below `_DEFAULT_ROLLUP_THRESHOLD` = 1.0 those can coexist
+            # with a rollup (they could not when the rule required every
+            # dimension to be DRAFTED), and they are distinct findings
+            # the rollup's "detail linework" summary does not cover, so
+            # they are still reported individually. MODEL/DATUM
+            # dimensions need no issue either way.
+            for dim in dims:
+                if verdicts[dim.element_id] in (Provenance.MIXED, Provenance.UNKNOWN):
+                    issue = _issue_for_dimension(dim, view, verdicts[dim.element_id], config)
+                    if issue is not None:
+                        issues.append(issue)
             continue
 
         for dim in dims:

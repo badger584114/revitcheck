@@ -164,6 +164,75 @@ class TestRule:
         assert issues[0].suggested_fix["scope"] == "view"
         assert issues[0].suggested_fix["dimensions"] == 5
 
+    def test_majority_drafted_view_rolls_up_with_the_live_dimension_excluded(self, make):
+        # The real-world case that motivated the threshold: a view can
+        # be almost entirely drafted with a handful of dimensions that
+        # genuinely track the model. The old all-or-nothing rule fell
+        # through to per-dimension reporting for the whole view; the
+        # rollup should still fire, and the live dimension should not
+        # appear as an issue at all (it is fine).
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 10)
+        ]
+        live = [make.dimension(50, 10, [make.model_ref(), make.model_ref(301)])]
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + live))
+        assert len(issues) == 1
+        assert issues[0].element_id == 10  # the view, not a dimension
+        assert issues[0].suggested_fix["scope"] == "view"
+        assert issues[0].suggested_fix["dimensions"] == 10
+        assert issues[0].suggested_fix["drafted_dimensions"] == 9
+        assert "9 of 10 dimensions" in issues[0].description
+        assert "Every dimension" not in issues[0].description
+
+    def test_below_threshold_does_not_roll_up(self, make):
+        # 7 of 10 drafted (70%) is below the default 90% threshold, so
+        # this should still fall through to per-dimension reporting.
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 8)
+        ]
+        live = [
+            make.dimension(i, 10, [make.model_ref(), make.model_ref(300 + i)])
+            for i in range(8, 11)
+        ]
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + live))
+        assert len(issues) == 7
+        assert {i.element_id for i in issues} == {1, 2, 3, 4, 5, 6, 7}
+
+    def test_mixed_and_unknown_dimensions_still_reported_inside_a_rollup(self, make):
+        # A MIXED or UNKNOWN dimension is a distinct finding the rollup's
+        # "detail linework" summary does not cover, so it must survive
+        # alongside the rollup rather than being silently absorbed.
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 10)
+        ]
+        mixed = [make.dimension(99, 10, [make.model_ref(), make.drafted_ref()])]
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + mixed))
+        assert len(issues) == 2
+        rollup = next(i for i in issues if i.suggested_fix.get("scope") == "view")
+        mixed_issue = next(i for i in issues if i.element_id == 99)
+        assert rollup.suggested_fix["drafted_dimensions"] == 9
+        assert mixed_issue.severity == "medium"
+
+    def test_rollup_threshold_is_configurable(self, make):
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 8)
+        ]
+        live = [
+            make.dimension(i, 10, [make.model_ref(), make.model_ref(300 + i)])
+            for i in range(8, 11)
+        ]
+        config = RuleConfig(
+            enabled_rule_ids={"revit.dimension_provenance"},
+            params={"dimension_provenance": {"rollup_threshold": 0.7}},
+        )
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + live), config)
+        assert len(issues) == 1
+        assert issues[0].suggested_fix["scope"] == "view"
+
     def test_roll_up_can_be_turned_off(self, make):
         dims = [
             make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
