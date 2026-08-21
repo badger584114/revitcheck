@@ -110,6 +110,30 @@ class TestBcfVersion:
         assert root.attrib["VersionId"] == "2.1"
 
 
+class TestProjectBcfp:
+    def test_every_file_carries_a_project_bcfp(self):
+        files = to_bcf_files([_issue()], model_title="TEST-BRIDGE", max_issues_per_file=100)
+        zf = _unzip(files[0][1])
+        assert "project.bcfp" in zf.namelist()
+        root = ET.fromstring(zf.read("project.bcfp"))
+        assert root.find("Project/Name").text == "TEST-BRIDGE"
+        assert root.find("Project").attrib["ProjectId"]
+
+    def test_project_guid_is_deterministic_for_the_same_model_title(self):
+        files_a = to_bcf_files([_issue()], model_title="TEST-BRIDGE")
+        files_b = to_bcf_files([_issue()], model_title="TEST-BRIDGE")
+        guid_a = ET.fromstring(_unzip(files_a[0][1]).read("project.bcfp")).find("Project").attrib["ProjectId"]
+        guid_b = ET.fromstring(_unzip(files_b[0][1]).read("project.bcfp")).find("Project").attrib["ProjectId"]
+        assert guid_a == guid_b
+
+    def test_different_model_titles_get_different_project_guids(self):
+        files_a = to_bcf_files([_issue()], model_title="BRIDGE-A")
+        files_b = to_bcf_files([_issue()], model_title="BRIDGE-B")
+        guid_a = ET.fromstring(_unzip(files_a[0][1]).read("project.bcfp")).find("Project").attrib["ProjectId"]
+        guid_b = ET.fromstring(_unzip(files_b[0][1]).read("project.bcfp")).find("Project").attrib["ProjectId"]
+        assert guid_a != guid_b
+
+
 class TestMarkup:
     def test_topic_carries_title_description_and_status(self):
         issue = _issue(
@@ -173,6 +197,20 @@ class TestViewpoint:
         markup_root = ET.fromstring(zf.read(markup_path))
         viewpoints = markup_root.find("Viewpoints")
         assert viewpoints.attrib["Viewpoint"] == "viewpoint.bcfv"
+
+    def test_viewpoint_carries_a_camera(self):
+        # Added 2026-08-22 after a real Forma import reported the
+        # export as empty -- ruling out "no camera" as the cause.
+        issue = _issue(element_id=5, unique_id="abc-123")
+        files = to_bcf_files([issue])
+        zf = _unzip(files[0][1])
+        vp_path = next(n for n in zf.namelist() if n.endswith("viewpoint.bcfv"))
+        root = ET.fromstring(zf.read(vp_path))
+        camera = root.find("OrthogonalCamera")
+        assert camera is not None
+        assert camera.find("CameraViewPoint") is not None
+        assert camera.find("CameraDirection") is not None
+        assert camera.find("CameraUpVector") is not None
 
     def test_coverage_issue_with_no_element_gets_no_viewpoint(self):
         issue = _issue(rule_id="revit.capture_coverage", category="coverage", element_id=None, unique_id=None)
