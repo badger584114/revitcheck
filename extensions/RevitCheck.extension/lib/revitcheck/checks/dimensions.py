@@ -243,6 +243,7 @@ def _issue_for_dimension(
         view_id=dim.view_id,
         view_name=view.name if view else None,
         sheet_no=view.sheet_no if view else None,
+        unique_id=dim.unique_id,
     )
 
     if verdict == Provenance.DRAFTED:
@@ -351,6 +352,7 @@ def _view_rollup_issue(
         view_id=view.element_id,
         view_name=view.name,
         sheet_no=view.sheet_no,
+        unique_id=view.unique_id,
         suggested_fix={
             "provenance": Provenance.DRAFTED,
             "dimensions": len(dims),
@@ -731,6 +733,7 @@ def check_dimension_override_consistency(
                         view_id=dim.view_id,
                         view_name=view.name,
                         sheet_no=view.sheet_no,
+                        unique_id=dim.unique_id,
                         suggested_fix={
                             "stated_mm": stated_mm,
                             "measured_mm": round(segment.value_mm, 3),
@@ -809,6 +812,7 @@ def _bound_issue(
         view_id=dim.view_id,
         view_name=view.name,
         sheet_no=view.sheet_no,
+        unique_id=dim.unique_id,
         suggested_fix={
             "stated_limit_mm": limit,
             "comparator": comparator,

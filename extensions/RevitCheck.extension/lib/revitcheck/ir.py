@@ -145,6 +145,11 @@ class DimensionInfo:
     type_name: Optional[str] = None
     # See `ViewInfo.workset_name` — same raw fact, same reasoning.
     workset_name: Optional[str] = None
+    # See `ViewInfo.unique_id` — same raw fact, same reasoning, and the
+    # reason it exists at all: this is what a BCF export puts in a
+    # `Component`'s `AuthoringToolId` so a finding stays clickable after
+    # it leaves this file (`bcf.py`).
+    unique_id: Optional[str] = None
 
     @property
     def value_mm(self) -> Optional[float]:
@@ -188,6 +193,14 @@ class ViewInfo:
     # on how this is populated and what still needs confirming on a
     # real Revit machine.
     linked_to_model_section: bool = False
+    # Revit's `Element.UniqueId` — a GUID string that survives a save far
+    # more reliably than `element_id` (`ElementId` is stable within a
+    # session but is not the identifier Revit itself calls durable). Not
+    # an IFC GlobalId — a different, Revit-specific GUID format — so a
+    # BCF `Component` built from it goes in `AuthoringToolId`, not
+    # `IfcGuid`; see `bcf.py` for why fabricating the latter isn't worth
+    # the risk of a false match against a real IFC export's own GUIDs.
+    unique_id: Optional[str] = None
 
     @property
     def is_drafting_view(self) -> bool:

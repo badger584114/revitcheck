@@ -177,6 +177,14 @@ class TestRule:
         assert issues[0].sheet_no == "S101"
         assert "detail linework" in issues[0].description
 
+    def test_unique_id_flows_from_the_dimension_onto_the_issue(self, make):
+        # bcf.py's Component AuthoringToolId depends on this surviving
+        # the trip from the IR onto the Issue that gets exported.
+        dims = [make.dimension(2, 10, [make.drafted_ref()], unique_id="abc-123")]
+        issues = _run(make.model(views=[make.view(10)], dimensions=dims))
+        assert len(issues) == 1
+        assert issues[0].unique_id == "abc-123"
+
     def test_fully_drafted_view_rolls_up_to_one_issue(self, make):
         # Twenty identical findings on one view is noise; the view is
         # the real finding, and it is the unit the follow-up tool works
@@ -190,6 +198,16 @@ class TestRule:
         assert issues[0].element_id == 10  # the view, not a dimension
         assert issues[0].suggested_fix["scope"] == "view"
         assert issues[0].suggested_fix["dimensions"] == 5
+
+    def test_unique_id_flows_from_the_view_onto_a_rollup_issue(self, make):
+        dims = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
+            for i in range(1, 6)
+        ]
+        views = [make.view(10, unique_id="view-guid-1")]
+        issues = _run(make.model(views=views, dimensions=dims))
+        assert len(issues) == 1
+        assert issues[0].unique_id == "view-guid-1"
 
     def test_majority_drafted_view_rolls_up_with_the_live_dimension_excluded(self, make):
         # The real-world case that motivated the threshold: a view can

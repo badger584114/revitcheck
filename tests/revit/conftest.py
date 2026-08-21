@@ -76,6 +76,7 @@ def dimension(
     override=None,
     spot=False,
     type_name=None,
+    unique_id=None,
 ):
     return DimensionInfo(
         element_id=element_id,
@@ -84,6 +85,7 @@ def dimension(
         references=list(references),
         segments=[DimensionSegmentInfo(value_mm=value_mm, value_override=override)],
         type_name=type_name,
+        unique_id=unique_id,
     )
 
 

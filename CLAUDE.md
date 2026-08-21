@@ -5,8 +5,24 @@ Guidance for Claude Code (and other agents) working in this repository.
 ## Project
 
 Automated review of civil engineering drawings — bridges, retaining
-walls, and similar structures — run **inside Revit** as a pyRevit
-toolbar (`extensions/RevitCheck.extension/`). Two categories of check:
+walls, and similar structures — run **inside Revit**. The checks
+themselves (`extensions/RevitCheck.extension/lib/revitcheck/`) are what
+matters here and are host-independent; the pyRevit toolbar in that same
+extension is today's *host* for them, not a permanent architectural
+choice.
+
+> **PLANNING.md §12 (2026-08-21):** pyRevit's CPython bridge has now
+> failed deployment the same way on two different machines — three
+> environment-coupling causes, not code bugs, documented in
+> `extensions/RevitCheck.extension/README.md`'s "Three CPython
+> gotchas". Production is moving to a compiled native Revit add-in; the
+> pyRevit extension stays as the development environment and the proof
+> of the Revit → BCF → Forma → Revit round trip, not the long-term
+> deployment target. See §12 for the full reasoning, including the
+> decision on what happens to the Python rule engine (kept — see below)
+> and what's still open before the add-in itself starts.
+
+Two categories of check:
 
 1. **Drafting** — standards and convention compliance, annotation and
    dimension completeness, cross-sheet consistency, spelling, revision
@@ -72,7 +88,9 @@ extensions/RevitCheck.extension/     # the pyRevit extension
     issue.py                         # Issue + derived issue_id + sort_issues
     catalog.py                       # @register, RuleConfig, run_checks
     capture.py                       # RevitModel <-> JSON (the dev loop)
-    report.py                        # summarize / to_json / to_markdown
+    report.py                        # summarize / to_json / to_markdown / to_bcf
+    bcf.py                           # Issues -> BCF 2.1 (.bcfzip), split at
+                                     #   100/file for Forma's import cap
     en_gb_variants.py                # curated en-GB spelling variants — data
                                      # landed ahead of its rule, rescued from
                                      # the parked tree (see its docstring)
@@ -83,7 +101,7 @@ extensions/RevitCheck.extension/     # the pyRevit extension
   RevitCheck.tab/Checks.panel/       # the buttons — thin by design
 config/                              # firm_glossary.json, project_glossary.json
 scripts/check_capture.py             # run the checks against a captured model
-tests/revit/                         # 119 tests, ~0.1s, no Revit needed
+tests/revit/                         # 151 tests, ~0.1s, no Revit needed
 ```
 
 `extensions/RevitCheck.extension/README.md` covers installing the
@@ -131,7 +149,7 @@ Capture Model  ->  BR06.capture.json
 
 # anywhere, as often as you like
 python scripts/check_capture.py BR06.capture.json
-python -m pytest tests/ -q          # 119 tests, ~0.1s, no dependencies
+python -m pytest tests/ -q          # 151 tests, ~0.1s, no dependencies
 ```
 
 No install step, no virtualenv needed for the tests: `revitcheck` is
@@ -160,7 +178,19 @@ git.
 | --- | --- |
 | `revit.dimension_provenance` | For each dimension, do its references resolve to model geometry, a datum, or view-specific linework? Four-way classification, rolled up per view. |
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. Always reports how much was checkable. |
-| `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue. |
+| `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
+
+**Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcfzip`),
+split at 100 issues per file for Forma's import cap, exposed as
+`report.to_bcf` alongside `to_json`/`to_markdown` and as the **Export
+BCF** button. `unique_id` (Revit's `Element.UniqueId`, not
+`element_id`) is threaded from the adapter through `ir.py` onto `Issue`
+and into each BCF `Component`'s `AuthoringToolId` — the durable anchor
+PLANNING.md §5d called load-bearing. **Not yet proven**: whether that
+anchor survives a real Forma import, and whether a Viewpoint with no
+camera imports at all — both are exactly what running the round trip
+once (PLANNING.md §12) is for. `project.bcfp` is deliberately not
+written; see `bcf.py`'s module docstring for why.
 
 Notes worth not rediscovering:
 
@@ -217,29 +247,27 @@ model space, the view's own cut plane and direction, nearby model
 elements), so it needs a Revit machine to debug and a real capture to
 calibrate.
 
-**Export findings as BCF** — decided 2026-08-18 after rendering six
-candidate formats side by side with real output (PLANNING.md §5d).
-Today's output is a markdown list in the pyRevit window that vanishes
-when the window closes. BCF is the only off-machine format that keeps
-the element anchor: a `Component` carries an `IfcGuid` for other tools
-*and* an `AuthoringToolId` that can hold the Revit element id, so a
-finding stays clickable rather than degrading to a number someone
-retypes into Select by ID. It needs `unique_id` from the adapter work
-above, which is why that field is load-bearing rather than insurance.
+**Export findings as BCF — built, 2026-08-21.** `bcf.py` + `unique_id`
+are done (see Built state above); what's left is proving it against a
+real Forma import, not building it. The reasoning that got BCF chosen
+over six other candidates is unchanged (PLANNING.md §5d): it is the
+only off-machine format that keeps the element anchor, rather than
+degrading a finding to a number someone retypes into Select by ID.
 
 One thing not to re-litigate: **the Forma Issues API cannot create
 element-pinned issues** (`linkedDocuments` is not writable on creation),
 which is what ruled it out as the primary sink.
 
-**BCF import into Forma is now available** — confirmed in the firm's own
-Forma on 2026-08-19, no longer the beta this file previously warned
-about. The round trip is therefore real rather than speculative, and the
-"upside on Autodesk's schedule, not a dependency" caveat is withdrawn.
-Two things that does *not* change: BCF is still the right target for the
-reasons above (the element anchor), not because Forma takes it; and it
-still needs `unique_id` from the adapter work, which remains the actual
-blocker. Worth confirming what Forma does with `AuthoringToolId` on
-import before relying on the anchor surviving the trip.
+**BCF import into Forma is available** — confirmed in the firm's own
+Forma on 2026-08-19. **Still to actually run:** export a real capture's
+issues (one taken with the current adapter, so `unique_id` is
+populated — the committed sample predates it), import the `.bcfzip`
+into Forma, and confirm two things empirically rather than assuming
+them: what Forma does with `AuthoringToolId` on import, and whether a
+Viewpoint with a Component selection and no camera imports at all.
+PLANNING.md §12 is why proving this is the current priority — it's the
+thing the pyRevit extension exists to demonstrate before the native
+add-in work starts.
 
 Also open, carried over from PLANNING.md:
 

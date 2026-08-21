@@ -43,6 +43,16 @@ class Issue:
     view_name: Optional[str] = None
     sheet_no: Optional[str] = None
     suggested_fix: Optional[Dict[str, Any]] = None
+    # Revit's `Element.UniqueId` for `element_id`, when the rule that
+    # built this Issue had one to hand — see `ir.ViewInfo.unique_id`.
+    # Not part of `issue_id`'s identity hash, same reasoning as
+    # `suggested_fix`: it locates the finding more durably than
+    # `element_id` alone, but it doesn't *identify* the finding, so a
+    # capture taken before this field existed re-identifies the same
+    # finding the same way one taken after it does. `bcf.py` is the
+    # reason it exists at all — it's what goes in a BCF `Component`'s
+    # `AuthoringToolId`.
+    unique_id: Optional[str] = None
 
     @property
     def issue_id(self) -> str:
@@ -68,6 +78,7 @@ class Issue:
             "view_name": self.view_name,
             "sheet_no": self.sheet_no,
             "suggested_fix": self.suggested_fix,
+            "unique_id": self.unique_id,
         }
 
     @classmethod
@@ -86,6 +97,7 @@ class Issue:
             view_name=data.get("view_name"),
             sheet_no=data.get("sheet_no"),
             suggested_fix=data.get("suggested_fix"),
+            unique_id=data.get("unique_id"),
         )
 
 

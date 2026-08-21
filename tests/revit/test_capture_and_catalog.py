@@ -207,6 +207,15 @@ class TestIssueIdentity:
         b = Issue(rule_id="r", category="c", description="d", element_id=6)
         assert a.issue_id != b.issue_id
 
+    def test_unique_id_is_not_part_of_identity(self):
+        # unique_id locates a finding more durably than element_id, but
+        # it doesn't identify it -- a capture taken before this field
+        # existed must re-identify the same finding the same way one
+        # taken after it does.
+        a = Issue(rule_id="r", category="c", description="d", element_id=5, unique_id="abc")
+        b = Issue(rule_id="r", category="c", description="d", element_id=5, unique_id="xyz")
+        assert a.issue_id == b.issue_id
+
     def test_dict_round_trip(self):
         original = Issue(
             rule_id="r",
@@ -218,6 +227,7 @@ class TestIssueIdentity:
             view_name="V",
             sheet_no="S101",
             suggested_fix={"provenance": Provenance.DRAFTED},
+            unique_id="d919e769-2a86-4b1c-a9c4-00000000abcd-0002f1e3",
         )
         restored = Issue.from_dict(original.to_dict())
         assert restored == original

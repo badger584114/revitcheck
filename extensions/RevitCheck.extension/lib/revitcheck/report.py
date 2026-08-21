@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Iterable, List, Optional
 
+from revitcheck.bcf import DEFAULT_MAX_ISSUES_PER_FILE, to_bcf_files
 from revitcheck.issue import Issue, sort_issues
 
 _SEVERITY_MARK = {"high": "!!", "medium": "!", "low": "-"}
@@ -109,3 +110,22 @@ def to_markdown(
         )
 
     return "\n".join(lines)
+
+
+def to_bcf(
+    issues: Iterable[Issue],
+    model_title: str = "",
+    max_issues_per_file: int = DEFAULT_MAX_ISSUES_PER_FILE,
+):
+    """A sink alongside `to_json`/`to_markdown`, not a restructuring —
+    PLANNING.md §5d's decision was to add BCF here rather than build a
+    parallel export path, since the issue list and its rendering were
+    already separate. Delegates to `bcf.to_bcf_files`, which is what
+    actually knows the BCF format; this exists so a caller only needs
+    one import (`from revitcheck.report import to_json, to_markdown,
+    to_bcf`) regardless of which sink it wants.
+
+    Returns `[(filename, bytes), ...]` — see `bcf.to_bcf_files` for why
+    this doesn't write to disk itself.
+    """
+    return to_bcf_files(issues, model_title=model_title, max_issues_per_file=max_issues_per_file)

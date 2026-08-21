@@ -7,6 +7,7 @@ the JSON here, and iterate on rules with a normal edit/run loop:
 
     python scripts/check_capture.py samples/revit/BR06.capture.json
     python scripts/check_capture.py capture.json --json out/issues.json
+    python scripts/check_capture.py capture.json --bcf out/bcf
     python scripts/check_capture.py capture.json --all-views
 
 Nothing in this path imports the Revit API — see
@@ -29,14 +30,21 @@ if _LIB not in sys.path:
 
 import revitcheck.checks  # noqa: E402,F401 - registers the rules
 from revitcheck import RuleConfig, capture, run_checks  # noqa: E402
+from revitcheck.bcf import DEFAULT_MAX_ISSUES_PER_FILE  # noqa: E402
 from revitcheck.checks.dimensions import drafted_views  # noqa: E402
-from revitcheck.report import summarize, to_json, to_markdown  # noqa: E402
+from revitcheck.report import summarize, to_bcf, to_json, to_markdown  # noqa: E402
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capture", help="a .capture.json written by the Capture Model button")
     parser.add_argument("--json", dest="json_out", help="write the full issue list here")
+    parser.add_argument(
+        "--bcf",
+        dest="bcf_out_dir",
+        help="write BCF 2.1 .bcfzip file(s) here, one file per "
+        "%(max)s issues (Forma's import cap)" % {"max": DEFAULT_MAX_ISSUES_PER_FILE},
+    )
     parser.add_argument(
         "--all-views",
         action="store_true",
@@ -85,6 +93,18 @@ def main(argv=None) -> int:
             handle.write(to_json(issues, model_title=model.doc_title))
         print()
         print("Wrote {0}".format(args.json_out))
+
+    if args.bcf_out_dir:
+        os.makedirs(args.bcf_out_dir, exist_ok=True)
+        bcf_files = to_bcf(issues, model_title=model.doc_title)
+        print()
+        if not bcf_files:
+            print("No issues to export — nothing written.")
+        for filename, data in bcf_files:
+            path = os.path.join(args.bcf_out_dir, filename)
+            with open(path, "wb") as handle:
+                handle.write(data)
+            print("Wrote {0} ({1} bytes)".format(path, len(data)))
 
     counts = summarize(issues)
     # Non-zero only for findings that need action, so this can gate a
