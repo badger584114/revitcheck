@@ -23,10 +23,13 @@ watch what comes back.
     bcf.version
     project.bcfp                   -- project id + name, both deterministic
     <topic-guid>/markup.bcf        -- title, description, status
-    <topic-guid>/viewpoint.bcfv    -- the Component this Topic pins to,
-                                       omitted when the Issue has
-                                       nothing to pin (a coverage
-                                       finding with no element)
+    <topic-guid>/viewpoint.bcfv    -- always present (Forma rejects a
+                                       Topic without one); the Component
+                                       it pins is omitted when the Issue
+                                       has nothing to pin (a coverage
+                                       finding with no element) -- the
+                                       Viewpoint still exists, just with
+                                       a camera and no Selection
 
 **Topic Guids are derived from `Issue.issue_id`, not random.** A capture
 is a snapshot, not something the tools keep and diff against — every
@@ -195,26 +198,39 @@ _DEFAULT_CAMERA_XML = (
 
 
 def _viewpoint_xml(issue: Issue, vp_guid: str) -> str:
+    # Every Topic gets a Viewpoint now, even one with nothing to pin --
+    # see `_write_bcf_container`'s comment on why that changed. The
+    # camera is unconditional; `<Components>` (the pin itself) is only
+    # written when there's actually a target, since a coverage finding
+    # has no element and fabricating a Selection with nothing in it
+    # would be worse than omitting it.
+    #
     # `IfcGuid` is deliberately omitted rather than emitted empty --
     # this project has no real IFC GlobalId for the element, and a
     # fabricated one risks colliding with (or simply not matching) an
     # unrelated element in whatever IFC export a viewer cross-references
     # against. `AuthoringToolId` is the honest field for a Revit-only
     # identifier -- see the module docstring.
-    component_attrs = ['OriginatingSystem="Revit"']
-    if issue.unique_id:
-        component_attrs.append('AuthoringToolId="{0}"'.format(_xml(issue.unique_id)))
+    has_target = issue.unique_id is not None or issue.element_id is not None
+    components_xml = ""
+    if has_target:
+        component_attrs = ['OriginatingSystem="Revit"']
+        if issue.unique_id:
+            component_attrs.append('AuthoringToolId="{0}"'.format(_xml(issue.unique_id)))
+        components_xml = (
+            "  <Components>\n"
+            "    <Selection>\n"
+            "      <Component {0}/>\n"
+            "    </Selection>\n"
+            "  </Components>\n"
+        ).format(" ".join(component_attrs))
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<VisualizationInfo Guid="{0}">\n'
         "{1}"
-        "  <Components>\n"
-        "    <Selection>\n"
-        "      <Component {2}/>\n"
-        "    </Selection>\n"
-        "  </Components>\n"
+        "{2}"
         "</VisualizationInfo>\n"
-    ).format(vp_guid, _DEFAULT_CAMERA_XML, " ".join(component_attrs))
+    ).format(vp_guid, _DEFAULT_CAMERA_XML, components_xml)
 
 
 def _project_bcfp_xml(project_guid: str, project_name: str) -> str:
@@ -245,22 +261,26 @@ def _write_bcf_container(
         zf.writestr("project.bcfp", _project_bcfp_xml(project_guid, model_title))
         for issue in issues:
             topic_guid = _deterministic_guid(issue.issue_id)
-            # A Viewpoint (and the Component it pins) only makes sense
-            # when there's something to select -- a coverage finding
-            # with no element still deserves a Topic (the round trip
-            # should show the whole issue list, same as to_json/
-            # to_markdown), it just doesn't get a pin.
-            has_target = issue.unique_id is not None or issue.element_id is not None
-            vp_guid = _deterministic_guid(issue.issue_id, "viewpoint") if has_target else None
+            # Every Topic gets a Viewpoint file, no exceptions. The
+            # original design only wrote one when there was an element
+            # to pin, on the reasoning that a coverage finding with no
+            # location doesn't need a pin -- true, but a real Forma
+            # import (2026-08-22) rejected the file with "no viewpoint
+            # file found for one or more BCF topics", so whatever
+            # Forma requires here is stricter than the base spec.
+            # `_viewpoint_xml` still only writes the pin itself
+            # (`<Components>`) when there's a real target; a coverage
+            # finding gets a Viewpoint that's just a camera looking at
+            # nothing in particular, which is honest about what it is.
+            vp_guid = _deterministic_guid(issue.issue_id, "viewpoint")
             zf.writestr(
                 "{0}/markup.bcf".format(topic_guid),
                 _markup_xml(issue, topic_guid, vp_guid, created_at, author),
             )
-            if vp_guid is not None:
-                zf.writestr(
-                    "{0}/viewpoint.bcfv".format(topic_guid),
-                    _viewpoint_xml(issue, vp_guid),
-                )
+            zf.writestr(
+                "{0}/viewpoint.bcfv".format(topic_guid),
+                _viewpoint_xml(issue, vp_guid),
+            )
     return buffer.getvalue()
 
 
