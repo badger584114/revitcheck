@@ -11,16 +11,18 @@ matters here and are host-independent; the pyRevit toolbar in that same
 extension is today's *host* for them, not a permanent architectural
 choice.
 
-> **PLANNING.md §12 (2026-08-21):** pyRevit's CPython bridge has now
-> failed deployment the same way on two different machines — three
-> environment-coupling causes, not code bugs, documented in
-> `extensions/RevitCheck.extension/README.md`'s "Three CPython
-> gotchas". Production is moving to a compiled native Revit add-in; the
-> pyRevit extension stays as the development environment and the proof
-> of the Revit → BCF → Forma → Revit round trip, not the long-term
-> deployment target. See §12 for the full reasoning, including the
-> decision on what happens to the Python rule engine (kept — see below)
-> and what's still open before the add-in itself starts.
+> **PLANNING.md §12 (2026-08-21, updated 2026-08-22):** pyRevit's
+> CPython bridge failed deployment the same way on two different
+> machines — three environment-coupling causes, not code bugs,
+> documented in `extensions/RevitCheck.extension/README.md`'s "Three
+> CPython gotchas". Production is moving to a compiled native Revit
+> add-in. The pyRevit extension's job was development plus proving the
+> Revit → BCF → Forma → Revit round trip — **that proof succeeded
+> 2026-08-22**, confirmed by the user as the entire scope pyRevit
+> needed to cover. No further pyRevit feature work is planned; see §12
+> for the full reasoning, including the decision on what happens to
+> the Python rule engine (kept — see below) and what the add-in needs
+> to build next (dimension-vs-model verification, not more triage).
 
 Two categories of check:
 
@@ -183,14 +185,19 @@ git.
 **Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
 split at 100 issues per file for Forma's import cap, exposed as
 `report.to_bcf` alongside `to_json`/`to_markdown` and as the **Export
-BCF** button. `unique_id` (Revit's `Element.UniqueId`, not
-`element_id`) is threaded from the adapter through `ir.py` onto `Issue`
-and into each BCF `Component`'s `AuthoringToolId` — the durable anchor
-PLANNING.md §5d called load-bearing. **Not yet proven**: whether that
-anchor survives a real Forma import, and whether a Viewpoint with no
-camera imports at all — both are exactly what running the round trip
-once (PLANNING.md §12) is for. `project.bcfp` is deliberately not
-written; see `bcf.py`'s module docstring for why.
+BCF** button. The Revit → BCF → Forma round trip **is proven**
+(PLANNING.md §12, 2026-08-22) — real Forma import, after fixing four
+real rejections in a row (extension, `project.bcfp`/camera, a
+Viewpoint on every Topic, and the actual `<Viewpoint>` XML shape being
+a child element, not the attribute form this module invented). Every
+finding anchors to its **sheet** (`SheetInfo.unique_id`, denormalized
+onto `ViewInfo.sheet_unique_id`), not the dimension/view element
+itself — changed after Forma warned that some issues "may not match
+the current model," on the theory that a Dimension/View has no 3D
+placement for a model viewer to resolve where a sheet is exactly what
+a document-coordination platform navigates to directly. `unique_id`
+still flows adapter → `ir.py` → `Issue` as the fallback anchor when a
+finding has no sheet to anchor to.
 
 Notes worth not rediscovering:
 
@@ -253,38 +260,47 @@ Notes worth not rediscovering:
 
 ## Next
 
-**Verify drafted dimensions against the model** — the harder half,
-deliberately sequenced after the easy wins so the workflow is
-established first. `revit.dimension_provenance`'s `drafted_views()`
-produces its input. It needs new adapter geometry (witness points in
-model space, the view's own cut plane and direction, nearby model
-elements), so it needs a Revit machine to debug and a real capture to
-calibrate.
+**Verify drafted dimensions against the model** — the harder half, and
+now explicitly the native add-in's work, not pyRevit's (confirmed by
+the user 2026-08-22, PLANNING.md §12). `revit.dimension_provenance` and
+`revit.dimension_override_consistency` currently report *triage* — a
+dimension is drafted/overridden — never *verdicts* — whether that
+drafted/overridden value has actually drifted from the model. That
+distinction matters more than it first looks: bridge curves and the
+need for "clean" issued drawings mean some dimensions will always be
+drafted or overridden, permanently, not a defect any amount of
+filtering removes — a drafted dimension is only a real problem if it
+disagrees with the model. This is the same problem the parked PDF/DWG
+pipeline's `geometry.ifc_setout_consistency` solved for piles
+(ARCHIVE-pdf-dwg.md; real IFC comparison, 0 false positives on 24 real
+piles matched within 10mm) — it just didn't survive the pivot into
+Revit, because "the model is already the source of truth" never got
+followed through to actually comparing against it. One simplification
+versus that old approach: no IFC intermediary is needed anymore — the
+model is one API call away, not a separate export to reconcile
+coordinate systems against. `revit.dimension_provenance`'s
+`drafted_views()` is the existing scope this consumes. It needs new
+adapter geometry (witness points in model space, the view's own cut
+plane and direction, nearby model elements), so it needs a Revit
+machine to debug and a real capture to calibrate regardless of host.
 
-**Export findings as BCF — built, 2026-08-21.** `bcf.py` + `unique_id`
-are done (see Built state above); what's left is proving it against a
-real Forma import, not building it. The reasoning that got BCF chosen
-over six other candidates is unchanged (PLANNING.md §5d): it is the
-only off-machine format that keeps the element anchor, rather than
-degrading a finding to a number someone retypes into Select by ID.
+**Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
+`unique_id` + the sheet anchor are done (see Built state above), and a
+real Forma import succeeded after fixing four real rejections in a row
+— see PLANNING.md §12 for the full sequence of exact error text ->
+diagnosis -> fix. The reasoning that got BCF chosen over six other
+candidates is unchanged (PLANNING.md §5d): it is the only off-machine
+format that keeps the element anchor, rather than degrading a finding
+to a number someone retypes into Select by ID.
 
 One thing not to re-litigate: **the Forma Issues API cannot create
 element-pinned issues** (`linkedDocuments` is not writable on creation),
 which is what ruled it out as the primary sink.
 
-**BCF import into Forma is available** — confirmed in the firm's own
-Forma on 2026-08-19. **Two real import attempts so far, 2026-08-22,
-both failed — this is not yet proven, it's actively being debugged.**
-Attempt 1 (`.bcfzip`, no `project.bcfp`, no camera) came back "empty".
-Attempt 2 added both of those and came back **"file must be in bcf
-format"** — which reads as an extension check, not a content one, so
-the file extension changed from `.bcfzip` to `.bcf` (same bytes, same
-ZIP structure) as the next thing to rule out. **Not yet confirmed
-whether that's the actual fix** — needs a third real import to know.
-`samples/*.bcf` (renamed from the `.bcfzip` files committed the same
-day) is the artifact this is being tested against. PLANNING.md §12 is
-why proving this is the current priority — it's the thing the pyRevit
-extension exists to demonstrate before the native add-in work starts.
+**Confirmed by the user, 2026-08-22: this was the entire scope of what
+pyRevit needed to do.** The Revit -> BCF -> Forma -> Revit round trip
+is proven; no further pyRevit feature work is planned. §12's decided
+direction (native add-in for production) starts next.
 
 Also open, carried over from PLANNING.md:
 
