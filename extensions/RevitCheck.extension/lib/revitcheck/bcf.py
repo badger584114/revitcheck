@@ -27,6 +27,19 @@ watch what comes back.
                                        nothing to pin (a coverage
                                        finding with no element)
 
+**Topic Guids are derived from `Issue.issue_id`, not random.** A capture
+is a snapshot, not something the tools keep and diff against — every
+run recomputes the full issue list fresh (see `capture.py`'s docstring
+on why old captures don't need to be retained). But re-running on a
+changed model and re-exporting should let a downstream consumer, chiefly
+Forma, recognise "this is the same finding as last time" for the ~99%
+of findings that haven't changed, so a reviewer's triage in Forma
+survives a re-export rather than resetting to a pile of unread topics
+every time. `issue_id` already exists for exactly this ("the same
+finding on the same model gets the same id on every run", `issue.py`'s
+docstring) — `_deterministic_guid` just makes sure the BCF layer
+actually uses it instead of throwing it away with `uuid.uuid4()`.
+
 `project.bcfp` (project-level metadata) is deliberately **not**
 written. It's optional in the spec and every real reader tolerates its
 absence; the win from including it (a nicer project name in some
@@ -83,8 +96,21 @@ _PRIORITY = {"high": "High", "medium": "Normal", "low": "Low"}
 _MAX_TITLE_LEN = 200
 
 
-def _guid() -> str:
-    return str(uuid.uuid4())
+# A fixed namespace for deriving deterministic Topic/Viewpoint GUIDs
+# from an Issue's own `issue_id` (uuid.uuid5) -- generated once for this
+# project and never regenerated, since regenerating it would silently
+# re-mint every Topic Guid this project has ever exported. Random per
+# run (uuid.uuid4) was the first cut and it was wrong: `Issue.issue_id`
+# exists precisely so "the same finding on the same model gets the same
+# id on every run" (issue.py's docstring), so that a re-export of a
+# re-run model lands on the *same* BCF Topic a consumer already has
+# open, carrying its status/comments forward, rather than minting a
+# fresh "new" topic for a finding that was already triaged last week.
+_GUID_NAMESPACE = uuid.UUID("6f6e4b9a-2b1c-4b7a-9b3a-9f6a8f0c9a4e")
+
+
+def _deterministic_guid(*parts: str) -> str:
+    return str(uuid.uuid5(_GUID_NAMESPACE, "\x1f".join(parts)))
 
 
 def _xml(text: Optional[str]) -> str:
@@ -168,14 +194,14 @@ def _write_bcfzip(issues: List[Issue], created_at: str, author: str) -> bytes:
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("bcf.version", _bcf_version_xml())
         for issue in issues:
-            topic_guid = _guid()
+            topic_guid = _deterministic_guid(issue.issue_id)
             # A Viewpoint (and the Component it pins) only makes sense
             # when there's something to select -- a coverage finding
             # with no element still deserves a Topic (the round trip
             # should show the whole issue list, same as to_json/
             # to_markdown), it just doesn't get a pin.
             has_target = issue.unique_id is not None or issue.element_id is not None
-            vp_guid = _guid() if has_target else None
+            vp_guid = _deterministic_guid(issue.issue_id, "viewpoint") if has_target else None
             zf.writestr(
                 "{0}/markup.bcf".format(topic_guid),
                 _markup_xml(issue, topic_guid, vp_guid, created_at, author),
