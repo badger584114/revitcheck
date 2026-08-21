@@ -162,7 +162,12 @@ def views_in_scope(model: RevitModel, config: RuleConfig) -> List[ViewInfo]:
     View templates never hold real dimensions. Unplaced views are
     excluded by default because nothing in them is issued to anyone, and
     flagging in-progress work is how a check earns a reputation for
-    noise it never recovers from.
+    noise it never recovers from. A Drafting View that is not standing
+    in for a section cut is excluded for the same reason from the other
+    direction: every dimension in it was always going to be DRAFTED
+    (nothing else is possible in a view with no model behind it), so
+    checking it produces volume with no decision left to make — see
+    `RuleConfig.skip_unlinked_drafting_views`.
     """
     scoped = []
     for view in model.views:
@@ -170,8 +175,24 @@ def views_in_scope(model: RevitModel, config: RuleConfig) -> List[ViewInfo]:
             continue
         if config.sheeted_views_only and view.sheet_no is None:
             continue
+        if (
+            config.skip_unlinked_drafting_views
+            and _is_unlinked_drafting_view(view)
+        ):
+            continue
         scoped.append(view)
     return scoped
+
+
+def _is_unlinked_drafting_view(view: Optional[ViewInfo]) -> bool:
+    """A Drafting View standing on its own, not referenced by a callout
+    cut from the model. The one case in this file where `is_drafting_view`
+    is not the whole answer — see `ViewInfo.linked_to_model_section`."""
+    return (
+        view is not None
+        and view.is_drafting_view
+        and not view.linked_to_model_section
+    )
 
 
 def _view_type_label(view_type: str) -> str:
@@ -206,7 +227,7 @@ def _describe_view(view: Optional[ViewInfo]) -> str:
 
 
 def _drafted_severity(view: Optional[ViewInfo], config: RuleConfig) -> str:
-    if view is not None and view.is_drafting_view:
+    if _is_unlinked_drafting_view(view):
         return config.drafted_in_drafting_view_severity
     return config.drafted_in_model_view_severity
 
@@ -225,7 +246,7 @@ def _issue_for_dimension(
     )
 
     if verdict == Provenance.DRAFTED:
-        if view is not None and view.is_drafting_view:
+        if _is_unlinked_drafting_view(view):
             detail = (
                 "{0} in {1} measures detail linework. A drafting view has no "
                 "model behind it, so this cannot track the model by any means "
@@ -307,7 +328,7 @@ def _view_rollup_issue(
         )
         verb = "are"
 
-    if view.is_drafting_view:
+    if _is_unlinked_drafting_view(view):
         summary = (
             "{0} {1} taken from detail linework. A drafting view has no "
             "model behind it, so that is expected for a standard detail "
@@ -357,6 +378,15 @@ def check_dimension_provenance(model: RevitModel, config: RuleConfig) -> List[Is
     should not suppress the rollup. Set `roll_up_fully_drafted_views` off
     in config to get the per-dimension form regardless, or tune
     `rollup_threshold` (0.0-1.0) directly.
+
+    A free-standing Drafting View — one not referenced by a callout cut
+    from the model — never reaches this loop at all by default:
+    `views_in_scope` already dropped it, per
+    `RuleConfig.skip_unlinked_drafting_views`. Its dimensions were always
+    going to classify DRAFTED, so there is no per-dimension or rolled-up
+    decision left to report; checking it is pure volume. A Drafting View
+    that *is* linked (`ViewInfo.linked_to_model_section`) is standing in
+    for a section and stays fully in scope, at model-view severity.
     """
     roll_up = config.params.get("dimension_provenance", {}).get(
         "roll_up_fully_drafted_views", True

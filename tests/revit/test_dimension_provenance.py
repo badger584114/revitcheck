@@ -122,6 +122,33 @@ class TestScoping:
         )
         assert scoped == []
 
+    def test_unlinked_drafting_view_excluded_by_default(self, make):
+        views = [make.view(10), make.view(11, view_type="DraftingView")]
+        scoped = views_in_scope(make.model(views=views), RuleConfig())
+        assert [v.element_id for v in scoped] == [10]
+
+    def test_linked_drafting_view_stays_in_scope(self, make):
+        views = [
+            make.view(11, view_type="DraftingView", linked_to_model_section=True)
+        ]
+        scoped = views_in_scope(make.model(views=views), RuleConfig())
+        assert [v.element_id for v in scoped] == [11]
+
+    def test_unlinked_drafting_view_included_when_opted_in(self, make):
+        views = [make.view(11, view_type="DraftingView")]
+        scoped = views_in_scope(
+            make.model(views=views), RuleConfig(skip_unlinked_drafting_views=False)
+        )
+        assert [v.element_id for v in scoped] == [11]
+
+    def test_legend_is_never_linked_and_stays_excluded(self, make):
+        # linked_to_model_section is a Drafting View concept (a callout
+        # references one); a Legend can't be one, so it has no escape
+        # hatch out of this exclusion the way a Drafting View does.
+        views = [make.view(11, view_type="Legend")]
+        scoped = views_in_scope(make.model(views=views), RuleConfig())
+        assert scoped == []
+
 
 def _run(model, config=None):
     return run_checks(
@@ -256,19 +283,58 @@ class TestRule:
         assert issues[0].element_id == 1
         assert issues[0].suggested_fix.get("scope") is None
 
-    def test_drafting_view_is_a_different_finding(self, make):
-        # A drafting view has no model behind it, so 2D is the only
-        # option there is. Still reported, but it must not read like a
-        # section someone chose not to make live.
+    def test_unlinked_drafting_view_is_skipped_by_default(self, make):
+        # A free-standing drafting view's dimensions were always going
+        # to be DRAFTED — there is no decision left to report, so by
+        # default it is out of scope entirely rather than producing a
+        # low-severity finding for every one of them.
         dims = [
             make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
             for i in range(1, 4)
         ]
         views = [make.view(10, name="TYPICAL DETAIL", view_type="DraftingView")]
         issues = _run(make.model(views=views, dimensions=dims))
+        assert issues == [] or all(i.category == "coverage" for i in issues)
+
+    def test_unlinked_drafting_view_checked_when_opted_in(self, make):
+        # Still reachable via config, e.g. for an audit that wants full
+        # coverage on record rather than the reduced-volume default.
+        dims = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
+            for i in range(1, 4)
+        ]
+        views = [make.view(10, name="TYPICAL DETAIL", view_type="DraftingView")]
+        config = RuleConfig(
+            enabled_rule_ids={"revit.dimension_provenance"},
+            skip_unlinked_drafting_views=False,
+        )
+        issues = _run(make.model(views=views, dimensions=dims), config)
         assert len(issues) == 1
         assert issues[0].severity == "low"
         assert "no model behind" in issues[0].description
+
+    def test_linked_drafting_view_is_checked_at_model_severity(self, make):
+        # A drafting view referenced by a "Reference other view" callout
+        # from a section is standing in for that section — it never has
+        # model geometry either way, but pretending it is a harmless
+        # standard detail would hide the real drift risk it carries.
+        dims = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
+            for i in range(1, 4)
+        ]
+        views = [
+            make.view(
+                10,
+                name="ABUTMENT A SECTION (ref)",
+                view_type="DraftingView",
+                linked_to_model_section=True,
+            )
+        ]
+        issues = _run(make.model(views=views, dimensions=dims))
+        assert len(issues) == 1
+        assert issues[0].severity == "high"
+        assert "no model behind" not in issues[0].description
+        assert issues[0].suggested_fix["scope"] == "view"
 
     def test_mixed_provenance_reported_separately(self, make):
         dims = [make.dimension(1, 10, [make.model_ref(), make.drafted_ref()])]
