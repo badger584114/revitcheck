@@ -68,6 +68,39 @@ class TestSplitting:
         assert total_topics == 120
 
 
+class TestTopicIdentity:
+    def test_same_finding_gets_the_same_topic_guid_across_runs(self):
+        # The whole point: re-exporting after a model change should let
+        # Forma recognise unchanged findings as the same topic, not mint
+        # a fresh one every run.
+        issue = _issue(element_id=5, view_id=10, sheet_no="S101")
+        first = to_bcf_files([issue])
+        second = to_bcf_files([issue])
+        guid_1 = _unzip(first[0][1]).namelist()[1].split("/")[0]
+        guid_2 = _unzip(second[0][1]).namelist()[1].split("/")[0]
+        assert guid_1 == guid_2
+
+    def test_different_findings_get_different_topic_guids(self):
+        a = _issue(element_id=5, description="finding A")
+        b = _issue(element_id=6, description="finding B")
+        files = to_bcf_files([a, b])
+        zf = _unzip(files[0][1])
+        topic_dirs = {n.split("/")[0] for n in zf.namelist() if "/" in n}
+        assert len(topic_dirs) == 2
+
+    def test_topic_guid_tracks_issue_id_not_incidental_fields(self):
+        # severity isn't part of issue_id's identity (issue.py), so
+        # re-tiering a rule in config must not re-mint the Topic Guid
+        # either -- otherwise config changes would look like new findings
+        # to Forma the same way they would to a human re-running the tool.
+        a = _issue(element_id=5, severity="high")
+        b = _issue(element_id=5, severity="low")
+        assert a.issue_id == b.issue_id
+        guid_a = _unzip(to_bcf_files([a])[0][1]).namelist()[1].split("/")[0]
+        guid_b = _unzip(to_bcf_files([b])[0][1]).namelist()[1].split("/")[0]
+        assert guid_a == guid_b
+
+
 class TestBcfVersion:
     def test_every_file_declares_2_1(self):
         files = to_bcf_files([_issue()], max_issues_per_file=100)
