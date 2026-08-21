@@ -39,7 +39,7 @@ if not issues:
 def _ask_where_to_save():
     """A folder picker that works on pyRevit's CPython engine.
 
-    A folder, not a file: the export can be more than one `.bcfzip`
+    A folder, not a file: the export can be more than one `.bcf`
     (Forma's 100-issue cap), and `bcf.to_bcf_files` already names each
     one — the only decision left for the user is which folder they land
     in. Falls back to a default location rather than losing a
@@ -52,7 +52,7 @@ def _ask_where_to_save():
         from System.Windows.Forms import DialogResult, FolderBrowserDialog
 
         dialog = FolderBrowserDialog()
-        dialog.Description = "Choose a folder for the exported .bcfzip file(s)"
+        dialog.Description = "Choose a folder for the exported .bcf file(s)"
         return dialog.SelectedPath if dialog.ShowDialog() == DialogResult.OK else None
     except Exception as exc:  # noqa: BLE001 - fall back, don't lose the export
         fallback = os.path.join(os.path.expanduser("~"), "Documents")

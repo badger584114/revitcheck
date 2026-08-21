@@ -1,7 +1,7 @@
 """Tests for the BCF 2.1 writer.
 
 Runs entirely off Revit, same as every other test here: `bcf.py` only
-consumes `Issue` objects, so a `.bcfzip`'s bytes can be built and
+consumes `Issue` objects, so a `.bcf` file's bytes can be built and
 re-parsed with the stdlib `zipfile`/`xml` modules right here.
 """
 
@@ -33,7 +33,7 @@ class TestSplitting:
         issues = [_issue(element_id=i) for i in range(5)]
         files = to_bcf_files(issues, max_issues_per_file=100)
         assert len(files) == 1
-        assert files[0][0].endswith(".bcfzip")
+        assert files[0][0].endswith(".bcf")
 
     def test_issues_over_the_cap_split_into_multiple_files(self):
         issues = [_issue(element_id=i) for i in range(250)]

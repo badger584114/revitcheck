@@ -1,4 +1,4 @@
-"""Write Issues as BCF 2.1 (`.bcfzip`) files.
+"""Write Issues as BCF 2.1 (`.bcf`) files.
 
 **Why BCF, decided 2026-08-18** (PLANNING.md §5d): it is the only
 off-machine format that keeps the element anchor. Every other
@@ -14,10 +14,10 @@ checks stay Python either way (§12's decided direction is a native
 add-in around them, not a rewrite of them), so this module's job is to
 prove the Revit → BCF → Forma → Revit round trip works at all before
 the add-in exists to automate it — see the module's own tests for what
-"prove" means here: a real `.bcfzip` this project can hand to Forma and
+"prove" means here: a real `.bcf` file this project can hand to Forma and
 watch what comes back.
 
-**A `.bcfzip` is a ZIP file** with this layout, one folder per finding
+**A `.bcf` file is a ZIP file** with this layout, one folder per finding
 ("Topic" in BCF's vocabulary):
 
     bcf.version
@@ -228,7 +228,7 @@ def _project_bcfp_xml(project_guid: str, project_name: str) -> str:
     ).format(project_guid, _xml(project_name))
 
 
-def _write_bcfzip(
+def _write_bcf_container(
     issues: List[Issue], model_title: str, created_at: str, author: str
 ) -> bytes:
     buffer = io.BytesIO()
@@ -271,7 +271,7 @@ def to_bcf_files(
     author: str = "RevitCheck",
     created_at: Optional[str] = None,
 ) -> List[Tuple[str, bytes]]:
-    """Every issue, as one or more `.bcfzip` files of at most
+    """Every issue, as one or more `.bcf` files of at most
     `max_issues_per_file` topics each.
 
     Returns `[(filename, bytes), ...]` rather than writing to disk —
@@ -299,10 +299,10 @@ def to_bcf_files(
     files = []
     for index, chunk in enumerate(chunks, start=1):
         if len(chunks) == 1:
-            filename = "{0}.bcfzip".format(base_name)
+            filename = "{0}.bcf".format(base_name)
         else:
-            filename = "{0}-{1:03d}-of-{2:03d}.bcfzip".format(
+            filename = "{0}-{1:03d}-of-{2:03d}.bcf".format(
                 base_name, index, len(chunks)
             )
-        files.append((filename, _write_bcfzip(chunk, model_title, when, author)))
+        files.append((filename, _write_bcf_container(chunk, model_title, when, author)))
     return files

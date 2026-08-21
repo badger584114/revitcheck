@@ -18,7 +18,7 @@ def test_to_bcf_delegates_to_the_bcf_writer():
     assert len(files) == 1
     filename, data = files[0]
     assert filename.startswith("test-bridge")
-    assert filename.endswith(".bcfzip")
+    assert filename.endswith(".bcf")
     assert isinstance(data, bytes)
 
 

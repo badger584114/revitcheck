@@ -77,7 +77,7 @@ and something in it raised (case 1).
 | --- | --- |
 | **Dimension Provenance** | Flags dimensions measuring detail linework instead of model geometry, and lists views with no model-derived dimensions at all. |
 | **Dimension Values** | Flags dimensions whose typed-over text no longer matches what the model measures by more than rounding explains. Reports how much of the model was actually checkable. |
-| **Export BCF** | Runs every check and writes the results as BCF 2.1 `.bcfzip` file(s), split at 100 issues per file for Forma's import cap — the proof-of-concept round trip, PLANNING.md §12. A finding stays clickable via its element's `UniqueId`, carried in the BCF `Component`'s `AuthoringToolId`. |
+| **Export BCF** | Runs every check and writes the results as BCF 2.1 `.bcf` file(s), split at 100 issues per file for Forma's import cap — the proof-of-concept round trip, PLANNING.md §12. A finding stays clickable via its element's `UniqueId`, carried in the BCF `Component`'s `AuthoringToolId`. |
 | **Capture Model** | Writes the extracted data to JSON so checks can be developed off a Revit machine. On a workshared model, prompts for which worksets to include first — an unchecked workset's dimensions and views are skipped entirely, not just filtered out afterwards. |
 
 ## The development loop
