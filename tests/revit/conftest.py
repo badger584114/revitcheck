@@ -109,13 +109,13 @@ def chain(element_id, view_id, references, segments, type_name=None):
     )
 
 
-def view(element_id, name="SECTION A-A", view_type="Section", sheet_no="S101", **kw):
+def view(element_id, name="SECTION A-A", view_type="Section", sheet_no="S101", sheet_id=None, **kw):
     return ViewInfo(
         element_id=element_id,
         name=name,
         view_type=view_type,
         sheet_no=sheet_no,
-        sheet_id=1 if sheet_no else None,
+        sheet_id=sheet_id if sheet_id is not None else (1 if sheet_no else None),
         **kw
     )
 

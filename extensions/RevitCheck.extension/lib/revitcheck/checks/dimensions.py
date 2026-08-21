@@ -167,7 +167,11 @@ def views_in_scope(model: RevitModel, config: RuleConfig) -> List[ViewInfo]:
     direction: every dimension in it was always going to be DRAFTED
     (nothing else is possible in a view with no model behind it), so
     checking it produces volume with no decision left to make — see
-    `RuleConfig.skip_unlinked_drafting_views`.
+    `RuleConfig.skip_unlinked_drafting_views`. A view on a sheet whose
+    title matches `RuleConfig.excluded_sheet_title_keywords` is excluded
+    for a third, different reason: not "there's no decision to make"
+    but "this sheet's convention isn't setout in the first place" — see
+    that field's docstring for the reasoning and what confirmed it.
     """
     scoped = []
     for view in model.views:
@@ -180,8 +184,19 @@ def views_in_scope(model: RevitModel, config: RuleConfig) -> List[ViewInfo]:
             and _is_unlinked_drafting_view(view)
         ):
             continue
+        if config.excluded_sheet_title_keywords and _sheet_title_excluded(
+            model, view, config
+        ):
+            continue
         scoped.append(view)
     return scoped
+
+
+def _sheet_title_excluded(model: RevitModel, view: ViewInfo, config: RuleConfig) -> bool:
+    sheet = model.sheet_by_id(view.sheet_id)
+    title = (sheet.name if sheet else None) or ""
+    title = title.lower()
+    return any(keyword.lower() in title for keyword in config.excluded_sheet_title_keywords)
 
 
 def _is_unlinked_drafting_view(view: Optional[ViewInfo]) -> bool:
