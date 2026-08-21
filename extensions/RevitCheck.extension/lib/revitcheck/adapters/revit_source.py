@@ -402,6 +402,15 @@ def _referenced_drafting_view_ids(doc: Any, errors: List[str]):
 def _collect_sheets_and_views(
     doc: Any, errors: List[str], include_worksets: Optional[Any] = None
 ):
+    """Every sheet and every view — neither filtered by `include_worksets`.
+
+    Both are index/container entities, not volume: a sheet just names a
+    page, and a view just names a scope dimensions live inside. Only
+    the dimensions themselves (`_collect_dimensions`) are filtered by
+    their own workset. Views weren't originally treated this way — see
+    the comment where `workset_name` is read below for why that changed
+    and what it broke before it did.
+    """
     sheets: List[SheetInfo] = []
     sheet_by_id = {}
 
@@ -434,13 +443,15 @@ def _collect_sheets_and_views(
     for view in FilteredElementCollector(doc).OfClass(View):
         try:
             view_id = _eid(view.Id)
+            # A view is never skipped for its own workset. Found the
+            # hard way, 2026-08-22: a real project keeps every view on
+            # one administrative workset, so filtering views the same
+            # way dimensions are filtered meant deselecting that one
+            # workset in the Capture Model picker silently produced a
+            # capture with zero views and therefore zero dimensions.
+            # `workset_name` is still recorded below, purely
+            # informational.
             workset_name = _workset_name(doc, view)
-            if (
-                include_worksets is not None
-                and workset_name is not None
-                and workset_name not in include_worksets
-            ):
-                continue
             sheet_id = view_to_sheet.get(view_id)
             sheet = sheet_by_id.get(sheet_id)
             views.append(
@@ -475,14 +486,16 @@ def read_model(
     be exactly the kind of black box CLAUDE.md rules out.
 
     `include_worksets`, when given, is a set of workset *names* to keep;
-    views and dimensions on any other workset are skipped during
-    collection rather than filtered afterwards, so the cost of reading
-    them is avoided too, not just their presence in the output. `None`
-    (the default) reads everything, unchanged from before this
-    parameter existed. Sheets are never filtered by workset — a sheet is
-    an index entry, not volume, and dropping one risks a view silently
-    losing its `sheet_no` if only the sheet's own workset happened to be
-    excluded.
+    dimensions on any other workset are skipped during collection
+    rather than filtered afterwards, so the cost of reading them is
+    avoided too, not just their presence in the output. `None` (the
+    default) reads everything, unchanged from before this parameter
+    existed. Sheets and views are never filtered by workset — both are
+    index/container entities, not volume, and (found 2026-08-22, the
+    hard way) a project can keep every view on one administrative
+    workset, so filtering views the way dimensions are filtered risks
+    a picker selection silently producing a capture with nothing in it
+    at all.
 
     `sheeted_views_only` (default True) skips dimension collection for
     any view not placed on a sheet — see `_collect_dimensions` for why
