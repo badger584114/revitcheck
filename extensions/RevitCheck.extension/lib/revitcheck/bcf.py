@@ -170,9 +170,19 @@ def _markup_xml(
         "  </Topic>",
     ]
     if vp_guid is not None:
-        lines.append(
-            '  <Viewpoints Guid="{0}" Viewpoint="viewpoint.bcfv"/>'.format(vp_guid)
-        )
+        # `Viewpoint` is a child element, not an attribute on
+        # `<Viewpoints>` -- the self-closing attribute form
+        # (`<Viewpoints Guid="..." Viewpoint="viewpoint.bcfv"/>`) was
+        # this module's original, wrong guess at the shape, and it's
+        # why every Topic having a real viewpoint.bcfv file (the
+        # previous fix) didn't change Forma's "no viewpoint file
+        # found" error at all: the file existed, but nothing in
+        # markup.bcf actually pointed at it in a form Forma's parser
+        # recognises. This is the buildingSMART example shape, not a
+        # guess.
+        lines.append('  <Viewpoints Guid="{0}">'.format(vp_guid))
+        lines.append("    <Viewpoint>viewpoint.bcfv</Viewpoint>")
+        lines.append("  </Viewpoints>")
     lines.append("</Markup>")
     return "\n".join(lines) + "\n"
 

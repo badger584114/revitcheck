@@ -196,7 +196,7 @@ class TestViewpoint:
         markup_path = next(n for n in zf.namelist() if n.endswith("markup.bcf"))
         markup_root = ET.fromstring(zf.read(markup_path))
         viewpoints = markup_root.find("Viewpoints")
-        assert viewpoints.attrib["Viewpoint"] == "viewpoint.bcfv"
+        assert viewpoints.find("Viewpoint").text == "viewpoint.bcfv"
 
     def test_viewpoint_carries_a_camera(self):
         # Added 2026-08-22 after a real Forma import reported the
