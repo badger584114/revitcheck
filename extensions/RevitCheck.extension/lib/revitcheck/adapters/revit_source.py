@@ -233,9 +233,46 @@ def _read_segments(dim: Any) -> List[DimensionSegmentInfo]:
 
 
 def _collect_dimensions(
-    doc: Any, errors: List[str], include_worksets: Optional[Any] = None
+    doc: Any,
+    errors: List[str],
+    views: List[ViewInfo],
+    include_worksets: Optional[Any] = None,
+    sheeted_views_only: bool = True,
 ) -> List[DimensionInfo]:
     """Every dimension in the document, spot dimensions included.
+
+    **Collected per view**, not once document-wide. The original design
+    trusted `Dimension.OwnerViewId` from a single
+    `FilteredElementCollector(doc)` sweep, and that trust was wrong:
+    confirmed 2026-08-22 against a real capture (`samples/T2DPAA...`),
+    `OwnerViewId` had attributed 430 dimensions to one Elevation view
+    that a reviewer counted at roughly a dozen. Select-by-ID in Revit
+    confirmed several of the "extra" ones could not be selected while
+    that view was active — view-specific elements can only be selected
+    while their real owning view is active, so they did not actually
+    belong there, whatever the stored property said. Changing the
+    active view at capture time made no difference, ruling that out as
+    the mechanism; what's left is that the stored property itself isn't
+    reliable read document-wide. `FilteredElementCollector(doc,
+    view.Id)` sidesteps the question rather than explains it: `view_id`
+    below is the view this loop is currently on, known from the loop
+    variable, not read back off a property that turned out not to be
+    trustworthy.
+
+    Scoped to views placed on a sheet by default
+    (`sheeted_views_only`) — confirmed by the user as the right default
+    for this project specifically: a heavy template leaves thousands of
+    premade, never-placed views in the document, and a
+    `FilteredElementCollector` call per view is real cost multiplied by
+    however many views there are. An unplaced view is not issued to
+    anyone either way (`checks/dimensions.py`'s own default), so this
+    is the adapter doing the same narrowing the checks already do, for
+    the same reason `include_worksets` does: avoiding the read, not
+    just filtering the result afterwards. Set False for a full sweep —
+    note that doing so only at the *check* layer (`RuleConfig.
+    sheeted_views_only=False`) can no longer recover dimensions this
+    layer never captured, so a full sweep now has to be asked for here
+    too if one is wanted.
 
     `OfClass(Dimension)` returns `SpotDimension` too, since it derives
     from `Dimension` — but both are collected and deduplicated by id
@@ -252,63 +289,81 @@ def _collect_dimensions(
     dimension nobody wants checked.
     """
     seen = {}
-    for cls in (Dimension, SpotDimension):
-        try:
-            collector = (
-                FilteredElementCollector(doc)
-                .OfClass(cls)
-                .WhereElementIsNotElementType()
-            )
-        except Exception as exc:  # noqa: BLE001
-            errors.append("collecting {0}: {1}".format(cls.__name__, exc))
+    for view in views:
+        if sheeted_views_only and view.sheet_no is None:
             continue
 
-        for element in collector:
-            element_id = _eid(element.Id)
-            if element_id is None or element_id in seen:
-                continue
+        try:
+            view_element_id = ElementId(view.element_id)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(
+                "view {0}: could not scope a collector to it: {1}".format(
+                    view.element_id, exc
+                )
+            )
+            continue
 
-            workset_name = _workset_name(doc, element)
-            if (
-                include_worksets is not None
-                and workset_name is not None
-                and workset_name not in include_worksets
-            ):
-                continue
-
+        for cls in (Dimension, SpotDimension):
             try:
-                references = [
-                    _read_reference(doc, ref, errors)
-                    for ref in (element.References or [])
-                ]
-
-                origin = None
-                try:
-                    origin = _point(getattr(element, "Origin", None))
-                except Exception:  # noqa: BLE001
-                    # Some dimension geometries have no single origin.
-                    # Not worth an error record — it costs a zoom
-                    # target, not a finding.
-                    origin = None
-
-                type_name = None
-                dim_type = getattr(element, "DimensionType", None)
-                if dim_type is not None:
-                    type_name = getattr(dim_type, "Name", None)
-
-                seen[element_id] = DimensionInfo(
-                    element_id=element_id,
-                    view_id=_eid(element.OwnerViewId) or -1,
-                    is_spot=isinstance(element, SpotDimension),
-                    references=references,
-                    segments=_read_segments(element),
-                    origin=origin,
-                    type_name=type_name,
-                    workset_name=workset_name,
-                    unique_id=_text_or_none(getattr(element, "UniqueId", None)),
+                collector = (
+                    FilteredElementCollector(doc, view_element_id)
+                    .OfClass(cls)
+                    .WhereElementIsNotElementType()
                 )
             except Exception as exc:  # noqa: BLE001
-                errors.append("dimension {0}: {1}".format(element_id, exc))
+                errors.append(
+                    "collecting {0} in view {1}: {2}".format(
+                        cls.__name__, view.element_id, exc
+                    )
+                )
+                continue
+
+            for element in collector:
+                element_id = _eid(element.Id)
+                if element_id is None or element_id in seen:
+                    continue
+
+                workset_name = _workset_name(doc, element)
+                if (
+                    include_worksets is not None
+                    and workset_name is not None
+                    and workset_name not in include_worksets
+                ):
+                    continue
+
+                try:
+                    references = [
+                        _read_reference(doc, ref, errors)
+                        for ref in (element.References or [])
+                    ]
+
+                    origin = None
+                    try:
+                        origin = _point(getattr(element, "Origin", None))
+                    except Exception:  # noqa: BLE001
+                        # Some dimension geometries have no single origin.
+                        # Not worth an error record — it costs a zoom
+                        # target, not a finding.
+                        origin = None
+
+                    type_name = None
+                    dim_type = getattr(element, "DimensionType", None)
+                    if dim_type is not None:
+                        type_name = getattr(dim_type, "Name", None)
+
+                    seen[element_id] = DimensionInfo(
+                        element_id=element_id,
+                        view_id=view.element_id,
+                        is_spot=isinstance(element, SpotDimension),
+                        references=references,
+                        segments=_read_segments(element),
+                        origin=origin,
+                        type_name=type_name,
+                        workset_name=workset_name,
+                        unique_id=_text_or_none(getattr(element, "UniqueId", None)),
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    errors.append("dimension {0}: {1}".format(element_id, exc))
 
     return list(seen.values())
 
@@ -408,7 +463,11 @@ def _collect_sheets_and_views(
     return sheets, views
 
 
-def read_model(doc: Any, include_worksets: Optional[Any] = None) -> RevitModel:
+def read_model(
+    doc: Any,
+    include_worksets: Optional[Any] = None,
+    sheeted_views_only: bool = True,
+) -> RevitModel:
     """Read the whole document into the IR.
 
     Read-only throughout — no transaction is opened, and none should be.
@@ -424,10 +483,16 @@ def read_model(doc: Any, include_worksets: Optional[Any] = None) -> RevitModel:
     an index entry, not volume, and dropping one risks a view silently
     losing its `sheet_no` if only the sheet's own workset happened to be
     excluded.
+
+    `sheeted_views_only` (default True) skips dimension collection for
+    any view not placed on a sheet — see `_collect_dimensions` for why
+    this now lives here rather than only at the check layer.
     """
     errors: List[str] = []
     sheets, views = _collect_sheets_and_views(doc, errors, include_worksets)
-    dimensions = _collect_dimensions(doc, errors, include_worksets)
+    dimensions = _collect_dimensions(
+        doc, errors, views, include_worksets, sheeted_views_only
+    )
 
     excluded_worksets: List[str] = []
     if include_worksets is not None:
