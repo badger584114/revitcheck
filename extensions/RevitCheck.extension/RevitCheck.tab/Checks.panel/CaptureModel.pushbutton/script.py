@@ -161,6 +161,21 @@ output.print_md(
         len(model.sheets), len(model.views), len(model.dimensions)
     )
 )
+if model.sheets and not model.dimensions:
+    # Happened for real, 2026-08-22: a workset deselection wiped every
+    # view (and therefore every dimension) from a capture that still
+    # looked superficially fine -- 134 sheets, seemingly normal output
+    # -- and it went to GitHub before anyone noticed. Sheets are never
+    # workset-filtered, so a capture with sheets but nothing else is a
+    # near-certain sign something upstream (usually the workset
+    # selection) excluded everything, not that the model is genuinely
+    # empty.
+    output.print_md(
+        "- **⚠ 0 dimensions captured despite {0} sheet(s).** This "
+        "usually means the workset selection excluded everything with "
+        "content in it. Check your selection before using this "
+        "capture.".format(len(model.sheets))
+    )
 if model.excluded_worksets:
     output.print_md(
         "- **{0} workset(s) excluded** by your selection — nothing on them "
