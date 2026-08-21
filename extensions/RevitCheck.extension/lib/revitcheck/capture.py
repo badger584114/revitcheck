@@ -99,6 +99,7 @@ def from_dict(data: Dict[str, Any]) -> RevitModel:
                 origin=_point(raw.get("origin")),
                 type_name=raw.get("type_name"),
                 workset_name=raw.get("workset_name"),
+                unique_id=raw.get("unique_id"),
             )
         )
 

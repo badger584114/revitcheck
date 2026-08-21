@@ -305,6 +305,7 @@ def _collect_dimensions(
                     origin=origin,
                     type_name=type_name,
                     workset_name=workset_name,
+                    unique_id=_text_or_none(getattr(element, "UniqueId", None)),
                 )
             except Exception as exc:  # noqa: BLE001
                 errors.append("dimension {0}: {1}".format(element_id, exc))
@@ -398,6 +399,7 @@ def _collect_sheets_and_views(
                     sheet_no=sheet.sheet_number if sheet else None,
                     workset_name=workset_name,
                     linked_to_model_section=view_id in referenced_drafting_views,
+                    unique_id=_text_or_none(getattr(view, "UniqueId", None)),
                 )
             )
         except Exception as exc:  # noqa: BLE001

@@ -1,0 +1,10 @@
+title: |-
+  Export
+  BCF
+tooltip: >-
+  Run every check and write the results as BCF 2.1 (.bcfzip) file(s), split
+  at 100 issues per file for Forma's import cap. This is the proof-of-concept
+  round trip (PLANNING.md §12): a finding stays clickable via its element's
+  UniqueId, carried in each Component's AuthoringToolId.
+highlight: new
+author: Peter Griggs
