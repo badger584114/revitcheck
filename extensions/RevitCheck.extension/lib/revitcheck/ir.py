@@ -173,6 +173,13 @@ class ViewInfo:
     # so rules scope to placed views by default.
     sheet_id: Optional[int] = None
     sheet_no: Optional[str] = None
+    # The sheet's own `unique_id` (SheetInfo.unique_id), denormalized
+    # here the same way `sheet_no` already is — so a rule can use the
+    # sheet as a BCF anchor without needing the whole model threaded
+    # through. See `SheetInfo.unique_id` for why the sheet, not the
+    # dimension or the view itself, is what `checks/dimensions.py` now
+    # anchors a finding to.
+    sheet_unique_id: Optional[str] = None
     # The name of the workset this view's element belongs to, or None on
     # a model that isn't workshared. Raw fact, per this module's rule 2
     # — whether a workset counts as "superseded" or "geometry creation"
@@ -216,6 +223,17 @@ class SheetInfo:
     element_id: int
     sheet_number: str
     name: Optional[str] = None
+    # Revit's `Element.UniqueId` for the sheet. Used as the BCF anchor
+    # for dimension/view findings instead of the dimension's or view's
+    # own unique_id (see `checks/dimensions.py`) — confirmed by the
+    # user 2026-08-22 against a real Forma import that some issues
+    # pinned to a Dimension/View came back "may not match the current
+    # model". Working theory: a Dimension or View has no 3D placement
+    # for a model viewer to resolve, where a ViewSheet is exactly the
+    # kind of thing a document-coordination platform navigates to
+    # directly, and it's also the more useful target for a reviewer
+    # regardless of whether that theory is right.
+    unique_id: Optional[str] = None
 
 
 @dataclass

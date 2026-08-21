@@ -421,6 +421,7 @@ def _collect_sheets_and_views(
                 element_id=sheet_id,
                 sheet_number=str(sheet.SheetNumber),
                 name=str(sheet.Name),
+                unique_id=_text_or_none(getattr(sheet, "UniqueId", None)),
             )
             sheets.append(info)
             sheet_by_id[sheet_id] = info
@@ -463,6 +464,7 @@ def _collect_sheets_and_views(
                     scale=int(getattr(view, "Scale", 0) or 0) or None,
                     sheet_id=sheet_id,
                     sheet_no=sheet.sheet_number if sheet else None,
+                    sheet_unique_id=sheet.unique_id if sheet else None,
                     workset_name=workset_name,
                     linked_to_model_section=view_id in referenced_drafting_views,
                     unique_id=_text_or_none(getattr(view, "UniqueId", None)),

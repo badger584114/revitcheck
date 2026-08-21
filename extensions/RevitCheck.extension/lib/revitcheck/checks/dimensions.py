@@ -258,7 +258,12 @@ def _issue_for_dimension(
         view_id=dim.view_id,
         view_name=view.name if view else None,
         sheet_no=view.sheet_no if view else None,
-        unique_id=dim.unique_id,
+        # Anchor to the sheet, not the dimension itself -- see
+        # `ir.SheetInfo.unique_id`. Falls back to the dimension's own
+        # unique_id when there's no sheet to anchor to (an unplaced
+        # view, or `sheeted_views_only=False`), so a finding still
+        # carries *some* anchor rather than none.
+        unique_id=(view.sheet_unique_id if view else None) or dim.unique_id,
     )
 
     if verdict == Provenance.DRAFTED:
@@ -367,7 +372,8 @@ def _view_rollup_issue(
         view_id=view.element_id,
         view_name=view.name,
         sheet_no=view.sheet_no,
-        unique_id=view.unique_id,
+        # See `_issue_for_dimension`'s comment on the same fallback.
+        unique_id=view.sheet_unique_id or view.unique_id,
         suggested_fix={
             "provenance": Provenance.DRAFTED,
             "dimensions": len(dims),
@@ -748,7 +754,7 @@ def check_dimension_override_consistency(
                         view_id=dim.view_id,
                         view_name=view.name,
                         sheet_no=view.sheet_no,
-                        unique_id=dim.unique_id,
+                        unique_id=view.sheet_unique_id or dim.unique_id,
                         suggested_fix={
                             "stated_mm": stated_mm,
                             "measured_mm": round(segment.value_mm, 3),
@@ -827,7 +833,7 @@ def _bound_issue(
         view_id=dim.view_id,
         view_name=view.name,
         sheet_no=view.sheet_no,
-        unique_id=dim.unique_id,
+        unique_id=view.sheet_unique_id or dim.unique_id,
         suggested_fix={
             "stated_limit_mm": limit,
             "comparator": comparator,
