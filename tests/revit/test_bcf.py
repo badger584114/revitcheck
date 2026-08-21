@@ -212,14 +212,23 @@ class TestViewpoint:
         assert camera.find("CameraDirection") is not None
         assert camera.find("CameraUpVector") is not None
 
-    def test_coverage_issue_with_no_element_gets_no_viewpoint(self):
+    def test_coverage_issue_with_no_element_still_gets_a_viewpoint(self):
+        # Changed 2026-08-22: a real Forma import rejected a file with
+        # "no viewpoint file found for one or more BCF topics", so
+        # every Topic gets one now -- just without a Component pin,
+        # since there's genuinely nothing to select.
         issue = _issue(rule_id="revit.capture_coverage", category="coverage", element_id=None, unique_id=None)
         files = to_bcf_files([issue])
         zf = _unzip(files[0][1])
-        assert not any(n.endswith("viewpoint.bcfv") for n in zf.namelist())
+        assert any(n.endswith("viewpoint.bcfv") for n in zf.namelist())
         markup_path = next(n for n in zf.namelist() if n.endswith("markup.bcf"))
         root = ET.fromstring(zf.read(markup_path))
-        assert root.find("Viewpoints") is None
+        assert root.find("Viewpoints") is not None
+
+        vp_path = next(n for n in zf.namelist() if n.endswith("viewpoint.bcfv"))
+        vp_root = ET.fromstring(zf.read(vp_path))
+        assert vp_root.find("OrthogonalCamera") is not None
+        assert vp_root.find("Components") is None
 
     def test_element_id_without_unique_id_still_gets_a_viewpoint(self):
         # unique_id is what makes the pin durable, but a capture taken
