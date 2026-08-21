@@ -13,7 +13,7 @@ from revitcheck.checks.dimensions import (
     drafted_views,
     views_in_scope,
 )
-from revitcheck.ir import Provenance, ReferenceInfo
+from revitcheck.ir import Provenance, ReferenceInfo, SheetInfo
 
 
 class TestClassifyReference:
@@ -148,6 +148,68 @@ class TestScoping:
         views = [make.view(11, view_type="Legend")]
         scoped = views_in_scope(make.model(views=views), RuleConfig())
         assert scoped == []
+
+    def test_reinforcement_sheet_excluded_by_default(self, make):
+        sheets = [SheetInfo(1, "2873101", "SUPER-T GIRDER REINFORCEMENT - SHEET 01")]
+        views = [make.view(10, sheet_id=1)]
+        scoped = views_in_scope(make.model(views=views, sheets=sheets), RuleConfig())
+        assert scoped == []
+
+    def test_reinforcement_sheet_match_is_case_insensitive(self, make):
+        sheets = [SheetInfo(1, "2873101", "Super-T Girder Reinforcement - Sheet 01")]
+        views = [make.view(10, sheet_id=1)]
+        scoped = views_in_scope(make.model(views=views, sheets=sheets), RuleConfig())
+        assert scoped == []
+
+    def test_non_reinforcement_sheet_is_unaffected(self, make):
+        sheets = [SheetInfo(1, "2873041", "PILE LAYOUT")]
+        views = [make.view(10, sheet_id=1)]
+        scoped = views_in_scope(make.model(views=views, sheets=sheets), RuleConfig())
+        assert [v.element_id for v in scoped] == [10]
+
+    def test_excluded_sheet_title_keywords_is_configurable(self, make):
+        sheets = [SheetInfo(1, "2873101", "SUPER-T GIRDER REINFORCEMENT - SHEET 01")]
+        views = [make.view(10, sheet_id=1)]
+        model = make.model(views=views, sheets=sheets)
+
+        scoped_off = views_in_scope(model, RuleConfig(excluded_sheet_title_keywords=[]))
+        assert [v.element_id for v in scoped_off] == [10]
+
+        scoped_custom = views_in_scope(
+            model, RuleConfig(excluded_sheet_title_keywords=["girder"])
+        )
+        assert scoped_custom == []
+
+    def test_view_with_no_sheet_is_unaffected_by_the_keyword_filter(self, make):
+        # A view not on any sheet has already been excluded by
+        # sheeted_views_only; with that off, it should not additionally
+        # be caught by a title match against a sheet it isn't on.
+        views = [make.view(10, sheet_no=None)]
+        scoped = views_in_scope(
+            make.model(views=views), RuleConfig(sheeted_views_only=False)
+        )
+        assert [v.element_id for v in scoped] == [10]
+
+    def test_reinforcement_sheet_excludes_both_dimension_rules(self, make):
+        # excluded_sheet_title_keywords is about the sheet's convention,
+        # not a per-rule concern -- both rules share views_in_scope, and
+        # both should see the same narrower scope.
+        sheets = [SheetInfo(1, "2873101", "SUPER-T GIRDER REINFORCEMENT - SHEET 01")]
+        views = [make.view(10, sheet_id=1)]
+        dims = [make.dimension(1, 10, [make.drafted_ref()], override="A1")]
+        model = make.model(views=views, dimensions=dims, sheets=sheets)
+        issues = run_checks(
+            model,
+            RuleConfig(
+                enabled_rule_ids={
+                    "revit.dimension_provenance",
+                    "revit.dimension_override_consistency",
+                }
+            ),
+        )
+        # Only the coverage notes survive -- "nothing in scope" for
+        # provenance, "nothing was checked" for override consistency.
+        assert all(i.category == "coverage" for i in issues)
 
 
 def _run(model, config=None):

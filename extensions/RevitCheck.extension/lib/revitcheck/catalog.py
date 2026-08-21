@@ -77,6 +77,25 @@ class RuleConfig:
     # regardless, e.g. for an audit that wants full coverage on record.
     skip_unlinked_drafting_views: bool = True
 
+    # Skip every view on a sheet whose title contains one of these
+    # words (case-insensitive substring match against `SheetInfo.name`).
+    # Confirmed by the user, 2026-08-22, against the real T2DPAA
+    # capture: reinforcement/detailing sheets dimension bar spacing and
+    # cover to static linework as a matter of normal drafting practice
+    # — never intended to be live, and typically overridden with a bar
+    # mark or spacing callout ("A1", "N16-200") rather than a number, so
+    # `revit.dimension_override_consistency` was already silently
+    # skipping most of them as unparseable. What `revit.dimension_
+    # provenance` couldn't tell was that this is expected rather than a
+    # drift risk — flagging it "high" is technically correct (it *does*
+    # measure a detail line) and practically wrong (it was never
+    # setout). Default is one word because that's what was confirmed;
+    # add more once a second convention turns up rather than guessing
+    # ahead of one. Empty list checks every sheet regardless.
+    excluded_sheet_title_keywords: List[str] = field(
+        default_factory=lambda: ["reinforcement"]
+    )
+
     # Severity for a dimension that measures detail linework, split by
     # the kind of view it sits in — because the two cases mean genuinely
     # different things. In a section or plan the view *could* have been

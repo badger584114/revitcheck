@@ -253,6 +253,11 @@ class RevitModel:
             return None
         return self._view_index().get(view_id)
 
+    def sheet_by_id(self, sheet_id: Optional[int]) -> Optional[SheetInfo]:
+        if sheet_id is None:
+            return None
+        return self._sheet_index().get(sheet_id)
+
     def dimensions_by_view(self) -> Dict[int, List[DimensionInfo]]:
         """Dimensions grouped by their owning view, in one pass.
 
@@ -274,4 +279,11 @@ class RevitModel:
         if index is None:
             index = {v.element_id: v for v in self.views}
             object.__setattr__(self, "_view_index_cache", index)
+        return index
+
+    def _sheet_index(self) -> Dict[int, SheetInfo]:
+        index = getattr(self, "_sheet_index_cache", None)
+        if index is None:
+            index = {s.element_id: s for s in self.sheets}
+            object.__setattr__(self, "_sheet_index_cache", index)
         return index
