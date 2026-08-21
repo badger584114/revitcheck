@@ -16,13 +16,94 @@ import os
 from pyrevit import revit, script
 
 from revitcheck import capture
-from revitcheck.adapters.revit_source import read_model
+from revitcheck.adapters.revit_source import list_worksets, read_model
 
 output = script.get_output()
 output.set_title("Capture Model")
 
 doc = revit.doc
-model = read_model(doc)
+
+
+def _ask_which_worksets(worksets):
+    """A workset multi-select, for a workshared model.
+
+    `worksets` is the `(id, name)` list from `revit_source.list_worksets`
+    — already empty when the model isn't workshared, so this is only
+    called when there is something to ask about. Returns the set of
+    names to keep, or None to mean "keep everything" — both when the
+    user leaves every box checked and when the dialog can't be shown, so
+    a picker that fails closed never silently produces a narrower
+    capture than the user asked for.
+
+    WinForms rather than the WPF `SaveFileDialog` used below: a
+    `CheckedListBox` is one control with built-in check state, versus
+    assembling a checkbox stack by hand in WPF for the same result.
+    Reached through pythonnet exactly the same way — Revit hosts both
+    toolkits already, so this needs no extra dependency either.
+    """
+    try:
+        import clr
+
+        clr.AddReference("System.Windows.Forms")
+        clr.AddReference("System.Drawing")
+        from System.Drawing import Point, Size
+        from System.Windows.Forms import (
+            Button,
+            CheckedListBox,
+            DialogResult,
+            Form,
+            FormStartPosition,
+            Label,
+        )
+
+        form = Form()
+        form.Text = "Capture Model — worksets to include"
+        form.StartPosition = FormStartPosition.CenterScreen
+        form.Width = 420
+        form.Height = 460
+
+        label = Label()
+        label.Text = (
+            "Every dimension and view on an unchecked workset is skipped "
+            "entirely — not read, not checked, not in the capture."
+        )
+        label.Location = Point(10, 10)
+        label.Size = Size(380, 40)
+        form.Controls.Add(label)
+
+        box = CheckedListBox()
+        box.Location = Point(10, 55)
+        box.Size = Size(380, 300)
+        box.CheckOnClick = True
+        for _workset_id, name in worksets:
+            box.Items.Add(name, True)  # every workset starts checked
+        form.Controls.Add(box)
+
+        ok = Button()
+        ok.Text = "Capture checked worksets"
+        ok.Location = Point(10, 365)
+        ok.Width = 220
+        ok.DialogResult = DialogResult.OK
+        form.Controls.Add(ok)
+        form.AcceptButton = ok
+
+        result = form.ShowDialog()
+        if result != DialogResult.OK:
+            return None
+        checked = set(box.CheckedItems)
+        return checked if len(checked) < len(worksets) else None
+    except Exception as exc:  # noqa: BLE001 - fall back, don't lose the read
+        output.print_md(
+            "> Could not open the workset picker (`{0}`), so every workset "
+            "was captured.".format(exc)
+        )
+        return None
+
+
+worksets = list_worksets(doc)
+include_worksets = _ask_which_worksets(worksets) if worksets else None
+
+model = read_model(doc, include_worksets=include_worksets)
 
 default_name = "{0}.capture.json".format(
     os.path.splitext(os.path.basename(doc.Title or "model"))[0]
@@ -80,6 +161,13 @@ output.print_md(
         len(model.sheets), len(model.views), len(model.dimensions)
     )
 )
+if model.excluded_worksets:
+    output.print_md(
+        "- **{0} workset(s) excluded** by your selection — nothing on them "
+        "was read: {1}".format(
+            len(model.excluded_worksets), ", ".join(model.excluded_worksets)
+        )
+    )
 if model.extraction_errors:
     output.print_md(
         "- **{0} element(s) could not be read** — they are listed in the "

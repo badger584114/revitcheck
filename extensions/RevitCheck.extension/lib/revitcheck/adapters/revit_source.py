@@ -50,10 +50,12 @@ try:
         Dimension,
         ElementId,
         FilteredElementCollector,
+        FilteredWorksetCollector,
         SpotDimension,
         View,
         ViewSheet,
         Viewport,
+        WorksetKind,
     )
 except ImportError as exc:  # pragma: no cover - only reachable off Revit
     raise ImportError(
@@ -90,6 +92,50 @@ def _point(xyz: Any) -> Optional[Point3D]:
     if xyz is None:
         return None
     return Point3D(x=_mm(xyz.X), y=_mm(xyz.Y), z=_mm(xyz.Z))
+
+
+def list_worksets(doc: Any) -> List[Any]:
+    """User-created worksets in `doc`, as `(workset_id, name)` pairs.
+
+    Empty on a model that isn't workshared — `FilteredWorksetCollector`
+    only means something on one that is. Exposed here, rather than left
+    for the button to collect itself, so the picker (script.py, which
+    stays thin by this file's own rule) has one place to get the list
+    from and one place to get it wrong.
+    """
+    if not bool(getattr(doc, "IsWorkshared", False)):
+        return []
+    result = []
+    try:
+        for workset in FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset):
+            workset_id = _eid(getattr(workset, "Id", None))
+            if workset_id is not None:
+                result.append((workset_id, str(workset.Name)))
+    except Exception:  # noqa: BLE001 - no worksets beats a broken capture
+        return []
+    return result
+
+
+def _workset_name(doc: Any, element: Any) -> Optional[str]:
+    """The name of the workset `element` belongs to, or None.
+
+    None on a non-workshared model and on any lookup failure alike —
+    both mean "nothing to filter on", and neither is worth an
+    `extraction_errors` entry of its own since the element itself is
+    still read normally either way. Not the same kind of fact as
+    `ReferenceInfo` records, so failing open here (never excluding an
+    element because its workset couldn't be determined) matches
+    `extraction_errors`' own principle: a capture must not quietly
+    shrink for a reason nobody can see.
+    """
+    try:
+        workset_id = getattr(element, "WorksetId", None)
+        if workset_id is None:
+            return None
+        workset = doc.GetWorksetTable().GetWorkset(workset_id)
+        return str(workset.Name) if workset is not None else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _text_or_none(value: Any) -> Optional[str]:
@@ -186,7 +232,9 @@ def _read_segments(dim: Any) -> List[DimensionSegmentInfo]:
     return segments
 
 
-def _collect_dimensions(doc: Any, errors: List[str]) -> List[DimensionInfo]:
+def _collect_dimensions(
+    doc: Any, errors: List[str], include_worksets: Optional[Any] = None
+) -> List[DimensionInfo]:
     """Every dimension in the document, spot dimensions included.
 
     `OfClass(Dimension)` returns `SpotDimension` too, since it derives
@@ -195,6 +243,13 @@ def _collect_dimensions(doc: Any, errors: List[str]) -> List[DimensionInfo]:
     population would be invisible. Spot dimensions matter here more than
     ordinary ones, not less: a spot coordinate placed on detail linework
     is a setout value that looks authoritative and tracks nothing.
+
+    `include_worksets`, when not None, is a set of workset *names* — a
+    dimension whose workset resolves and isn't in it is skipped before
+    its references are read at all, which is the point: worksets like
+    "Superseded" or "Geometry Creation" hold real volume on a bridge
+    project, and there is no reason to pay for reading references on a
+    dimension nobody wants checked.
     """
     seen = {}
     for cls in (Dimension, SpotDimension):
@@ -211,6 +266,14 @@ def _collect_dimensions(doc: Any, errors: List[str]) -> List[DimensionInfo]:
         for element in collector:
             element_id = _eid(element.Id)
             if element_id is None or element_id in seen:
+                continue
+
+            workset_name = _workset_name(doc, element)
+            if (
+                include_worksets is not None
+                and workset_name is not None
+                and workset_name not in include_worksets
+            ):
                 continue
 
             try:
@@ -241,6 +304,7 @@ def _collect_dimensions(doc: Any, errors: List[str]) -> List[DimensionInfo]:
                     segments=_read_segments(element),
                     origin=origin,
                     type_name=type_name,
+                    workset_name=workset_name,
                 )
             except Exception as exc:  # noqa: BLE001
                 errors.append("dimension {0}: {1}".format(element_id, exc))
@@ -248,7 +312,7 @@ def _collect_dimensions(doc: Any, errors: List[str]) -> List[DimensionInfo]:
     return list(seen.values())
 
 
-def _collect_sheets_and_views(doc: Any, errors: List[str]):
+def _collect_sheets_and_views(doc: Any, errors: List[str], include_worksets: Optional[Any] = None):
     sheets: List[SheetInfo] = []
     sheet_by_id = {}
 
@@ -279,6 +343,13 @@ def _collect_sheets_and_views(doc: Any, errors: List[str]):
     for view in FilteredElementCollector(doc).OfClass(View):
         try:
             view_id = _eid(view.Id)
+            workset_name = _workset_name(doc, view)
+            if (
+                include_worksets is not None
+                and workset_name is not None
+                and workset_name not in include_worksets
+            ):
+                continue
             sheet_id = view_to_sheet.get(view_id)
             sheet = sheet_by_id.get(sheet_id)
             views.append(
@@ -290,6 +361,7 @@ def _collect_sheets_and_views(doc: Any, errors: List[str]):
                     scale=int(getattr(view, "Scale", 0) or 0) or None,
                     sheet_id=sheet_id,
                     sheet_no=sheet.sheet_number if sheet else None,
+                    workset_name=workset_name,
                 )
             )
         except Exception as exc:  # noqa: BLE001
@@ -298,16 +370,32 @@ def _collect_sheets_and_views(doc: Any, errors: List[str]):
     return sheets, views
 
 
-def read_model(doc: Any) -> RevitModel:
+def read_model(doc: Any, include_worksets: Optional[Any] = None) -> RevitModel:
     """Read the whole document into the IR.
 
     Read-only throughout — no transaction is opened, and none should be.
     A check that silently edited the model while reporting on it would
     be exactly the kind of black box CLAUDE.md rules out.
+
+    `include_worksets`, when given, is a set of workset *names* to keep;
+    views and dimensions on any other workset are skipped during
+    collection rather than filtered afterwards, so the cost of reading
+    them is avoided too, not just their presence in the output. `None`
+    (the default) reads everything, unchanged from before this
+    parameter existed. Sheets are never filtered by workset — a sheet is
+    an index entry, not volume, and dropping one risks a view silently
+    losing its `sheet_no` if only the sheet's own workset happened to be
+    excluded.
     """
     errors: List[str] = []
-    sheets, views = _collect_sheets_and_views(doc, errors)
-    dimensions = _collect_dimensions(doc, errors)
+    sheets, views = _collect_sheets_and_views(doc, errors, include_worksets)
+    dimensions = _collect_dimensions(doc, errors, include_worksets)
+
+    excluded_worksets: List[str] = []
+    if include_worksets is not None:
+        excluded_worksets = sorted(
+            name for _wid, name in list_worksets(doc) if name not in include_worksets
+        )
 
     version = None
     try:
@@ -323,4 +411,5 @@ def read_model(doc: Any) -> RevitModel:
         revit_version=version,
         captured_at=datetime.datetime.now().isoformat(timespec="seconds"),
         extraction_errors=errors,
+        excluded_worksets=excluded_worksets,
     )

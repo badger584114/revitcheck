@@ -98,6 +98,7 @@ def from_dict(data: Dict[str, Any]) -> RevitModel:
                 ],
                 origin=_point(raw.get("origin")),
                 type_name=raw.get("type_name"),
+                workset_name=raw.get("workset_name"),
             )
         )
 
@@ -109,6 +110,7 @@ def from_dict(data: Dict[str, Any]) -> RevitModel:
         revit_version=data.get("revit_version"),
         captured_at=data.get("captured_at"),
         extraction_errors=list(data.get("extraction_errors", [])),
+        excluded_worksets=list(data.get("excluded_worksets", [])),
     )
 
 

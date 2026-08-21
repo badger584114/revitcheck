@@ -143,6 +143,8 @@ class DimensionInfo:
     segments: List[DimensionSegmentInfo] = field(default_factory=list)
     origin: Optional[Point3D] = None
     type_name: Optional[str] = None
+    # See `ViewInfo.workset_name` — same raw fact, same reasoning.
+    workset_name: Optional[str] = None
 
     @property
     def value_mm(self) -> Optional[float]:
@@ -166,6 +168,15 @@ class ViewInfo:
     # so rules scope to placed views by default.
     sheet_id: Optional[int] = None
     sheet_no: Optional[str] = None
+    # The name of the workset this view's element belongs to, or None on
+    # a model that isn't workshared. Raw fact, per this module's rule 2
+    # — whether a workset counts as "superseded" or "geometry creation"
+    # scratch work is a judgement a client names their worksets by, not
+    # something the adapter can classify. `capture.read_model`'s
+    # `include_worksets` scoping already happened by the time this
+    # reaches the IR; this field is what a rule or report can show for
+    # *why* a view is or isn't in a capture.
+    workset_name: Optional[str] = None
 
     @property
     def is_drafting_view(self) -> bool:
@@ -203,6 +214,15 @@ class RevitModel:
     # that quietly dropped 200 dimensions must not be indistinguishable
     # from a model that has none.
     extraction_errors: List[str] = field(default_factory=list)
+    # Names of worksets the user deliberately excluded from this capture
+    # (via the Capture Model button's workset picker), on a workshared
+    # model. Same "report a coverage indicator" reasoning as
+    # `extraction_errors` above, for a different cause: this capture is
+    # narrower on purpose, not because anything failed to read, and a
+    # rule finding nothing on an excluded workset must not read as "that
+    # workset is clean". Empty on a non-workshared model, or when the
+    # user kept every workset.
+    excluded_worksets: List[str] = field(default_factory=list)
 
     def view_by_id(self, view_id: Optional[int]) -> Optional[ViewInfo]:
         if view_id is None:

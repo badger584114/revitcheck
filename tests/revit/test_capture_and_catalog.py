@@ -94,6 +94,22 @@ class TestCaptureCoverage:
         issues = run_checks(model, RuleConfig(enabled_rule_ids={"revit.capture_coverage"}))
         assert "+15 more" in issues[0].description
 
+    def test_excluded_worksets_surface_as_a_low_severity_issue(self, make):
+        model = make.model(excluded_worksets=["Superseded", "Geometry Creation"])
+        issues = run_checks(model, RuleConfig(enabled_rule_ids={"revit.capture_coverage"}))
+        assert len(issues) == 1
+        assert issues[0].severity == "low"
+        assert "2 workset(s)" in issues[0].description
+        assert "Superseded" in issues[0].description
+        assert "Geometry Creation" in issues[0].description
+
+    def test_extraction_errors_and_excluded_worksets_are_separate_issues(self, make):
+        model = make.model(errors=["dimension 12: nope"], excluded_worksets=["Superseded"])
+        issues = run_checks(model, RuleConfig(enabled_rule_ids={"revit.capture_coverage"}))
+        assert len(issues) == 2
+        severities = {i.severity for i in issues}
+        assert severities == {"medium", "low"}
+
 
 class TestCaptureRoundTrip:
     def test_model_survives_json(self, make):
