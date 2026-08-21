@@ -29,23 +29,46 @@ _MAX_LISTED = 5
 
 @register("revit.capture_coverage")
 def check_capture_coverage(model: RevitModel, config: RuleConfig) -> List[Issue]:
-    if not model.extraction_errors:
-        return []
+    issues: List[Issue] = []
 
-    listed = model.extraction_errors[:_MAX_LISTED]
-    remainder = len(model.extraction_errors) - len(listed)
-    detail = "; ".join(listed)
-    if remainder > 0:
-        detail += " (+{0} more)".format(remainder)
+    if model.extraction_errors:
+        listed = model.extraction_errors[:_MAX_LISTED]
+        remainder = len(model.extraction_errors) - len(listed)
+        detail = "; ".join(listed)
+        if remainder > 0:
+            detail += " (+{0} more)".format(remainder)
 
-    return [
-        Issue(
-            rule_id="revit.capture_coverage",
-            category="coverage",
-            description=(
-                "{0} element(s) could not be read from the model and were "
-                "not checked: {1}"
-            ).format(len(model.extraction_errors), detail),
-            severity="medium",
+        issues.append(
+            Issue(
+                rule_id="revit.capture_coverage",
+                category="coverage",
+                description=(
+                    "{0} element(s) could not be read from the model and were "
+                    "not checked: {1}"
+                ).format(len(model.extraction_errors), detail),
+                severity="medium",
+            )
         )
-    ]
+
+    if model.excluded_worksets:
+        listed = model.excluded_worksets[:_MAX_LISTED]
+        remainder = len(model.excluded_worksets) - len(listed)
+        names = ", ".join(listed)
+        if remainder > 0:
+            names += " (+{0} more)".format(remainder)
+
+        issues.append(
+            Issue(
+                rule_id="revit.capture_coverage",
+                category="coverage",
+                description=(
+                    "{0} workset(s) were excluded from this capture by user "
+                    "selection and nothing on them was checked — not because "
+                    "the model is clean there, but because it wasn't looked "
+                    "at: {1}"
+                ).format(len(model.excluded_worksets), names),
+                severity="low",
+            )
+        )
+
+    return issues

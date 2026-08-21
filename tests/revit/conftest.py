@@ -118,13 +118,14 @@ def view(element_id, name="SECTION A-A", view_type="Section", sheet_no="S101", *
     )
 
 
-def build_model(views=(), dimensions=(), sheets=None, errors=()):
+def build_model(views=(), dimensions=(), sheets=None, errors=(), excluded_worksets=()):
     return RevitModel(
         doc_title="TEST-BRIDGE",
         sheets=list(sheets if sheets is not None else [SheetInfo(1, "S101", "Plan")]),
         views=list(views),
         dimensions=list(dimensions),
         extraction_errors=list(errors),
+        excluded_worksets=list(excluded_worksets),
     )
 
 
