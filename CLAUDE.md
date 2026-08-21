@@ -89,7 +89,7 @@ extensions/RevitCheck.extension/     # the pyRevit extension
     catalog.py                       # @register, RuleConfig, run_checks
     capture.py                       # RevitModel <-> JSON (the dev loop)
     report.py                        # summarize / to_json / to_markdown / to_bcf
-    bcf.py                           # Issues -> BCF 2.1 (.bcfzip), split at
+    bcf.py                           # Issues -> BCF 2.1 (.bcf), split at
                                      #   100/file for Forma's import cap
     en_gb_variants.py                # curated en-GB spelling variants — data
                                      # landed ahead of its rule, rescued from
@@ -180,7 +180,7 @@ git.
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. Always reports how much was checkable. |
 | `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
 
-**Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcfzip`),
+**Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
 split at 100 issues per file for Forma's import cap, exposed as
 `report.to_bcf` alongside `to_json`/`to_markdown` and as the **Export
 BCF** button. `unique_id` (Revit's `Element.UniqueId`, not
@@ -273,15 +273,18 @@ element-pinned issues** (`linkedDocuments` is not writable on creation),
 which is what ruled it out as the primary sink.
 
 **BCF import into Forma is available** — confirmed in the firm's own
-Forma on 2026-08-19. **Still to actually run:** export a real capture's
-issues (one taken with the current adapter, so `unique_id` is
-populated — the committed sample predates it), import the `.bcfzip`
-into Forma, and confirm two things empirically rather than assuming
-them: what Forma does with `AuthoringToolId` on import, and whether a
-Viewpoint with a Component selection and no camera imports at all.
-PLANNING.md §12 is why proving this is the current priority — it's the
-thing the pyRevit extension exists to demonstrate before the native
-add-in work starts.
+Forma on 2026-08-19. **Two real import attempts so far, 2026-08-22,
+both failed — this is not yet proven, it's actively being debugged.**
+Attempt 1 (`.bcfzip`, no `project.bcfp`, no camera) came back "empty".
+Attempt 2 added both of those and came back **"file must be in bcf
+format"** — which reads as an extension check, not a content one, so
+the file extension changed from `.bcfzip` to `.bcf` (same bytes, same
+ZIP structure) as the next thing to rule out. **Not yet confirmed
+whether that's the actual fix** — needs a third real import to know.
+`samples/*.bcf` (renamed from the `.bcfzip` files committed the same
+day) is the artifact this is being tested against. PLANNING.md §12 is
+why proving this is the current priority — it's the thing the pyRevit
+extension exists to demonstrate before the native add-in work starts.
 
 Also open, carried over from PLANNING.md:
 

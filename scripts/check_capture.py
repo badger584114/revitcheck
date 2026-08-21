@@ -42,7 +42,7 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--bcf",
         dest="bcf_out_dir",
-        help="write BCF 2.1 .bcfzip file(s) here, one file per "
+        help="write BCF 2.1 .bcf file(s) here, one file per "
         "%(max)s issues (Forma's import cap)" % {"max": DEFAULT_MAX_ISSUES_PER_FILE},
     )
     parser.add_argument(
