@@ -210,6 +210,20 @@ Notes worth not rediscovering:
   the user's standing position: *assume nothing is trustworthy or you
   will be caught out.* An override goes stale exactly as a witness line
   does.
+- **`Dimension.OwnerViewId` is not trustworthy read document-wide.**
+  Found 2026-08-22: a real capture attributed 430 dimensions to one
+  view that had roughly a dozen, confirmed by Select-by-ID in Revit
+  (view-specific elements can't be selected unless their real owning
+  view is active; several of the "extra" ones couldn't be, while the
+  blamed view was). The adapter now collects dimensions **per view**
+  (`FilteredElementCollector(doc, view.Id)`) instead of once
+  document-wide — `view_id` comes from the loop, never read back off
+  the element. This also scopes collection to views placed on a sheet
+  by default (confirmed as the right call for this project: a heavy
+  template leaves thousands of unplaced premade views, each of which
+  would otherwise cost its own collector call for nothing). The
+  committed sample capture predates this fix and its per-view
+  attribution should not be trusted until it's replaced.
 
 ## Working conventions
 
