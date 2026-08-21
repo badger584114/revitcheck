@@ -21,6 +21,7 @@ watch what comes back.
 ("Topic" in BCF's vocabulary):
 
     bcf.version
+    project.bcfp                   -- project id + name, both deterministic
     <topic-guid>/markup.bcf        -- title, description, status
     <topic-guid>/viewpoint.bcfv    -- the Component this Topic pins to,
                                        omitted when the Issue has
@@ -40,13 +41,19 @@ finding on the same model gets the same id on every run", `issue.py`'s
 docstring) — `_deterministic_guid` just makes sure the BCF layer
 actually uses it instead of throwing it away with `uuid.uuid4()`.
 
-`project.bcfp` (project-level metadata) is deliberately **not**
-written. It's optional in the spec and every real reader tolerates its
-absence; the win from including it (a nicer project name in some
-viewers) isn't worth carrying an extra file whose exact nesting this
-project hasn't verified against a real reader — the same "don't guess
-ahead of real data" reasoning CLAUDE.md applies to the Revit adapter
-applies here to a format this project didn't design.
+**`project.bcfp` is written, and it wasn't originally.** The first
+version of this module left it out on the grounds that it's optional
+in the spec and every real reader tolerates its absence — reasonable
+in principle, wrong in practice: a real Forma import of that first
+export reported the whole file as **empty**. `project.bcfp` (and a
+default camera in every Viewpoint, `_DEFAULT_CAMERA_XML` below — the
+module's own note at the time flagged "does a Viewpoint with no camera
+import at all" as unconfirmed) are the two closest, cheapest
+candidates for what a stricter-than-the-spec importer might be
+requiring, added 2026-08-22 to rule them out. **Still not confirmed
+which one (or something else) was the actual cause** — this needs a
+second real import to know for sure, not just fewer red flags in the
+docstring.
 
 **Confirmed against the public BCF 2.1 spec, not guessed at the way the
 Revit callout API was** (PLANNING.md §12's `_referenced_drafting_view_ids`
@@ -167,6 +174,26 @@ def _markup_xml(
     return "\n".join(lines) + "\n"
 
 
+# A placeholder camera, not a real one -- this project doesn't carry a
+# dimension's or view's camera direction/position anywhere in the IR
+# yet, only witness-point origins. Added 2026-08-22 after a real Forma
+# import reported the export as "empty": the module docstring already
+# flagged "does a Viewpoint with a Component selection and no camera
+# import at all" as unconfirmed, and this is the cheap way to rule that
+# specific unknown out. Looking at nothing meaningful (the world
+# origin, -Z) rather than the element is the honest trade for now --
+# fixing that for real needs the check layer to carry a real position
+# through onto Issue, not just this file.
+_DEFAULT_CAMERA_XML = (
+    "  <OrthogonalCamera>\n"
+    "    <CameraViewPoint><X>0</X><Y>0</Y><Z>0</Z></CameraViewPoint>\n"
+    "    <CameraDirection><X>0</X><Y>0</Y><Z>-1</Z></CameraDirection>\n"
+    "    <CameraUpVector><X>0</X><Y>1</Y><Z>0</Z></CameraUpVector>\n"
+    "    <ViewToWorldScale>1</ViewToWorldScale>\n"
+    "  </OrthogonalCamera>\n"
+)
+
+
 def _viewpoint_xml(issue: Issue, vp_guid: str) -> str:
     # `IfcGuid` is deliberately omitted rather than emitted empty --
     # this project has no real IFC GlobalId for the element, and a
@@ -180,19 +207,42 @@ def _viewpoint_xml(issue: Issue, vp_guid: str) -> str:
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<VisualizationInfo Guid="{0}">\n'
+        "{1}"
         "  <Components>\n"
         "    <Selection>\n"
-        "      <Component {1}/>\n"
+        "      <Component {2}/>\n"
         "    </Selection>\n"
         "  </Components>\n"
         "</VisualizationInfo>\n"
-    ).format(vp_guid, " ".join(component_attrs))
+    ).format(vp_guid, _DEFAULT_CAMERA_XML, " ".join(component_attrs))
 
 
-def _write_bcfzip(issues: List[Issue], created_at: str, author: str) -> bytes:
+def _project_bcfp_xml(project_guid: str, project_name: str) -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        "<ProjectExtension>\n"
+        '  <Project ProjectId="{0}">\n'
+        "    <Name>{1}</Name>\n"
+        "  </Project>\n"
+        "</ProjectExtension>\n"
+    ).format(project_guid, _xml(project_name))
+
+
+def _write_bcfzip(
+    issues: List[Issue], model_title: str, created_at: str, author: str
+) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("bcf.version", _bcf_version_xml())
+        # Same deterministic-GUID reasoning as a Topic's — the same
+        # model should get the same project id on every export, not a
+        # fresh one each run. Added 2026-08-22 alongside the default
+        # camera above, for the same reason: a real Forma import
+        # reported the export as "empty", and this file being
+        # genuinely optional in the spec doesn't mean every consumer
+        # tolerates its absence in practice.
+        project_guid = _deterministic_guid("project", model_title)
+        zf.writestr("project.bcfp", _project_bcfp_xml(project_guid, model_title))
         for issue in issues:
             topic_guid = _deterministic_guid(issue.issue_id)
             # A Viewpoint (and the Component it pins) only makes sense
@@ -254,5 +304,5 @@ def to_bcf_files(
             filename = "{0}-{1:03d}-of-{2:03d}.bcfzip".format(
                 base_name, index, len(chunks)
             )
-        files.append((filename, _write_bcfzip(chunk, when, author)))
+        files.append((filename, _write_bcfzip(chunk, model_title, when, author)))
     return files
