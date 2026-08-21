@@ -166,6 +166,17 @@ class ViewInfo:
     # so rules scope to placed views by default.
     sheet_id: Optional[int] = None
     sheet_no: Optional[str] = None
+    # True when this view is a Drafting View displayed via a "Reference
+    # other view" callout drawn on a Section/Plan — i.e. it stands in
+    # for a section cut through the model rather than being a
+    # free-standing standard detail. A Drafting View never contains
+    # model geometry either way (see `is_drafting_view` below), but this
+    # one is masquerading as a live section, so its drift risk is the
+    # model-view kind, not the standard-detail kind. Defaults False,
+    # the conservative direction — see `adapters/revit_source.py`'s note
+    # on how this is populated and what still needs confirming on a
+    # real Revit machine.
+    linked_to_model_section: bool = False
 
     @property
     def is_drafting_view(self) -> bool:

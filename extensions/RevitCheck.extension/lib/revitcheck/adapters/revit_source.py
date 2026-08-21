@@ -248,6 +248,37 @@ def _collect_dimensions(doc: Any, errors: List[str]) -> List[DimensionInfo]:
     return list(seen.values())
 
 
+def _referenced_drafting_view_ids(doc: Any, errors: List[str]):
+    """Element ids of every Drafting View referenced by a "Reference
+    other view" callout drawn on a Section or Plan.
+
+    **Not yet implemented — always returns an empty set.** Every
+    Drafting View comes back `ViewInfo.linked_to_model_section=False`
+    until this is filled in. That is the conservative direction to fail
+    in: an unconfirmed "yes" would silently exclude a view from
+    `revit.dimension_provenance` that might carry real drift risk (see
+    `checks/dimensions.py`'s `skip_unlinked_drafting_views`); an
+    unconfirmed "no" only costs the volume that config option exists to
+    cut, which is the worse of two acceptable failure directions, not an
+    unsafe one.
+
+    What's confirmed: `BuiltInCategory.OST_Callouts` is the annotation
+    category a callout boundary draws with — visible today in
+    Visibility/Graphics as "Callouts" under Annotation Categories. What
+    is **not** confirmed, because it needs a real workshared model and
+    Revit's own API reference (Copilot, at the Revit machine — this
+    module cannot be tested anywhere else, see the module docstring):
+    whether callout boundaries collect as distinct elements via
+    `FilteredElementCollector(doc, view.Id).OfCategory(OST_Callouts)`,
+    and if they do, which property on one names the Drafting View it
+    points at for the "Reference other view" case specifically. (A
+    *normal* callout, which creates its own child view instead of
+    referencing an existing one, needs nothing special here — that
+    child view is already just another `View` the loop below picks up.)
+    """
+    return set()
+
+
 def _collect_sheets_and_views(doc: Any, errors: List[str]):
     sheets: List[SheetInfo] = []
     sheet_by_id = {}
@@ -275,6 +306,8 @@ def _collect_sheets_and_views(doc: Any, errors: List[str]):
         except Exception as exc:  # noqa: BLE001
             errors.append("viewport {0}: {1}".format(_eid(viewport.Id), exc))
 
+    referenced_drafting_views = _referenced_drafting_view_ids(doc, errors)
+
     views: List[ViewInfo] = []
     for view in FilteredElementCollector(doc).OfClass(View):
         try:
@@ -290,6 +323,7 @@ def _collect_sheets_and_views(doc: Any, errors: List[str]):
                     scale=int(getattr(view, "Scale", 0) or 0) or None,
                     sheet_id=sheet_id,
                     sheet_no=sheet.sheet_number if sheet else None,
+                    linked_to_model_section=view_id in referenced_drafting_views,
                 )
             )
         except Exception as exc:  # noqa: BLE001

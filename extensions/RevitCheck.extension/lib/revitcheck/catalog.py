@@ -65,6 +65,18 @@ class RuleConfig:
     # the whole document, including in-progress views.
     sheeted_views_only: bool = True
 
+    # Skip a Drafting View's dimensions entirely unless the view is
+    # linked to a section cut through the model (a "Reference other
+    # view" callout, rather than a free-standing standard detail — see
+    # `ir.ViewInfo.linked_to_model_section`). A standard detail was
+    # never going to track the model regardless of how many of its
+    # dimensions get individually flagged, so processing it at all is
+    # pure volume with no decision it changes; a *linked* one still gets
+    # checked in full, because it is standing in for a section and
+    # carries that drift risk. Set False to check every drafting view
+    # regardless, e.g. for an audit that wants full coverage on record.
+    skip_unlinked_drafting_views: bool = True
+
     # Severity for a dimension that measures detail linework, split by
     # the kind of view it sits in — because the two cases mean genuinely
     # different things. In a section or plan the view *could* have been

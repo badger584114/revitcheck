@@ -122,6 +122,33 @@ class TestScoping:
         )
         assert scoped == []
 
+    def test_unlinked_drafting_view_excluded_by_default(self, make):
+        views = [make.view(10), make.view(11, view_type="DraftingView")]
+        scoped = views_in_scope(make.model(views=views), RuleConfig())
+        assert [v.element_id for v in scoped] == [10]
+
+    def test_linked_drafting_view_stays_in_scope(self, make):
+        views = [
+            make.view(11, view_type="DraftingView", linked_to_model_section=True)
+        ]
+        scoped = views_in_scope(make.model(views=views), RuleConfig())
+        assert [v.element_id for v in scoped] == [11]
+
+    def test_unlinked_drafting_view_included_when_opted_in(self, make):
+        views = [make.view(11, view_type="DraftingView")]
+        scoped = views_in_scope(
+            make.model(views=views), RuleConfig(skip_unlinked_drafting_views=False)
+        )
+        assert [v.element_id for v in scoped] == [11]
+
+    def test_legend_is_never_linked_and_stays_excluded(self, make):
+        # linked_to_model_section is a Drafting View concept (a callout
+        # references one); a Legend can't be one, so it has no escape
+        # hatch out of this exclusion the way a Drafting View does.
+        views = [make.view(11, view_type="Legend")]
+        scoped = views_in_scope(make.model(views=views), RuleConfig())
+        assert scoped == []
+
 
 def _run(model, config=None):
     return run_checks(
@@ -164,6 +191,75 @@ class TestRule:
         assert issues[0].suggested_fix["scope"] == "view"
         assert issues[0].suggested_fix["dimensions"] == 5
 
+    def test_majority_drafted_view_rolls_up_with_the_live_dimension_excluded(self, make):
+        # The real-world case that motivated the threshold: a view can
+        # be almost entirely drafted with a handful of dimensions that
+        # genuinely track the model. The old all-or-nothing rule fell
+        # through to per-dimension reporting for the whole view; the
+        # rollup should still fire, and the live dimension should not
+        # appear as an issue at all (it is fine).
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 10)
+        ]
+        live = [make.dimension(50, 10, [make.model_ref(), make.model_ref(301)])]
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + live))
+        assert len(issues) == 1
+        assert issues[0].element_id == 10  # the view, not a dimension
+        assert issues[0].suggested_fix["scope"] == "view"
+        assert issues[0].suggested_fix["dimensions"] == 10
+        assert issues[0].suggested_fix["drafted_dimensions"] == 9
+        assert "9 of 10 dimensions" in issues[0].description
+        assert "Every dimension" not in issues[0].description
+
+    def test_below_threshold_does_not_roll_up(self, make):
+        # 7 of 10 drafted (70%) is below the default 90% threshold, so
+        # this should still fall through to per-dimension reporting.
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 8)
+        ]
+        live = [
+            make.dimension(i, 10, [make.model_ref(), make.model_ref(300 + i)])
+            for i in range(8, 11)
+        ]
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + live))
+        assert len(issues) == 7
+        assert {i.element_id for i in issues} == {1, 2, 3, 4, 5, 6, 7}
+
+    def test_mixed_and_unknown_dimensions_still_reported_inside_a_rollup(self, make):
+        # A MIXED or UNKNOWN dimension is a distinct finding the rollup's
+        # "detail linework" summary does not cover, so it must survive
+        # alongside the rollup rather than being silently absorbed.
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 10)
+        ]
+        mixed = [make.dimension(99, 10, [make.model_ref(), make.drafted_ref()])]
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + mixed))
+        assert len(issues) == 2
+        rollup = next(i for i in issues if i.suggested_fix.get("scope") == "view")
+        mixed_issue = next(i for i in issues if i.element_id == 99)
+        assert rollup.suggested_fix["drafted_dimensions"] == 9
+        assert mixed_issue.severity == "medium"
+
+    def test_rollup_threshold_is_configurable(self, make):
+        drafted = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(200 + i)])
+            for i in range(1, 8)
+        ]
+        live = [
+            make.dimension(i, 10, [make.model_ref(), make.model_ref(300 + i)])
+            for i in range(8, 11)
+        ]
+        config = RuleConfig(
+            enabled_rule_ids={"revit.dimension_provenance"},
+            params={"dimension_provenance": {"rollup_threshold": 0.7}},
+        )
+        issues = _run(make.model(views=[make.view(10)], dimensions=drafted + live), config)
+        assert len(issues) == 1
+        assert issues[0].suggested_fix["scope"] == "view"
+
     def test_roll_up_can_be_turned_off(self, make):
         dims = [
             make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
@@ -187,19 +283,58 @@ class TestRule:
         assert issues[0].element_id == 1
         assert issues[0].suggested_fix.get("scope") is None
 
-    def test_drafting_view_is_a_different_finding(self, make):
-        # A drafting view has no model behind it, so 2D is the only
-        # option there is. Still reported, but it must not read like a
-        # section someone chose not to make live.
+    def test_unlinked_drafting_view_is_skipped_by_default(self, make):
+        # A free-standing drafting view's dimensions were always going
+        # to be DRAFTED — there is no decision left to report, so by
+        # default it is out of scope entirely rather than producing a
+        # low-severity finding for every one of them.
         dims = [
             make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
             for i in range(1, 4)
         ]
         views = [make.view(10, name="TYPICAL DETAIL", view_type="DraftingView")]
         issues = _run(make.model(views=views, dimensions=dims))
+        assert issues == [] or all(i.category == "coverage" for i in issues)
+
+    def test_unlinked_drafting_view_checked_when_opted_in(self, make):
+        # Still reachable via config, e.g. for an audit that wants full
+        # coverage on record rather than the reduced-volume default.
+        dims = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
+            for i in range(1, 4)
+        ]
+        views = [make.view(10, name="TYPICAL DETAIL", view_type="DraftingView")]
+        config = RuleConfig(
+            enabled_rule_ids={"revit.dimension_provenance"},
+            skip_unlinked_drafting_views=False,
+        )
+        issues = _run(make.model(views=views, dimensions=dims), config)
         assert len(issues) == 1
         assert issues[0].severity == "low"
         assert "no model behind" in issues[0].description
+
+    def test_linked_drafting_view_is_checked_at_model_severity(self, make):
+        # A drafting view referenced by a "Reference other view" callout
+        # from a section is standing in for that section — it never has
+        # model geometry either way, but pretending it is a harmless
+        # standard detail would hide the real drift risk it carries.
+        dims = [
+            make.dimension(i, 10, [make.drafted_ref(), make.drafted_ref(201)])
+            for i in range(1, 4)
+        ]
+        views = [
+            make.view(
+                10,
+                name="ABUTMENT A SECTION (ref)",
+                view_type="DraftingView",
+                linked_to_model_section=True,
+            )
+        ]
+        issues = _run(make.model(views=views, dimensions=dims))
+        assert len(issues) == 1
+        assert issues[0].severity == "high"
+        assert "no model behind" not in issues[0].description
+        assert issues[0].suggested_fix["scope"] == "view"
 
     def test_mixed_provenance_reported_separately(self, make):
         dims = [make.dimension(1, 10, [make.model_ref(), make.drafted_ref()])]
