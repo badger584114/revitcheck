@@ -62,7 +62,7 @@ public static class CaptureCoverageCheck
                 Severity = "low",
                 Description =
                     $"{model.ExcludedWorksets.Count} workset(s) were excluded from this capture by " +
-                    "user selection and nothing on them was checked - not because the model is clean " +
+                    "user selection and nothing on them was checked — not because the model is clean " +
                     $"there, but because it wasn't looked at: {names}",
             });
         }

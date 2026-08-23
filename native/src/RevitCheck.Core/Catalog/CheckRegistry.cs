@@ -33,4 +33,12 @@ public static class CheckRegistry
         var config = reconciliationConfig ?? new ReconciliationConfig();
         catalog.Register(MetadataReconciliationCheck.RuleId, model => MetadataReconciliationCheck.Run(model, mapping, csv, config));
     }
+
+    /// <summary>Registers the ported dimension checks (revit.dimension_provenance, revit.dimension_override_consistency), bound to a RuleConfig for this run.</summary>
+    public static void RegisterAll(Catalog catalog, RuleConfig ruleConfig)
+    {
+        RegisterAll(catalog);
+        catalog.Register(DimensionProvenanceCheck.RuleId, model => DimensionProvenanceCheck.Run(model, ruleConfig));
+        catalog.Register(DimensionOverrideConsistencyCheck.RuleId, model => DimensionOverrideConsistencyCheck.Run(model, ruleConfig));
+    }
 }

@@ -49,6 +49,35 @@ public class CaptureSerializerTests
     }
 
     [Fact]
+    public void RoundTrip_PreservesSheetsViewsAndDimensions()
+    {
+        var sheet = new SheetInfo { ElementId = 1, SheetNumber = "S101", Name = "Plan", UniqueId = "sheet-guid" };
+        var view = RevitCheckTestBuilders.View(10, sheetUniqueId: "sheet-guid", linkedToModelSection: true);
+        var dim = RevitCheckTestBuilders.Chain(
+            20, 10,
+            new[] { RevitCheckTestBuilders.ModelRef(), RevitCheckTestBuilders.DraftedRef() },
+            new (double?, string?)[] { (450.0, "450"), (600.0, null) },
+            typeName: "Linear Dimension Style");
+
+        var model = RevitCheckTestBuilders.Model(sheets: new[] { sheet }, views: new[] { view }, dimensions: new[] { dim });
+
+        var loaded = CaptureSerializer.Loads(CaptureSerializer.Dumps(model));
+
+        Assert.Single(loaded.Sheets);
+        Assert.Equal("sheet-guid", loaded.Sheets[0].UniqueId);
+        Assert.Single(loaded.Views);
+        Assert.True(loaded.Views[0].LinkedToModelSection);
+        Assert.Single(loaded.Dimensions);
+        var loadedDim = loaded.Dimensions[0];
+        Assert.Equal(2, loadedDim.References.Count);
+        Assert.Equal("Wall", loadedDim.References[0].ClassName);
+        Assert.Equal(2, loadedDim.Segments.Count);
+        Assert.True(loadedDim.Segments[0].IsOverridden);
+        Assert.False(loadedDim.Segments[1].IsOverridden);
+        Assert.Equal(1050.0, loadedDim.ValueMm);
+    }
+
+    [Fact]
     public void SchemaVersion_IsWrittenOnEveryDump()
     {
         var json = CaptureSerializer.Dumps(RevitCheckTestBuilders.Model());
