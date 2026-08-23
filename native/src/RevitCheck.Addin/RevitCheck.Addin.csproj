@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\RevitCheck.Core\RevitCheck.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2024.*" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2024.*" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Revit 2024 add-ins run on .NET Framework 4.8. RevitCheck.Core stays
+         netstandard2.0 so it's reusable unchanged when a future net8.0 Addin
+         project is added for Revit 2025+ (PLANNING.md §12). -->
+    <TargetFramework>net48</TargetFramework>
+    <!-- RevitAPI.dll/RevitAPIUI.dll are provided at compile time by the
+         Nice3point.Revit.Api.* NuGet packages below (community-maintained
+         reference assemblies) since no Revit install exists on this machine.
+         They must not be copied into the output or bundled into the add-in -
+         Revit supplies the real assemblies at runtime. -->
+  </PropertyGroup>
+
+</Project>
