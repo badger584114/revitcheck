@@ -1,0 +1,10 @@
+title: Inspect Elements (diagnostic)
+tooltip: >
+  ONE-OFF diagnostic, not part of the frozen RevitCheck extension. Dumps the
+  full parameter set (instance + type), category/family/type identity, and
+  nested-sub-component structure of your current selection to JSON. Answers
+  the open questions blocking the native add-in's metadata adapter: the real
+  key-parameter name, how a nested component (e.g. a fixing bracket nested
+  in a panel) actually shows up in the API, and which categories/classes
+  carry the tracked parameters. Select representative elements first -
+  including at least one nested-component case - then run this.

@@ -24,4 +24,8 @@
     <ProjectReference Include="..\..\src\RevitCheck.Core\RevitCheck.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures\*.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
