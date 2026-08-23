@@ -1,0 +1,151 @@
+{
+  "_note": [
+    "Auto-generated starter mapping. Reviewed by the user 2026-08-23:",
+    "locationheirarchykey and parentlocationreference corrected from",
+    "numeric to exact_string - both are ID codes, not measurements (this",
+    "firm's real dimension parameters are all T2D_-prefixed). The",
+    "remaining exact_string fields are auto-matched by identical",
+    "parameter name, not individually confirmed."
+  ],
+  "schema_version": 1,
+  "key_parameter_name": "DIT_LocationHierarchyCode",
+  "key_csv_column": "DIT_LocationHierarchyCode",
+  "fields": {
+    "locationheirarchykey": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "LocationHeirarchyKey",
+      "default_parameter": "LocationHeirarchyKey",
+      "overrides": []
+    },
+    "locationid": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "LocationID",
+      "default_parameter": "LocationID",
+      "overrides": []
+    },
+    "locationparentid": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "LocationParentID",
+      "default_parameter": "LocationParentID",
+      "overrides": []
+    },
+    "locationreferencecode": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "LocationReferenceCode",
+      "default_parameter": "LocationReferenceCode",
+      "overrides": []
+    },
+    "locationreferencedescription": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "LocationReferenceDescription",
+      "default_parameter": "LocationReferenceDescription",
+      "overrides": []
+    },
+    "parentlocationreference": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "ParentLocationReference",
+      "default_parameter": "ParentLocationReference",
+      "overrides": []
+    },
+    "locationhierarchydescription": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "LocationHierarchyDescription",
+      "default_parameter": "LocationHierarchyDescription",
+      "overrides": []
+    },
+    "projectrddescription": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "ProjectRdDescription",
+      "default_parameter": "ProjectRdDescription",
+      "overrides": []
+    },
+    "locationcodedescription": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "LocationCodeDescription",
+      "default_parameter": "LocationCodeDescription",
+      "overrides": []
+    },
+    "sublocationcodedescription": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "SubLocationCodeDescription",
+      "default_parameter": "SubLocationCodeDescription",
+      "overrides": []
+    },
+    "siteidlocationreference": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "SiteIDLocationReference",
+      "default_parameter": "SiteIDLocationReference",
+      "overrides": []
+    },
+    "uniclass_cocode": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "Uniclass_CoCode",
+      "default_parameter": "Uniclass_CoCode",
+      "overrides": []
+    },
+    "uniclass_cotitle": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "Uniclass_CoTitle",
+      "default_parameter": "Uniclass_CoTitle",
+      "overrides": []
+    },
+    "uniclass_encode": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "Uniclass_EnCode",
+      "default_parameter": "Uniclass_EnCode",
+      "overrides": []
+    },
+    "uniclass_entitle": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "Uniclass_EnTitle",
+      "default_parameter": "Uniclass_EnTitle",
+      "overrides": []
+    },
+    "uniclass_slcode": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "Uniclass_SLCode",
+      "default_parameter": "Uniclass_SLCode",
+      "overrides": []
+    },
+    "uniclass_sltitle": {
+      "comparison": "exact_string",
+      "tolerance_mm": null,
+      "case_insensitive": true,
+      "csv_column": "Uniclass_SLTitle",
+      "default_parameter": "Uniclass_SLTitle",
+      "overrides": []
+    }
+  }
+}
