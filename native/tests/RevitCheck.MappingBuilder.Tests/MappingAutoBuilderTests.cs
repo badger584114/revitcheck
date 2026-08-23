@@ -118,4 +118,28 @@ public class MappingAutoBuilderTests
 
         Assert.Empty(result.Mapping.Fields);
     }
+
+    [Fact]
+    public void DifferingKeyCsvColumn_IsAlsoNeverEmittedAsAField()
+    {
+        // Regression test: a real run against real data (2026-08-23) skipped
+        // this exact case - the CLI had no way to pass a key_csv_column
+        // distinct from the key parameter name, so a CSV whose key header
+        // reads differently from the Revit parameter (e.g. "Asset
+        // Identifier (Label)" vs ATM_Asset_Identifier) got its key column
+        // auto-matched as a regular field instead of skipped.
+        var model = Model(Element(1, "Structural Framing", "PC_I_Beam", new Dictionary<string, ParameterValue>
+        {
+            ["ATM_Asset_Identifier"] = Str("Abutment"),
+            ["Owner"] = Str("Roads Authority"),
+        }));
+        var csv = Csv(new[] { "Asset Identifier (Label)", "Owner" },
+            new Dictionary<string, string> { ["Asset Identifier (Label)"] = "Abutment", ["Owner"] = "Roads Authority" });
+
+        var result = MappingAutoBuilder.Build(model, csv, "ATM_Asset_Identifier", keyCsvColumn: "Asset Identifier (Label)");
+
+        Assert.DoesNotContain("asset_identifier_label", result.Mapping.Fields.Keys);
+        Assert.Single(result.Mapping.Fields);
+        Assert.Equal("Owner", result.Mapping.Fields["owner"].DefaultParameter);
+    }
 }
