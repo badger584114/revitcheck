@@ -168,11 +168,18 @@ The `compileall` step is the important one: `adapters/revit_source.py`
 and the button scripts cannot be imported without Revit, so no test will
 ever touch them, and byte-compiling is the only automated check they get.
 
-**No real capture is committed yet.** All tests use the synthetic IR
-builders in `tests/revit/conftest.py`. Committing a real capture means
-committing client geometry, sheet numbers and view names — treat one the
-way this project treats uploaded drawings, and check before it lands in
-git.
+**One real capture is committed**, deliberately:
+`samples/T2DPAA-T2D-C3S-BR-M3D-100304_Peter.capture.json`. All tests still
+use the synthetic IR builders in `tests/revit/conftest.py` — the real
+capture isn't test fixture data, it's kept as the C#-port test fixture
+PLANNING.md §12 names (real client geometry, sheet numbers and view names,
+so treat committing one the way this project treats uploaded drawings and
+check before it lands in git). Its per-view dimension attribution predates
+the `OwnerViewId` fix below and should not be trusted until it's replaced.
+A handful of other real-capture variants and unrelated debug artifacts from
+the same 2026-08-19/21 sessions were cleaned out of `samples/` on
+2026-08-23 (stale, superseded, or already fully written up elsewhere) —
+this file is the one still worth keeping.
 
 ## Built state
 
@@ -345,6 +352,8 @@ Also open, carried over from PLANNING.md:
   `git credential-osxkeychain erase`.
 - The **`gh` CLI is installed and authenticated** (`badger584114`) — use
   it for PRs (`gh pr create`, `gh pr merge`) rather than the REST API.
-- `samples/Flinders/` may be present on disk and is **deliberately
-  untracked** (201MB, a third client's real drawings). Its findings are
-  fully written up in ARCHIVE-pdf-dwg.md; do not `git add` it.
+- `samples/Flinders/` (201MB, a third client's real drawings) was never
+  tracked and was deleted from disk 2026-08-23 — its findings were already
+  fully written up in ARCHIVE-pdf-dwg.md, so nothing was lost. If it
+  reappears on disk from a future export, it must stay untracked; do not
+  `git add` it.
