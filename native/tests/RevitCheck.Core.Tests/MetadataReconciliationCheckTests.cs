@@ -165,6 +165,42 @@ public class MetadataReconciliationCheckTests
     }
 
     [Fact]
+    public void BothBlank_DefaultField_NoIssue()
+    {
+        // The default: a CSV data gap paired with an unset model value is
+        // not this tool's job to guess about.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithOwner(1, "A1", null) });
+        var issues = MetadataReconciliationCheck.Run(model, StringMapping(), OwnerCsv(("A1", "")), new ReconciliationConfig());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void BothBlank_RequireModelValueField_IsAMismatch()
+    {
+        // Confirmed by the user (Asset Classification.csv, 2026-08-23): a
+        // CSV data gap does not excuse the model from still needing an
+        // explicit value ("N/A" when not applicable) - never a truly unset
+        // parameter, regardless of what the reference table says.
+        var mapping = new ParameterMapping
+        {
+            KeyParameterName = "Asset_ID",
+            KeyCsvColumn = "Asset ID",
+            Fields = new Dictionary<string, FieldMapping>
+            {
+                ["owner"] = new() { Comparison = ComparisonType.ExactString, CsvColumn = "Owner", DefaultParameter = "Owner", RequireModelValue = true },
+            },
+        };
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithOwner(1, "A1", null) });
+        var issues = MetadataReconciliationCheck.Run(model, mapping, OwnerCsv(("A1", "")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("metadata", issue.Category);
+        Assert.Contains("model value is blank", issue.Description);
+        Assert.Contains("always have an explicit value", issue.Description);
+    }
+
+    [Fact]
     public void UnmatchedCsvRowsAmongManyUnrelatedOnes_ProduceZeroNoise()
     {
         // The regression test named directly in the plan: a whole-of-project
