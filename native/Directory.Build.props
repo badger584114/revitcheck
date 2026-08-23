@@ -1,0 +1,16 @@
+<Project>
+
+  <!--
+    Shared across every project in the solution. A modern LangVersion is safe
+    on net48 (it's a compile-time-only choice; Roslyn still targets the net48
+    runtime), and is what lets net48's default C# 7.3 use nullable reference
+    types the same way the netstandard2.0/net8.0 projects already do.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

@@ -8,3 +8,7 @@ __pycache__/
 # setuptools artefacts from `pip install .` (CI's packaging job does this)
 build/
 dist/
+
+# native/ (the C# add-in) build output
+native/**/bin/
+native/**/obj/
