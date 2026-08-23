@@ -17,6 +17,21 @@ public sealed class FieldMapping
 
     public bool CaseInsensitive { get; init; } = true;
 
+    /// <summary>
+    /// When true, a model value that is genuinely blank is always a
+    /// mismatch, even when the CSV cell is blank too - for a field whose
+    /// convention is "always an explicit value, even if that value is just
+    /// 'N/A' for a not-applicable case", never a truly unset parameter.
+    /// Confirmed by the user for Asset Classification.csv 2026-08-23:
+    /// different fields are conditionally required depending on the
+    /// element's Managed status, most non-required cells read literally
+    /// "N/A" rather than being empty, and a genuinely blank CSV cell (a
+    /// data gap in the reference table) does not excuse the model from
+    /// still needing its own explicit value. Off by default - this is a
+    /// domain rule for this table, not assumed to hold for every mapping.
+    /// </summary>
+    public bool RequireModelValue { get; init; }
+
     public string? CsvColumn { get; init; }
 
     public string? DefaultParameter { get; init; }

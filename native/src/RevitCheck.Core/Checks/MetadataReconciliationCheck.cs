@@ -216,8 +216,19 @@ public static class MetadataReconciliationCheck
 
         if (modelIsBlank && csvIsBlank)
         {
-            // Nothing to compare on either side - not this tool's job to
-            // guess whether that's expected.
+            if (field.RequireModelValue)
+            {
+                // A CSV data gap doesn't excuse the model from still
+                // needing its own explicit value (e.g. "N/A") - this field's
+                // convention is never a truly unset parameter.
+                issues.Add(MismatchIssue(element, keyValue, fieldName, config,
+                    $"{fieldName}: model value is blank - this field is expected to always have an " +
+                    $"explicit value, even if that's just 'N/A' (key={keyValue})",
+                    modelValue: null, csvValue: csvRaw));
+            }
+
+            // Otherwise: nothing to compare on either side - not this
+            // tool's job to guess whether that's expected.
             return;
         }
 

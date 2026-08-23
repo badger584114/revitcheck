@@ -6,7 +6,14 @@
     "all T2D_-prefixed, but not every T2D_-prefixed parameter is a",
     "dimension - ClashGroup and DisciplineCode aren't). The remaining",
     "exact_string fields are auto-matched by identical parameter name,",
-    "not individually confirmed."
+    "not individually confirmed.",
+    "",
+    "require_model_value is set on every field per the user (2026-08-23):",
+    "which fields are required depends on the asset's Managed status, most",
+    "non-required cells read literally 'N/A' rather than being empty, and",
+    "the model should never leave one of these truly unset - even when the",
+    "reference CSV cell is itself blank (a data gap there), a blank model",
+    "value is still its own finding."
   ],
   "schema_version": 1,
   "key_parameter_name": "ATM_Asset_Identifier",
@@ -18,7 +25,8 @@
       "case_insensitive": true,
       "csv_column": "Managed",
       "default_parameter": "Managed",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "dit_assettype": {
       "comparison": "exact_string",
@@ -26,7 +34,8 @@
       "case_insensitive": true,
       "csv_column": "DIT_AssetType",
       "default_parameter": "DIT_AssetType",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "siteid_drawings": {
       "comparison": "exact_string",
@@ -34,7 +43,8 @@
       "case_insensitive": true,
       "csv_column": "SiteID_Drawings",
       "default_parameter": "SiteID_Drawings",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "t2d_disciplinecode": {
       "comparison": "exact_string",
@@ -42,7 +52,8 @@
       "case_insensitive": true,
       "csv_column": "T2D_DisciplineCode",
       "default_parameter": "T2D_DisciplineCode",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "t2d_clashgroup": {
       "comparison": "exact_string",
@@ -50,7 +61,8 @@
       "case_insensitive": true,
       "csv_column": "T2D_ClashGroup",
       "default_parameter": "T2D_ClashGroup",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "uniclass_efcode": {
       "comparison": "exact_string",
@@ -58,7 +70,8 @@
       "case_insensitive": true,
       "csv_column": "Uniclass_EfCode",
       "default_parameter": "Uniclass_EfCode",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "uniclass_eftitle": {
       "comparison": "exact_string",
@@ -66,7 +79,8 @@
       "case_insensitive": true,
       "csv_column": "Uniclass_EfTitle",
       "default_parameter": "Uniclass_EfTitle",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "uniclass_sscode": {
       "comparison": "exact_string",
@@ -74,7 +88,8 @@
       "case_insensitive": true,
       "csv_column": "Uniclass_SsCode",
       "default_parameter": "Uniclass_SsCode",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "uniclass_sstitle": {
       "comparison": "exact_string",
@@ -82,7 +97,8 @@
       "case_insensitive": true,
       "csv_column": "Uniclass_SsTitle",
       "default_parameter": "Uniclass_SsTitle",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "uniclass_prcode": {
       "comparison": "exact_string",
@@ -90,7 +106,8 @@
       "case_insensitive": true,
       "csv_column": "Uniclass_PrCode",
       "default_parameter": "Uniclass_PrCode",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "uniclass_prtitle": {
       "comparison": "exact_string",
@@ -98,7 +115,8 @@
       "case_insensitive": true,
       "csv_column": "Uniclass_PrTitle",
       "default_parameter": "Uniclass_PrTitle",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "locationheirarchykey": {
       "comparison": "exact_string",
@@ -106,7 +124,8 @@
       "case_insensitive": true,
       "csv_column": "LocationHeirarchyKey",
       "default_parameter": "LocationHeirarchyKey",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "dit_assetclass": {
       "comparison": "exact_string",
@@ -114,7 +133,8 @@
       "case_insensitive": true,
       "csv_column": "DIT_AssetClass",
       "default_parameter": "DIT_AssetClass",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "dit_assetcomponent": {
       "comparison": "exact_string",
@@ -122,7 +142,8 @@
       "case_insensitive": true,
       "csv_column": "DIT_AssetComponent",
       "default_parameter": "DIT_AssetComponent",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "dit_assetcategory": {
       "comparison": "exact_string",
@@ -130,7 +151,8 @@
       "case_insensitive": true,
       "csv_column": "DIT_AssetCategory",
       "default_parameter": "DIT_AssetCategory",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "shapefield": {
       "comparison": "exact_string",
@@ -138,7 +160,8 @@
       "case_insensitive": true,
       "csv_column": "ShapeField",
       "default_parameter": "ShapeField",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     },
     "mpdid": {
       "comparison": "exact_string",
@@ -146,7 +169,8 @@
       "case_insensitive": true,
       "csv_column": "MPDId",
       "default_parameter": "MPDId",
-      "overrides": []
+      "overrides": [],
+      "require_model_value": true
     }
   }
 }
