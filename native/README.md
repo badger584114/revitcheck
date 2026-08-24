@@ -61,17 +61,34 @@ native/
         RevitMetadataElementSource.cs  # the metadata adapter - reads
                                         #   category/family/parameters off a
                                         #   live Document, judges nothing
+        RevitDimensionSource.cs        # the dimension/sheet/view adapter -
+                                        #   line-for-line port of
+                                        #   revit_source.py's
+                                        #   _collect_dimensions/
+                                        #   _collect_sheets_and_views,
+                                        #   including the per-view
+                                        #   OwnerViewId fix
       Commands/
         MetadataReconciliationCommand.cs  # IExternalCommand: prompts for a
                                            #   mapping file + CSV (per run -
                                            #   see its docstring for why),
                                            #   runs the check, writes results
-        CaptureModelCommand.cs            # IExternalCommand: writes the
-                                           #   metadata sweep to a
+        CaptureModelCommand.cs            # IExternalCommand: writes a full
+                                           #   model sweep (metadata +
+                                           #   sheets/views/dimensions) to a
                                            #   CaptureSerializer JSON file -
                                            #   this side's dev-loop capture,
                                            #   not a live sync (see its
                                            #   docstring)
+        DimensionProvenanceCommand.cs           # IExternalCommand:
+                                                 #   revit.dimension_provenance
+        DimensionOverrideConsistencyCommand.cs  # IExternalCommand:
+                                                 #   revit.dimension_override_consistency
+        ExceptionMessage.cs               # shared FullMessage(Exception)
+                                           #   helper - walks the
+                                           #   InnerException chain into a
+                                           #   readable TaskDialog message,
+                                           #   used by all four commands
       RevitCheckApplication.cs      # IExternalApplication.OnStartup - creates
                                      #   the RevitCheck ribbon tab/panel
       RevitCheck.addin              # the manifest Revit actually loads
@@ -333,16 +350,31 @@ specifically).
 
 ### Next
 
-Per the user 2026-08-24: likely wiring these into the same BCF export
-pipeline the dimension checks already proved out, so a finding is
-clickable in Forma instead of a JSON file someone reads by hand.
+**The dimension/sheet/view adapter (Track A of PLANNING.md §14's plan) is
+now built (2026-08-25)** — `Adapters/RevitDimensionSource.cs` (a
+line-for-line port of `revit_source.py`'s `_collect_dimensions`/
+`_collect_sheets_and_views`/`read_model`, including the documented
+`OwnerViewId` per-view-collection fix), `Commands/DimensionProvenanceCommand.cs`
++ `Commands/DimensionOverrideConsistencyCommand.cs`, both ribbon buttons
+wired in the confirmed order (Capture Model → Dimension Provenance →
+Dimension Overrides → Metadata Reconciliation), and `CaptureModelCommand`
+extended to capture sheets/views/dimensions alongside metadata in one file.
+`dotnet build` is clean (0 warnings/errors) and all 218 existing tests
+still pass — but as with the metadata adapter before it, **none of this is
+verified against a real document yet**; that needs the Revit machine (see
+the dimension-adapter plan's own "Validation plan" step 5, not yet run).
+Treat this the way `RevitMetadataElementSource` was treated before its
+first real run: plausible from review and a clean build, not yet proven.
 
-Only after that: the dimension/sheet/view adapter, its two
-`IExternalCommand`s, and their ribbon buttons - a genuine line-for-line
-port of `revit_source.py`'s `_collect_dimensions`/
-`_collect_sheets_and_views`, including the documented `OwnerViewId`
-per-view-collection fix, but still needing the Revit machine to build and
-debug against real element/API behaviour.
+Also still open, per the user 2026-08-24: wiring metadata reconciliation's
+output into the same BCF export pipeline the dimension checks already
+proved out, so a finding is clickable in Forma instead of a JSON file
+someone reads by hand.
+
+After both of those: Track B, verifying a drafted dimension against real
+model geometry (PLANNING.md §14, CLAUDE.md's "Next") — genuinely new
+territory needing a throwaway diagnostic on real drafted views before any
+comparison logic gets written.
 
 ### Former open questions - now answered from real data
 

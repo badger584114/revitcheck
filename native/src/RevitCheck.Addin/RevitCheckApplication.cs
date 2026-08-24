@@ -9,11 +9,10 @@ namespace RevitCheck.Addin;
 /// <summary>
 /// Ribbon wiring - the "no IExternalCommands, no ribbon, no .addin manifest"
 /// gap native/README.md named as the real precondition for archiving
-/// pyRevit. Deliberately narrow: Metadata Reconciliation plus its Capture
-/// Model dev-loop companion. The dimension-checks adapter is a separate,
-/// later phase (native/README.md's "What's not done"), and this file's job
-/// is proving the wiring itself on the simpler case first, not shipping
-/// every check at once.
+/// pyRevit. Started narrow (Metadata Reconciliation plus its Capture Model
+/// dev-loop companion, proving the wiring itself on the simplest case
+/// first); the two dimension-check buttons were added once the dimension
+/// adapter existed to back them (PLANNING.md §14).
 /// </summary>
 public class RevitCheckApplication : IExternalApplication
 {
@@ -39,28 +38,53 @@ public class RevitCheckApplication : IExternalApplication
 
         // Left-to-right order matches the order someone actually runs
         // things in, confirmed with the user 2026-08-24: capture first
-        // (the dev-loop snapshot), then the dimension checks (once built -
-        // native/README.md's "Next"), then metadata/data reconciliation
-        // last.
+        // (the dev-loop snapshot), then the dimension checks, then
+        // metadata/data reconciliation last.
         var captureButton = new PushButtonData(
             "RevitCheck.CaptureModel",
             "Capture\nModel",
             assemblyPath,
             typeof(CaptureModelCommand).FullName)
         {
-            ToolTip = "Write the metadata sweep to a JSON capture file - a point-in-time snapshot, " +
-                      "not a live sync - so checks can be developed and tested off this machine. " +
-                      "Prompts for a mapping file only to read its scope view; its fields and any " +
-                      "CSV are not used here.",
+            ToolTip = "Write a full model sweep (metadata, sheets/views/dimensions) to a JSON " +
+                      "capture file - a point-in-time snapshot, not a live sync - so checks can be " +
+                      "developed and tested off this machine. Prompts for a mapping file only to " +
+                      "read its scope view for the metadata half; its fields and any CSV are not " +
+                      "used here.",
         };
 
         SetIcons(captureButton, "CaptureModel");
 
         panel.AddItem(captureButton);
 
-        // TODO(dimension adapter): DimensionProvenance / DimensionOverrideConsistency
-        // buttons go here, between Capture and Metadata Reconciliation -
-        // native/README.md's "Next".
+        var dimensionProvenanceButton = new PushButtonData(
+            "RevitCheck.DimensionProvenance",
+            "Dimension\nProvenance",
+            assemblyPath,
+            typeof(DimensionProvenanceCommand).FullName)
+        {
+            ToolTip = "For each dimension, do its references resolve to model geometry, a datum, " +
+                      "or view-specific linework? Reports triage, not verdicts - which dimensions " +
+                      "can't be trusted to track the model, not whether any specific one is wrong.",
+        };
+
+        SetIcons(dimensionProvenanceButton, "DimensionProvenance");
+
+        panel.AddItem(dimensionProvenanceButton);
+
+        var dimensionOverridesButton = new PushButtonData(
+            "RevitCheck.DimensionOverrideConsistency",
+            "Dimension\nOverrides",
+            assemblyPath,
+            typeof(DimensionOverrideConsistencyCommand).FullName)
+        {
+            ToolTip = "Where a drafter typed over the measured value, is the difference explainable " +
+                      "as rounding to a sensible grid? Always reports how much was checkable.",
+        };
+
+        SetIcons(dimensionOverridesButton, "DimensionOverrides");
+
+        panel.AddItem(dimensionOverridesButton);
 
         var metadataButton = new PushButtonData(
             "RevitCheck.MetadataReconciliation",
