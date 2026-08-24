@@ -304,17 +304,32 @@ real run is not automatically a bug in the check** - verify a fix against
 the real data before shipping it, not just against how plausible it
 sounds.
 
+### Output/reporting: grouping - built and validated against real data
+
+`Core/Reporting/IssueGrouping.cs` collapses many mismatch issues that
+share the same (category, family, type, field, model value, csv value)
+into one, with an affected-element count and a truncated id sample - the
+same "a wholly-drafted view is one finding, not twenty" precedent
+`revit.dimension_provenance` already established, confirmed as a
+requirement by the user 2026-08-24. Deliberately a separate reporting
+step, not built into `MetadataReconciliationCheck.Run` itself - the
+check's own contract stays one issue per (element, field) finding (what
+every existing test assumes, and what a single-occurrence element anchor
+still needs); `MetadataReconciliationCommand` applies grouping only to
+what it writes out.
+
+Validated against real data via `Commands/CaptureModelCommand.cs`'s
+capture + the real mapping/CSV files, run locally (no Revit machine
+needed for this iteration) - reproduced the user's real counts exactly,
+then grouped: **Location Referencing 296 → 19**, **Asset Classification
+151 → 15**. 207 tests passing (200 + 7 covering `IssueGrouping`
+specifically).
+
 ### Next
 
-Per the user 2026-08-24: finish this calibration cycle (done, as above),
-then output/reporting work - group issues by family + type + field +
-(model value, csv value) pair before they're ever shown to a person (the
-same "a wholly-drafted view is one finding, not twenty" precedent
-`revit.dimension_provenance` already established), likely followed by
-wiring these into the same BCF export pipeline the dimension checks
-already proved out. `Commands/CaptureModelCommand.cs` exists to support
-that work - a real capture of the metadata sweep to build and test
-grouping logic against off the Revit machine.
+Per the user 2026-08-24: likely wiring these into the same BCF export
+pipeline the dimension checks already proved out, so a finding is
+clickable in Forma instead of a JSON file someone reads by hand.
 
 Only after that: the dimension/sheet/view adapter, its two
 `IExternalCommand`s, and their ribbon buttons - a genuine line-for-line

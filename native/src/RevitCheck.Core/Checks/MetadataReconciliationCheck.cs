@@ -455,7 +455,11 @@ public static class MetadataReconciliationCheck
             ElementId = element.ElementId,
             UniqueId = element.UniqueId,
             Description = description,
-            SuggestedFix = new Dictionary<string, object?> { ["csv_value"] = csvValue, ["model_value"] = modelValue },
+            // "field" lets a downstream grouping/report step (Reporting.IssueGrouping)
+            // key on which canonical field this is without parsing Description text -
+            // structured data over string-scraping, same discipline the rest of this
+            // project follows.
+            SuggestedFix = new Dictionary<string, object?> { ["field"] = fieldName, ["csv_value"] = csvValue, ["model_value"] = modelValue },
         };
 
     private static Issue CoverageIssue(ElementMetadata element, string description) => new()

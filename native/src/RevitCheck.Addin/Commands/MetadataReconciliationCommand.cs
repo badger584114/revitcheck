@@ -93,7 +93,12 @@ public class MetadataReconciliationCommand : IExternalCommand
         };
 
         var config = new ReconciliationConfig();
-        var issues = MetadataReconciliationCheck.Run(model, mapping, csv, config);
+        var rawIssues = MetadataReconciliationCheck.Run(model, mapping, csv, config);
+        // Grouped for the human-facing output - the check's own result
+        // (rawIssues) stays one issue per (element, field) finding; nobody
+        // reading a report needs to see the same systematic error repeated
+        // per element (see IssueGrouping's own docstring).
+        var issues = IssueGrouping.GroupMetadataMismatches(model, rawIssues);
 
         string? outputPath = null;
         try
@@ -109,8 +114,11 @@ public class MetadataReconciliationCommand : IExternalCommand
             return Result.Succeeded;
         }
 
+        var groupingNote = rawIssues.Count != issues.Count
+            ? $" ({rawIssues.Count} before grouping repeated findings together)"
+            : "";
         TaskDialog.Show("RevitCheck - Metadata Reconciliation",
-            $"{issues.Count} issue(s) found ({collected.Elements.Count} element(s) checked).\n\n" +
+            $"{issues.Count} issue(s) found{groupingNote} ({collected.Elements.Count} element(s) checked).\n\n" +
             $"Written to:\n{outputPath}");
 
         return Result.Succeeded;
