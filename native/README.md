@@ -44,11 +44,32 @@ native/
         CaptureCoverageCheck.cs               # revitcheck.capture_coverage
       Polyfills/                   # IsExternalInit / required-member shims
                                     #   netstandard2.0 needs for modern C#
+      Reporting/                   # IssueJsonWriter - issues -> JSON, the one
+                                    #   output shape a command needs today
+                                    #   (not a full report.py port - see its
+                                    #   docstring)
     RevitCheck.Addin/               # net48 (Revit 2024) - the ONLY project that
                                     #   references the Revit API. Compiles cleanly
                                     #   on this Mac (Nice3point.Revit.Api.* NuGet
-                                    #   packages), but has no real adapter code
-                                    #   yet - see "What's not done" below.
+                                    #   packages). Wired up as of 2026-08-24 -
+                                    #   see "What's built" below.
+      Adapters/
+        RevitMetadataElementSource.cs  # the metadata adapter - reads
+                                        #   category/family/parameters off a
+                                        #   live Document, judges nothing
+      Commands/
+        MetadataReconciliationCommand.cs  # IExternalCommand: prompts for a
+                                           #   mapping file + CSV (per run -
+                                           #   see its docstring for why),
+                                           #   runs the check, writes results
+      RevitCheckApplication.cs      # IExternalApplication.OnStartup - creates
+                                     #   the RevitCheck ribbon tab/panel
+      RevitCheck.addin              # the manifest Revit actually loads
+      Resources/Icons/               # ribbon icons (32/16px PNG + 256px
+                                      #   masters under source/)
+      Polyfills/                    # same shim pattern as Core's, needed
+                                     #   again because it's a separate
+                                     #   assembly (net48, not netstandard2.0)
   tools/
     RevitCheck.MappingBuilder/      # net8.0 console app, no Revit refs. Builds a
                                     #   starter mapping file from a real capture +
@@ -60,11 +81,18 @@ native/
                                     #   selection's full identity/parameter set to
                                     #   JSON. See diagnostics/README.md.
   tests/
-    RevitCheck.Core.Tests/          # xUnit, 168 tests
+    RevitCheck.Core.Tests/          # xUnit, 170 tests
       Fixtures/                     #   synthetic-IR builders + the real-capture
                                      #   parity fixture (see below)
-    RevitCheck.MappingBuilder.Tests/ # xUnit, 6 tests
+    RevitCheck.MappingBuilder.Tests/ # xUnit, 7 tests
 ```
+
+RevitCheck.Addin has no test project, deliberately - like `adapters/revit_source.py` on the
+Python side, its Revit-API-calling code (`Adapters/`, `Commands/`,
+`RevitCheckApplication.cs`) cannot be exercised without a real `Document`, so
+no test will ever touch it. `dotnet build` (0 warnings/errors) is the only
+automated check it gets; real verification happens on the Revit machine
+(see "What's not done" below).
 
 ## Building and testing
 
@@ -79,7 +107,7 @@ cd native
 dotnet build          # whole solution, including the net48 Addin (RevitAPI
                        # comes from the Nice3point.Revit.Api.* NuGet packages -
                        # no Revit install needed to compile, only to run)
-dotnet test           # 168 + 6 = 174 tests, zero Revit involved
+dotnet test           # 170 + 7 = 177 tests, zero Revit involved
 ```
 
 Both are expected to be clean (0 warnings, 0 errors; all tests passing) at all
@@ -158,39 +186,89 @@ Against real `Autodesk.Revit.DB`/`.UI` types, with no Revit installed, via
 the `Nice3point.Revit.Api.*` NuGet packages — confirmed with a throwaway
 sanity file during the build, not just assumed.
 
-## What's not done - needs the Revit machine
+## Wired up (2026-08-24) - compiles, not yet run inside Revit
 
-- **The metadata adapter** (`Adapters/RevitMetadataElementSource.cs`) - not
-  written. Blocked on real answers only available at the Revit machine (see
-  "Open questions" below) - use `diagnostics/InspectElements.pushbutton` to
-  get them.
-- **The dimension/sheet/view adapter** - the C# port of `revit_source.py`'s
-  `_collect_dimensions`/`_collect_sheets_and_views` and the rest of its
-  geometry-reading side. Less blind than the metadata adapter: there's a
-  working Python implementation to match line-for-line, including the
-  documented `OwnerViewId` per-view-collection fix - but still needs the
-  Revit machine to build and debug against real element/API behaviour.
-- **`IExternalCommand`s, ribbon wiring, the `.addin` manifest** - nothing is
-  wired up to actually run inside Revit yet. This is the real precondition
-  for archiving pyRevit, not just having the checking logic ported.
+The metadata-reconciliation path is now fully wired end to end:
 
-### Open questions that block the metadata adapter, not resolvable from this side
+- **`Adapters/RevitMetadataElementSource.cs`** - the metadata adapter.
+  Category scope, key-parameter identity, and nested-sub-component shape
+  (all three of the former "open questions" below) came from real data via
+  `diagnostics/InspectElements.pushbutton`'s 71-element export, not a
+  guess - see the class's own remarks for specifics.
+- **`Commands/MetadataReconciliationCommand.cs`** - the `IExternalCommand`.
+  Prompts for the mapping file and the reference CSV **on every run**
+  (`Microsoft.Win32.OpenFileDialog`), confirmed with the user 2026-08-24:
+  even within one client, individual models vary enough that a per-run
+  picker is what actually works across all of them, rather than a path
+  baked into config that quietly stops matching one project. Neither file
+  is written back into this repo - both are client asset data (the old
+  open question #4, below). Results are written as JSON
+  (`Core/Reporting/IssueJsonWriter.cs`) next to the model file, plus a
+  `TaskDialog` summary.
+- **`RevitCheckApplication.cs`** - `IExternalApplication.OnStartup`,
+  creates the "RevitCheck" ribbon tab/panel with one button (the icons
+  under `Resources/Icons/`).
+- **`RevitCheck.addin`** - the manifest. Deploys to the shared
+  `Addins\2024\` folder itself, while the DLL and its dependencies go one
+  level down in their own `RevitCheck\` subfolder - see "Next: prove it on
+  the Revit machine" below for why that split, not everything in one
+  place.
 
-1. **The actual key-parameter name/identity** used across the team's
-   metadata-input tools.
-2. **How nested sub-components actually work in these families** - whether
-   the items needing independent data (e.g. a fixing bracket nested in a
-   panel) are "shared" nested families with their own `ElementId` and
-   independently editable instance parameters (which would make
-   `FamilyInstance.GetSubComponentIds()`/`SuperComponent` the right API
-   surface), or something the existing metadata-input tools already have a
-   working convention for.
-3. Element category/class scoping for the adapter's collection sweep -
-   which categories actually carry the 30-40 tracked parameters.
-4. Where a real mapping file and a real project's CSV should live - not
-   committed to this repo (client asset data), by the same caution
-   `capture.py` already applies to a real model capture.
+`dotnet build` is clean (0 warnings/errors) including all of the above,
+against the real `Autodesk.Revit.DB`/`.UI` types via the Nice3point
+packages. **Nothing here has run inside actual Revit yet** - that's the
+real gate (see "Next: prove it on the Revit machine" below), not the
+compile.
 
-Run `diagnostics/InspectElements.pushbutton` (see `diagnostics/README.md`)
-against representative elements — including at least one nested-component
-case — to answer 1-3 from ground truth rather than description.
+Deliberately scoped to *one* button: the dimension/sheet/view adapter (for
+`revit.dimension_provenance` / `revit.dimension_override_consistency`) is a
+separate, later phase - proving the wiring itself on the simpler case
+first, rather than shipping every check's plumbing at once and debugging
+all of it on the Revit machine simultaneously.
+
+### Next: prove it on the Revit machine
+
+Revit only scans `*.addin` files directly in
+`%APPDATA%\Autodesk\Revit\Addins\2024\` (not subfolders), and that folder
+already holds other add-ins' manifests - so the deploy is split in two,
+confirmed with the user 2026-08-24:
+
+1. Copy `RevitCheck.addin` itself directly into
+   `%APPDATA%\Autodesk\Revit\Addins\2024\`, alongside whatever's already
+   there.
+2. Copy everything else from `bin/Debug/net48/` - `RevitCheck.Addin.dll`,
+   `RevitCheck.Core.dll`, `CsvHelper.dll`, the `System.Text.Json` family,
+   `Resources\Icons\` - into a new `RevitCheck\` subfolder one level under
+   that (`...\Addins\2024\RevitCheck\`). Leave out the RevitAPI/RevitAPIUI
+   assemblies if present; Revit supplies those itself. The manifest's
+   `<Assembly>` path (`.\RevitCheck\RevitCheck.Addin.dll`) already points
+   there.
+3. Launch Revit, confirm the "RevitCheck" tab/"Checks" panel appears with
+   the Metadata Reconciliation button showing its icon.
+4. Run it against the same real project the Asset Classification /
+   Location Referencing mappings came from; sanity-check the output
+   against what's actually in the model and the CSV. The reference-CSV
+   picker opening to wherever the user already keeps these files (their
+   other tools' existing workflow, confirmed 2026-08-24) is expected -
+   nothing to configure for that, it's just `OpenFileDialog`'s normal
+   last-used-folder behaviour.
+5. Only then: the dimension/sheet/view adapter, its two
+   `IExternalCommand`s, and their ribbon buttons - a genuine line-for-line
+   port of `revit_source.py`'s `_collect_dimensions`/
+   `_collect_sheets_and_views`, including the documented `OwnerViewId`
+   per-view-collection fix, but still needing the Revit machine to build
+   and debug against real element/API behaviour.
+
+### Former open questions - now answered from real data
+
+1. ~~The actual key-parameter name/identity~~ - `ATM_Asset_Identifier`,
+   confirmed via the real CSVs and the `InspectElements` export.
+2. ~~How nested sub-components actually work~~ - `FamilyInstance.
+   GetSubComponentIds()`, each with its own `ElementId`/`UniqueId` and
+   independently-editable parameters (44 of 71 elements in the real export
+   had one). `RevitMetadataElementSource` walks them exactly this way.
+3. ~~Element category/class scoping~~ - Floors, Generic Models, Structural
+   Connections, Structural Foundations, Structural Framing (the real
+   spread in the export) - `RevitMetadataElementSource.DefaultCategories`.
+4. ~~Where a real mapping file and CSV should live~~ - neither: both are
+   picked per run (see "Wired up" above), never committed to this repo.
