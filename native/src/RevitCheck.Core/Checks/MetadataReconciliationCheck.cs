@@ -57,7 +57,7 @@ public static class MetadataReconciliationCheck
 
         foreach (var element in model.Elements)
         {
-            var keyValue = ResolveKeyValue(element, mapping);
+            var keyValue = ResolveKeyValue(element, mapping, config);
             if (keyValue is null)
             {
                 blankKeyElementIds.Add(element.ElementId);
@@ -164,7 +164,7 @@ public static class MetadataReconciliationCheck
         return skipped;
     }
 
-    private static string? ResolveKeyValue(ElementMetadata element, ParameterMapping mapping)
+    private static string? ResolveKeyValue(ElementMetadata element, ParameterMapping mapping, ReconciliationConfig config)
     {
         if (!element.Parameters.TryGetValue(mapping.KeyParameterName, out var value))
         {
@@ -180,7 +180,8 @@ public static class MetadataReconciliationCheck
             return null;
         }
 
-        return raw!.Trim();
+        var trimmed = raw!.Trim();
+        return config.BlankKeySentinels.Contains(trimmed) ? null : trimmed;
     }
 
     private static void CompareField(
@@ -249,13 +250,17 @@ public static class MetadataReconciliationCheck
             return;
         }
 
-        if (field.Comparison == ComparisonType.Numeric)
+        switch (field.Comparison)
         {
-            CompareNumeric(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
-        }
-        else
-        {
-            CompareExactString(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+            case ComparisonType.Numeric:
+                CompareNumeric(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+                break;
+            case ComparisonType.ContainsCsvValue:
+                CompareContainsCsvValue(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+                break;
+            default:
+                CompareExactString(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+                break;
         }
     }
 
@@ -302,6 +307,36 @@ public static class MetadataReconciliationCheck
                 $"{fieldName}: model says '{modelText}', spreadsheet says '{csvText}' (key={keyValue})",
                 modelValue: modelText, csvValue: csvText));
         }
+    }
+
+    /// <summary>
+    /// ComparisonType.ContainsCsvValue - see its own docstring. Splits the
+    /// model's semicolon-separated list and checks whether the CSV's single
+    /// value matches any entry, not whether the two strings are identical.
+    /// </summary>
+    private static void CompareContainsCsvValue(
+        ElementMetadata element, string keyValue, string fieldName, FieldMapping field,
+        ParameterValue paramValue, string csvRaw, ReconciliationConfig config, List<Issue> issues)
+    {
+        var modelText = paramValue.DisplayString ?? paramValue.RawString ?? "";
+        var csvText = csvRaw.Trim();
+        var comparison = field.CaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+        var modelEntries = modelText
+            .Split(';')
+            .Select(entry => entry.Trim())
+            .Where(entry => entry.Length > 0)
+            .ToList();
+
+        if (modelEntries.Any(entry => string.Equals(entry, csvText, comparison)))
+        {
+            return;
+        }
+
+        issues.Add(MismatchIssue(element, keyValue, fieldName, config,
+            $"{fieldName}: model list '{modelText.Trim()}' does not contain '{csvText}' from the spreadsheet " +
+            $"(key={keyValue})",
+            modelValue: modelText.Trim(), csvValue: csvText));
     }
 
     private static Issue MismatchIssue(

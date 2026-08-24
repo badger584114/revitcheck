@@ -352,4 +352,92 @@ public class MetadataReconciliationCheckTests
         Assert.Equal("coverage", issue.Category);
         Assert.Contains("Girder Depth (mm)", issue.Description);
     }
+
+    private static ParameterMapping LocationMapping() => new()
+    {
+        KeyParameterName = "Asset_ID",
+        KeyCsvColumn = "Asset ID",
+        Fields = new Dictionary<string, FieldMapping>
+        {
+            ["location"] = new() { Comparison = ComparisonType.ContainsCsvValue, CsvColumn = "Location", DefaultParameter = "Location" },
+        },
+    };
+
+    private static CsvTable LocationCsv(params (string AssetId, string Location)[] rows) => new()
+    {
+        Headers = new[] { "Asset ID", "Location" },
+        Rows = rows.Select(r => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+        {
+            ["Asset ID"] = r.AssetId,
+            ["Location"] = r.Location,
+        }).ToList(),
+    };
+
+    private static ElementMetadata ElementWithLocation(long id, string assetId, string? location) =>
+        RevitCheckTestBuilders.Element(id, keyValue: assetId, parameters: new Dictionary<string, ParameterValue>
+        {
+            ["Asset_ID"] = new() { StorageType = ParameterStorageType.String, RawString = assetId, DisplayString = assetId },
+            ["Location"] = new() { StorageType = ParameterStorageType.String, RawString = location, DisplayString = location },
+        });
+
+    [Fact]
+    public void ContainsCsvValue_CsvValueIsOneEntryInModelList_NoIssue()
+    {
+        // Real shape found 2026-08-24: the model holds every hierarchy
+        // group an element belongs to, the CSV only tracks one.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithLocation(1, "A1", "3BAP; 3BDE; 3BAB") });
+        var issues = MetadataReconciliationCheck.Run(model, LocationMapping(), LocationCsv(("A1", "3BDE")), new ReconciliationConfig());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void ContainsCsvValue_CsvValueNotInModelList_OneMismatchIssue()
+    {
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithLocation(1, "A1", "3FC") });
+        var issues = MetadataReconciliationCheck.Run(model, LocationMapping(), LocationCsv(("A1", "3BDE")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("metadata", issue.Category);
+        Assert.Contains("does not contain", issue.Description);
+    }
+
+    [Fact]
+    public void ContainsCsvValue_IgnoresInconsistentSemicolonSpacing()
+    {
+        // Real example: "3BDE; 3CD ;3BAP" - a space before one semicolon,
+        // none after another.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithLocation(1, "A1", "3BDE; 3CD ;3BAP") });
+        var issues = MetadataReconciliationCheck.Run(model, LocationMapping(), LocationCsv(("A1", "3CD")), new ReconciliationConfig());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void KeyValueIsBlankKeySentinel_TreatedAsNoKey_NotReportedAsUnmatched()
+    {
+        // Real bug found 2026-08-24: a key parameter literally holding "N/A"
+        // (the same not-applicable convention RequireModelValue already
+        // knows) was being looked up as a real key, producing a false
+        // "no matching row" issue for every such element. It should be
+        // folded into the same low-severity "no key value at all" coverage
+        // note a genuinely blank key already gets - not a distinct,
+        // per-element "missing item" mismatch.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithOwner(1, "N/A", "Someone") });
+        var issues = MetadataReconciliationCheck.Run(model, StringMapping(), OwnerCsv(("A1", "Someone")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+        Assert.DoesNotContain("no matching row", issue.Description);
+    }
+
+    [Fact]
+    public void KeyValueIsBlankKeySentinel_CaseAndWhitespaceInsensitive()
+    {
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithOwner(1, "  n/a  ", "Someone") });
+        var issues = MetadataReconciliationCheck.Run(model, StringMapping(), OwnerCsv(("A1", "Someone")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+    }
 }
