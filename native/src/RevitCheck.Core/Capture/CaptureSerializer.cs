@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using RevitCheck.Core.Ir;
+using RevitCheck.Core.Json;
 
 namespace RevitCheck.Core.Capture;
 
@@ -21,9 +22,9 @@ public static class CaptureSerializer
 
     private static readonly JsonSerializerOptions Options = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNamingPolicy = SnakeCaseLowerNamingPolicy.Instance,
         WriteIndented = true,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
+        Converters = { new JsonStringEnumConverter(SnakeCaseLowerNamingPolicy.Instance) },
     };
 
     public static string Dumps(RevitModel model)

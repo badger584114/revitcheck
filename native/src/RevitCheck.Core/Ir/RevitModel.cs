@@ -43,6 +43,7 @@ public sealed class RevitModel
     // ir.py's RevitModel._view_index/_sheet_index lazy-cache pattern.
     private Dictionary<long, ViewInfo>? _viewIndex;
     private Dictionary<long, SheetInfo>? _sheetIndex;
+    private Dictionary<long, ElementMetadata>? _elementIndex;
     private Dictionary<long, List<DimensionInfo>>? _dimensionsByViewCache;
 
     public ViewInfo? ViewById(long? viewId)
@@ -81,6 +82,25 @@ public sealed class RevitModel
         }
 
         return _sheetIndex.TryGetValue(sheetId.Value, out var found) ? found : null;
+    }
+
+    public ElementMetadata? ElementById(long? elementId)
+    {
+        if (elementId is null)
+        {
+            return null;
+        }
+
+        if (_elementIndex is null)
+        {
+            _elementIndex = new Dictionary<long, ElementMetadata>();
+            foreach (var element in Elements)
+            {
+                _elementIndex[element.ElementId] = element;
+            }
+        }
+
+        return _elementIndex.TryGetValue(elementId.Value, out var found) ? found : null;
     }
 
     /// <summary>

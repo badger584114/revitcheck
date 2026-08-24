@@ -49,7 +49,15 @@ public static class MetadataReconciliationCheck
         var issues = new List<Issue>();
 
         var keyCsvColumn = mapping.ResolvedKeyCsvColumn;
-        ReportDuplicateCsvKeys(csv, keyCsvColumn, issues);
+        if (mapping.DisambiguationField is null)
+        {
+            // With a DisambiguationField configured, more than one row per
+            // key is expected structure (one per discipline package, etc.),
+            // not an anomaly - real remaining ambiguity is reported per
+            // element in ResolveMatchingRow instead, only when picking a row
+            // actually stayed ambiguous after disambiguating.
+            ReportDuplicateCsvKeys(csv, keyCsvColumn, issues);
+        }
 
         var skippedFields = ReportUnresolvableCsvColumns(mapping, csv, issues);
 
@@ -57,7 +65,7 @@ public static class MetadataReconciliationCheck
 
         foreach (var element in model.Elements)
         {
-            var keyValue = ResolveKeyValue(element, mapping);
+            var keyValue = ResolveKeyValue(element, mapping, config);
             if (keyValue is null)
             {
                 blankKeyElementIds.Add(element.ElementId);
@@ -85,9 +93,16 @@ public static class MetadataReconciliationCheck
                 continue;
             }
 
-            // First row used deterministically - the duplicate itself was
-            // already reported above, not silently picked here.
-            var row = matches[0];
+            var row = ResolveMatchingRow(element, keyValue, mapping, matches, config, issues);
+            if (row is null)
+            {
+                // Disambiguation found no row for this element's own
+                // discipline (or whichever field disambiguates) - already
+                // reported inside ResolveMatchingRow. Comparing fields
+                // against a wrong-package row would only produce false
+                // mismatches, so skip it entirely rather than guess.
+                continue;
+            }
 
             foreach (var entry in mapping.Fields)
             {
@@ -134,6 +149,96 @@ public static class MetadataReconciliationCheck
     }
 
     /// <summary>
+    /// Picks which of possibly several key-matched CSV rows is the right
+    /// one for <paramref name="element"/>, using
+    /// <see cref="ParameterMapping.DisambiguationField"/> when configured -
+    /// see its docstring for why (Asset Classification's real multi-
+    /// discipline-package rows). Returns null when disambiguation
+    /// determined none of the candidate rows is actually a match for this
+    /// element (an issue is added explaining why); the caller should treat
+    /// that the same as "no matching row", not fall through to comparing
+    /// fields against a row that was deliberately ruled out.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string>? ResolveMatchingRow(
+        ElementMetadata element, string keyValue, ParameterMapping mapping,
+        List<IReadOnlyDictionary<string, string>> matches, ReconciliationConfig config, List<Issue> issues)
+    {
+        if (matches.Count == 1 ||
+            mapping.DisambiguationField is not { } disambigFieldName ||
+            !mapping.Fields.TryGetValue(disambigFieldName, out var disambigField))
+        {
+            // No disambiguation configured, or only one candidate anyway -
+            // first (only) match, same as before this existed.
+            return matches[0];
+        }
+
+        var disambigParamName = disambigField.ResolveParameterName(element);
+        if (disambigParamName is null || !element.Parameters.TryGetValue(disambigParamName, out var disambigValue))
+        {
+            // Can't tell which package this element belongs to - don't
+            // guess which row is right, fall back to the original
+            // first-match behaviour.
+            return matches[0];
+        }
+
+        var modelValue = (disambigValue.DisplayString ?? disambigValue.RawString ?? "").Trim();
+        if (modelValue.Length == 0)
+        {
+            return matches[0];
+        }
+
+        var disambigCsvColumn = disambigField.CsvColumn ?? disambigFieldName;
+        var comparison = disambigField.CaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var filtered = matches
+            .Where(r => r.TryGetValue(disambigCsvColumn, out var v) && string.Equals(v.Trim(), modelValue, comparison))
+            .ToList();
+
+        if (filtered.Count == 1)
+        {
+            return filtered[0];
+        }
+
+        if (filtered.Count == 0)
+        {
+            var available = string.Join(", ", matches
+                .Select(r => r.TryGetValue(disambigCsvColumn, out var v) ? v.Trim() : "")
+                .Where(v => v.Length > 0)
+                .Distinct());
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = "metadata",
+                Severity = config.DefaultSeverity,
+                ElementId = element.ElementId,
+                UniqueId = element.UniqueId,
+                Description =
+                    $"Element has key '{keyValue}' with {disambigFieldName}='{modelValue}', but the " +
+                    $"reference CSV has no row for this key under that value - only: {available} " +
+                    $"(key={keyValue}).",
+            });
+            return null;
+        }
+
+        // filtered.Count > 1: genuinely ambiguous even after disambiguation
+        // - the same key AND the same disambiguation value on more than one
+        // row. First one used deterministically, flagged rather than
+        // silently picked.
+        issues.Add(new Issue
+        {
+            RuleId = RuleId,
+            Category = "coverage",
+            Severity = "medium",
+            ElementId = element.ElementId,
+            UniqueId = element.UniqueId,
+            Description =
+                $"Element has key '{keyValue}' with {disambigFieldName}='{modelValue}', matching " +
+                $"{filtered.Count} rows in the reference CSV - the first was used, not a chosen one " +
+                $"(key={keyValue}).",
+        });
+        return filtered[0];
+    }
+
+    /// <summary>
     /// A field's CSV column is either present in this CSV or it isn't -
     /// checking that once up front (rather than once per element) avoids
     /// reporting the same missing column dozens of times.
@@ -164,7 +269,7 @@ public static class MetadataReconciliationCheck
         return skipped;
     }
 
-    private static string? ResolveKeyValue(ElementMetadata element, ParameterMapping mapping)
+    private static string? ResolveKeyValue(ElementMetadata element, ParameterMapping mapping, ReconciliationConfig config)
     {
         if (!element.Parameters.TryGetValue(mapping.KeyParameterName, out var value))
         {
@@ -180,7 +285,8 @@ public static class MetadataReconciliationCheck
             return null;
         }
 
-        return raw!.Trim();
+        var trimmed = raw!.Trim();
+        return config.BlankKeySentinels.Contains(trimmed) ? null : trimmed;
     }
 
     private static void CompareField(
@@ -249,13 +355,17 @@ public static class MetadataReconciliationCheck
             return;
         }
 
-        if (field.Comparison == ComparisonType.Numeric)
+        switch (field.Comparison)
         {
-            CompareNumeric(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
-        }
-        else
-        {
-            CompareExactString(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+            case ComparisonType.Numeric:
+                CompareNumeric(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+                break;
+            case ComparisonType.ContainsCsvValue:
+                CompareContainsCsvValue(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+                break;
+            default:
+                CompareExactString(element, keyValue, fieldName, field, paramValue, csvRaw, config, issues);
+                break;
         }
     }
 
@@ -304,6 +414,36 @@ public static class MetadataReconciliationCheck
         }
     }
 
+    /// <summary>
+    /// ComparisonType.ContainsCsvValue - see its own docstring. Splits the
+    /// model's semicolon-separated list and checks whether the CSV's single
+    /// value matches any entry, not whether the two strings are identical.
+    /// </summary>
+    private static void CompareContainsCsvValue(
+        ElementMetadata element, string keyValue, string fieldName, FieldMapping field,
+        ParameterValue paramValue, string csvRaw, ReconciliationConfig config, List<Issue> issues)
+    {
+        var modelText = paramValue.DisplayString ?? paramValue.RawString ?? "";
+        var csvText = csvRaw.Trim();
+        var comparison = field.CaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+        var modelEntries = modelText
+            .Split(';')
+            .Select(entry => entry.Trim())
+            .Where(entry => entry.Length > 0)
+            .ToList();
+
+        if (modelEntries.Any(entry => string.Equals(entry, csvText, comparison)))
+        {
+            return;
+        }
+
+        issues.Add(MismatchIssue(element, keyValue, fieldName, config,
+            $"{fieldName}: model list '{modelText.Trim()}' does not contain '{csvText}' from the spreadsheet " +
+            $"(key={keyValue})",
+            modelValue: modelText.Trim(), csvValue: csvText));
+    }
+
     private static Issue MismatchIssue(
         ElementMetadata element, string keyValue, string fieldName, ReconciliationConfig config,
         string description, string? modelValue, string csvValue) =>
@@ -315,7 +455,11 @@ public static class MetadataReconciliationCheck
             ElementId = element.ElementId,
             UniqueId = element.UniqueId,
             Description = description,
-            SuggestedFix = new Dictionary<string, object?> { ["csv_value"] = csvValue, ["model_value"] = modelValue },
+            // "field" lets a downstream grouping/report step (Reporting.IssueGrouping)
+            // key on which canonical field this is without parsing Description text -
+            // structured data over string-scraping, same discipline the rest of this
+            // project follows.
+            SuggestedFix = new Dictionary<string, object?> { ["field"] = fieldName, ["csv_value"] = csvValue, ["model_value"] = modelValue },
         };
 
     private static Issue CoverageIssue(ElementMetadata element, string description) => new()

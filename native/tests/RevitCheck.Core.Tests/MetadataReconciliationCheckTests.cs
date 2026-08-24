@@ -352,4 +352,220 @@ public class MetadataReconciliationCheckTests
         Assert.Equal("coverage", issue.Category);
         Assert.Contains("Girder Depth (mm)", issue.Description);
     }
+
+    private static ParameterMapping LocationMapping() => new()
+    {
+        KeyParameterName = "Asset_ID",
+        KeyCsvColumn = "Asset ID",
+        Fields = new Dictionary<string, FieldMapping>
+        {
+            ["location"] = new() { Comparison = ComparisonType.ContainsCsvValue, CsvColumn = "Location", DefaultParameter = "Location" },
+        },
+    };
+
+    private static CsvTable LocationCsv(params (string AssetId, string Location)[] rows) => new()
+    {
+        Headers = new[] { "Asset ID", "Location" },
+        Rows = rows.Select(r => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+        {
+            ["Asset ID"] = r.AssetId,
+            ["Location"] = r.Location,
+        }).ToList(),
+    };
+
+    private static ElementMetadata ElementWithLocation(long id, string assetId, string? location) =>
+        RevitCheckTestBuilders.Element(id, keyValue: assetId, parameters: new Dictionary<string, ParameterValue>
+        {
+            ["Asset_ID"] = new() { StorageType = ParameterStorageType.String, RawString = assetId, DisplayString = assetId },
+            ["Location"] = new() { StorageType = ParameterStorageType.String, RawString = location, DisplayString = location },
+        });
+
+    [Fact]
+    public void ContainsCsvValue_CsvValueIsOneEntryInModelList_NoIssue()
+    {
+        // Real shape found 2026-08-24: the model holds every hierarchy
+        // group an element belongs to, the CSV only tracks one.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithLocation(1, "A1", "3BAP; 3BDE; 3BAB") });
+        var issues = MetadataReconciliationCheck.Run(model, LocationMapping(), LocationCsv(("A1", "3BDE")), new ReconciliationConfig());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void ContainsCsvValue_CsvValueNotInModelList_OneMismatchIssue()
+    {
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithLocation(1, "A1", "3FC") });
+        var issues = MetadataReconciliationCheck.Run(model, LocationMapping(), LocationCsv(("A1", "3BDE")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("metadata", issue.Category);
+        Assert.Contains("does not contain", issue.Description);
+    }
+
+    [Fact]
+    public void ContainsCsvValue_IgnoresInconsistentSemicolonSpacing()
+    {
+        // Real example: "3BDE; 3CD ;3BAP" - a space before one semicolon,
+        // none after another.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithLocation(1, "A1", "3BDE; 3CD ;3BAP") });
+        var issues = MetadataReconciliationCheck.Run(model, LocationMapping(), LocationCsv(("A1", "3CD")), new ReconciliationConfig());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void KeyValueIsBlankKeySentinel_TreatedAsNoKey_NotReportedAsUnmatched()
+    {
+        // Real bug found 2026-08-24: a key parameter literally holding "N/A"
+        // (the same not-applicable convention RequireModelValue already
+        // knows) was being looked up as a real key, producing a false
+        // "no matching row" issue for every such element. It should be
+        // folded into the same low-severity "no key value at all" coverage
+        // note a genuinely blank key already gets - not a distinct,
+        // per-element "missing item" mismatch.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithOwner(1, "N/A", "Someone") });
+        var issues = MetadataReconciliationCheck.Run(model, StringMapping(), OwnerCsv(("A1", "Someone")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+        Assert.DoesNotContain("no matching row", issue.Description);
+    }
+
+    [Fact]
+    public void KeyValueIsBlankKeySentinel_CaseAndWhitespaceInsensitive()
+    {
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithOwner(1, "  n/a  ", "Someone") });
+        var issues = MetadataReconciliationCheck.Run(model, StringMapping(), OwnerCsv(("A1", "Someone")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+    }
+
+    // --- DisambiguationField: real shape found 2026-08-24 - Asset
+    // Classification can carry multiple rows for the same asset identifier,
+    // one per discipline package.
+
+    private static ParameterMapping DisciplineMapping() => new()
+    {
+        KeyParameterName = "Asset_ID",
+        KeyCsvColumn = "Asset ID",
+        DisambiguationField = "discipline",
+        Fields = new Dictionary<string, FieldMapping>
+        {
+            ["discipline"] = new() { Comparison = ComparisonType.ExactString, CsvColumn = "Discipline", DefaultParameter = "Discipline" },
+            ["owner"] = new() { Comparison = ComparisonType.ExactString, CsvColumn = "Owner", DefaultParameter = "Owner" },
+        },
+    };
+
+    private static CsvTable DisciplineCsv(params (string AssetId, string Discipline, string Owner)[] rows) => new()
+    {
+        Headers = new[] { "Asset ID", "Discipline", "Owner" },
+        Rows = rows.Select(r => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+        {
+            ["Asset ID"] = r.AssetId,
+            ["Discipline"] = r.Discipline,
+            ["Owner"] = r.Owner,
+        }).ToList(),
+    };
+
+    private static ElementMetadata ElementWithDiscipline(long id, string assetId, string discipline, string owner = "Bridge Team") =>
+        RevitCheckTestBuilders.Element(id, keyValue: assetId, parameters: new Dictionary<string, ParameterValue>
+        {
+            ["Asset_ID"] = new() { StorageType = ParameterStorageType.String, RawString = assetId, DisplayString = assetId },
+            ["Discipline"] = new() { StorageType = ParameterStorageType.String, RawString = discipline, DisplayString = discipline },
+            ["Owner"] = new() { StorageType = ParameterStorageType.String, RawString = owner, DisplayString = owner },
+        });
+
+    [Fact]
+    public void Disambiguation_PicksTheRowMatchingTheModelsOwnDisciplineValue()
+    {
+        // Two rows share the key, differing on Owner - a naive first-match
+        // would compare against whichever happened to come first, right or
+        // wrong.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithDiscipline(1, "Sign Face Plate", "BR") });
+        var csv = DisciplineCsv(
+            ("Sign Face Plate", "GD", "Roads Team"),
+            ("Sign Face Plate", "BR", "Bridge Team"));
+
+        var issues = MetadataReconciliationCheck.Run(model, DisciplineMapping(), csv, new ReconciliationConfig());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void Disambiguation_OnlyOneCandidateRow_NeverSecondGuessed_ComparedNormallyEvenIfDisciplineDiffers()
+    {
+        // Real shape, confirmed by the user 2026-08-24: a key with exactly
+        // one CSV row is never "ambiguous" - there's nothing to pick
+        // between. If the model's own discipline value differs from that
+        // one row's, that's a real finding (a genuine wrong-identifier
+        // error, in the real case this mirrors) to report normally via the
+        // usual field comparison, not a "no row for this discipline"
+        // special case - disambiguation only ever applies with 2+
+        // candidates.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithDiscipline(1, "Sign Face Plate", "BR") });
+        var csv = DisciplineCsv(("Sign Face Plate", "GD", "Bridge Team"));
+
+        var issues = MetadataReconciliationCheck.Run(model, DisciplineMapping(), csv, new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("metadata", issue.Category);
+        Assert.Contains("discipline", issue.Description);
+        Assert.Contains("'BR'", issue.Description);
+        Assert.Contains("'GD'", issue.Description);
+    }
+
+    [Fact]
+    public void Disambiguation_MultipleRowsButNoneMatchModelsDiscipline_ReportsUnmatched_NotFalseFieldMismatches()
+    {
+        // With 2+ genuinely ambiguous candidates, picking one to compare
+        // against (right or wrong) would be guessing - this is the case
+        // DisambiguationField actually exists for, distinct from the
+        // single-row case above.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithDiscipline(1, "Sign Face Plate", "BR") });
+        var csv = DisciplineCsv(
+            ("Sign Face Plate", "GD", "Roads Team"),
+            ("Sign Face Plate", "MD", "Mechanical Team"));
+
+        var issues = MetadataReconciliationCheck.Run(model, DisciplineMapping(), csv, new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("metadata", issue.Category);
+        Assert.Contains("no row for this key", issue.Description);
+        Assert.Contains("GD", issue.Description);
+        Assert.Contains("MD", issue.Description);
+    }
+
+    [Fact]
+    public void Disambiguation_StillAmbiguousAfterFiltering_ReportsCoverageNote_UsesFirstMatch()
+    {
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithDiscipline(1, "Sign Face Plate", "BR", owner: "Bridge Team A") });
+        var csv = DisciplineCsv(
+            ("Sign Face Plate", "BR", "Bridge Team A"),
+            ("Sign Face Plate", "BR", "Bridge Team B"));
+
+        var issues = MetadataReconciliationCheck.Run(model, DisciplineMapping(), csv, new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+        Assert.Contains("matching 2 rows", issue.Description);
+    }
+
+    [Fact]
+    public void Disambiguation_NotConfigured_KeepsOriginalFirstMatchBehaviour()
+    {
+        // Regression guard: mappings that never set DisambiguationField
+        // (e.g. Location Referencing, whose key is confirmed unique) must
+        // behave exactly as before this feature existed.
+        var model = RevitCheckTestBuilders.Model(new[] { ElementWithOwner(1, "A1", "Someone") });
+        var csv = OwnerCsv(("A1", "Someone"), ("A1", "Someone Else"));
+
+        var issues = MetadataReconciliationCheck.Run(model, StringMapping(), csv, new ReconciliationConfig());
+
+        // First row ("Someone") matches; the duplicate-key coverage note
+        // still fires exactly as it did before DisambiguationField existed.
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+        Assert.Contains("more than one row", issue.Description);
+    }
 }

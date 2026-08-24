@@ -26,6 +26,40 @@ public sealed class ParameterMapping
     /// <summary>The CSV column holding the same key. Defaults to KeyParameterName if unset - a CSV header and a Revit parameter name are unlikely to match byte-for-byte.</summary>
     public string? KeyCsvColumn { get; init; }
 
+    /// <summary>
+    /// The name of a Revit view whose visible elements define the sweep -
+    /// found necessary from a real Revit-machine run 2026-08-24: the
+    /// category scope alone (Floors, Generic Models, Structural
+    /// Connections/Foundations/Framing) matched far more of the model than
+    /// the intended trackable set, because those categories exist all over
+    /// a real project, not just on the tracked assets. The user's existing
+    /// tools already solve this the same way: a curated view (their example
+    /// - "NavisworksExport") with its own visibility/filter overrides
+    /// showing exactly the elements meant to be interrogated. Null means
+    /// "sweep the whole document within the category scope" - the original,
+    /// now-known-too-broad behaviour - kept as the default rather than
+    /// removed, since not every future client/project will necessarily
+    /// have an equivalent curated view.
+    /// </summary>
+    public string? ScopeViewName { get; init; }
+
+    /// <summary>
+    /// Names an entry in <see cref="Fields"/> whose value picks which CSV
+    /// row is the right one when a key matches more than one row - for a
+    /// reference table where the same identifier genuinely appears on
+    /// several rows (e.g. one per discipline package). Built 2026-08-24
+    /// while investigating a real mismatch cluster that looked like exactly
+    /// this shape - turned out not to be (Asset Classification has zero
+    /// genuine duplicate keys; the real cause was a wrong identifier value
+    /// in the model, see that mapping file's own "_note"). Kept as
+    /// available machinery rather than removed, since the scenario it
+    /// handles is a real, common one even though it wasn't this bug - but
+    /// not yet confirmed necessary on any mapping this project actually
+    /// has. Null means "use whichever row matches first" (the original
+    /// behaviour, and every mapping's current setting).
+    /// </summary>
+    public string? DisambiguationField { get; init; }
+
     public Dictionary<string, FieldMapping> Fields { get; init; } = new();
 
     [JsonIgnore]

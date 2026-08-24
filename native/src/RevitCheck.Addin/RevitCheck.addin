@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!--
+  Revit add-in manifest. Revit only scans *.addin files directly in
+
+      %APPDATA%\Autodesk\Revit\Addins\2024\
+
+  (not subfolders) - so THIS FILE goes there directly, alongside whatever
+  other add-ins' own .addin manifests already live in that folder. The
+  actual DLL and its dependencies (RevitCheck.Core.dll, CsvHelper.dll, the
+  System.Text.Json family, Resources\Icons\) go in their own "RevitCheck"
+  subfolder underneath it instead, one level down, so they don't mix into
+  that shared top-level folder alongside every other add-in's files - the
+  <Assembly> path below is resolved relative to this manifest's own
+  location, which is exactly what makes that split possible. Revit 2024
+  only, matching RevitCheck.Addin's net48 target (see Directory.Build.props
+  / RevitCheck.Addin.csproj) - a future net8.0 Addin project for Revit
+  2025+ would need its own manifest.
+-->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>RevitCheck</Name>
+    <Assembly>.\RevitCheck\RevitCheck.Addin.dll</Assembly>
+    <AddInId>783749EC-ADF1-4E85-BEAD-8C941423B6B6</AddInId>
+    <FullClassName>RevitCheck.Addin.RevitCheckApplication</FullClassName>
+    <VendorId>RVCK</VendorId>
+    <VendorDescription>RevitCheck (internal), https://github.com/badger584114/revitcheck</VendorDescription>
+  </AddIn>
+</RevitAddIns>
