@@ -1,4 +1,3 @@
-using System.IO;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -103,7 +102,7 @@ public class MetadataReconciliationCommand : IExternalCommand
         string? outputPath = null;
         try
         {
-            outputPath = WriteIssuesNextToModel(doc, issues);
+            outputPath = IssueOutput.WriteNextToModel(doc, issues, "metadata_reconciliation");
         }
         catch (Exception ex)
         {
@@ -119,7 +118,7 @@ public class MetadataReconciliationCommand : IExternalCommand
             : "";
         TaskDialog.Show("RevitCheck - Metadata Reconciliation",
             $"{issues.Count} issue(s) found{groupingNote} ({collected.Elements.Count} element(s) checked).\n\n" +
-            $"Written to (JSON and CSV, same folder):\n{outputPath}");
+            $"Written to (JSON, CSV and BCF, same folder):\n{outputPath}");
 
         return Result.Succeeded;
     }
@@ -128,17 +127,5 @@ public class MetadataReconciliationCommand : IExternalCommand
     {
         var dialog = new OpenFileDialog { Title = title, Filter = filter, CheckFileExists = true };
         return dialog.ShowDialog() == true ? dialog.FileName : null;
-    }
-
-    /// <summary>Writes both JSON (the complete, lossless record) and CSV (for reviewing/filtering in a spreadsheet - added 2026-08-24 at the user's request). Returns the JSON path; the CSV sits alongside it with the same base name.</summary>
-    private static string WriteIssuesNextToModel(Document doc, List<Core.Issues.Issue> issues)
-    {
-        var docPath = doc.PathName;
-        var directory = string.IsNullOrEmpty(docPath) ? Path.GetTempPath() : Path.GetDirectoryName(docPath) ?? Path.GetTempPath();
-        var baseName = string.IsNullOrEmpty(docPath) ? (doc.Title ?? "model") : Path.GetFileNameWithoutExtension(docPath);
-        var jsonPath = Path.Combine(directory, $"{baseName}.metadata_reconciliation.json");
-        var csvPath = Path.Combine(directory, $"{baseName}.metadata_reconciliation.csv");
-        IssueCsvWriter.Write(issues, csvPath);
-        return IssueJsonWriter.Write(issues, jsonPath);
     }
 }

@@ -1,4 +1,3 @@
-using System.IO;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -128,8 +127,7 @@ public class CaptureModelCommand : IExternalCommand
 
     private static string? PromptForSaveLocation(Document doc)
     {
-        var docPath = doc.PathName;
-        var suggestedName = (string.IsNullOrEmpty(docPath) ? doc.Title : Path.GetFileNameWithoutExtension(docPath)) ?? "model";
+        var suggestedName = DocumentPaths.SafeBaseName(doc);
 
         var dialog = new SaveFileDialog
         {

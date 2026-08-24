@@ -32,6 +32,13 @@ choice.
 > `dotnet build` clean, all tests passing — but not yet validated on the
 > Revit machine, so not yet calibrated the way §13's feature was. Track B
 > (dimension-vs-model verification) is still entirely unbuilt.
+>
+> **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
+> Reconciliation crashed — `Document.PathName` for a Revit Cloud
+> Worksharing model isn't a filesystem path, and the code didn't guard
+> against that, only against an empty path. Fixed (`DocumentPaths.cs`);
+> full diagnosis and the .NET Framework-vs-.NET-8 `Path` behaviour gap
+> that made it not reproduce on this Mac are in §15.
 
 Two categories of check:
 
@@ -332,6 +339,15 @@ diagnosis -> fix. The reasoning that got BCF chosen over six other
 candidates is unchanged (PLANNING.md §5d): it is the only off-machine
 format that keeps the element anchor, rather than degrading a finding
 to a number someone retypes into Select by ID.
+
+**Native-side port done too (2026-08-25).** `native/src/RevitCheck.Core/Reporting/IssueBcfWriter.cs`
+is a line-for-line port of `bcf.py`, wired into all three native
+check-producing commands so every run writes JSON, CSV, *and* BCF side by
+side — see native/README.md's "Next" for the detail, including the
+hand-rolled UUIDv5 (`System.Guid` has no built-in equivalent to
+`uuid.uuid5`) verified against real Python output. Genuinely no Revit
+machine needed to build or test this half — only confirming the output
+still imports into Forma does.
 
 One thing not to re-litigate: **the Forma Issues API cannot create
 element-pinned issues** (`linkedDocuments` is not writable on creation),
