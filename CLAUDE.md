@@ -26,9 +26,12 @@ choice.
 >
 > **PLANNING.md §13 (2026-08-24):** the native add-in's first real
 > feature — metadata reconciliation — is now built, deployed, calibrated
-> against real data, and merged. §14 is the current (drafted, not yet
-> executed) plan for what's next: the dimension/sheet/view adapter, then
-> dimension-vs-model verification.
+> against real data, and merged. §14 is the current plan for what's next:
+> the dimension/sheet/view adapter, then dimension-vs-model verification.
+> **§14 update (2026-08-25):** the adapter half (Track A) is now built —
+> `dotnet build` clean, all tests passing — but not yet validated on the
+> Revit machine, so not yet calibrated the way §13's feature was. Track B
+> (dimension-vs-model verification) is still entirely unbuilt.
 
 Two categories of check:
 
@@ -281,21 +284,24 @@ no longer "next", it's built.** `revitcheck.metadata_reconciliation` +
 re-scoping or re-validating that path without a specific real-data reason
 to — see PLANNING.md §13 for what was found and fixed.
 
-**What's actually next: the dimension/sheet/view adapter (phase 6),
-then verifying drafted dimensions against the model.** A draft plan for
-both exists at `~/.claude/plans/crispy-hopping-key.md` (written
-2026-08-24, session ended before execution/approval — read it before
-re-deriving this from scratch) covering:
+**The dimension/sheet/view adapter (phase 6) is built (2026-08-25), not yet
+validated on the Revit machine.** `~/.claude/plans/crispy-hopping-key.md`
+(written 2026-08-24) covers both tracks — Track A executed 2026-08-25, read
+it before re-deriving Track B from scratch:
 
 1. **Port the adapter** (`revit_source.py`'s
    `_collect_dimensions`/`_collect_sheets_and_views` → C#) and wire up
    `DimensionProvenanceCommand`/`DimensionOverrideConsistencyCommand` —
-   mechanical, same precedent `RevitMetadataElementSource`/
-   `MetadataReconciliationCommand` already set. The checks themselves
-   (`DimensionProvenanceCheck.cs`, `DimensionOverrideConsistencyCheck.cs`)
-   are already fully ported and tested — only the thing that reads a
-   live document into their input shape is missing.
-2. **Verify drafted dimensions against the model** — the harder half.
+   **done**: `Adapters/RevitDimensionSource.cs`, both commands, both ribbon
+   buttons (order: Capture Model → Dimension Provenance → Dimension
+   Overrides → Metadata Reconciliation), `CaptureModelCommand` extended to
+   capture sheets/views/dimensions too. `dotnet build` clean, all 218 tests
+   still pass. **Not yet run against a real document** — same "needs the
+   Revit machine to prove it" caveat metadata reconciliation carried before
+   its own first real run found three real bugs (PLANNING.md §13); don't
+   treat this as calibrated until that happens here too.
+2. **Verify drafted dimensions against the model** — the harder half, still
+   entirely unbuilt.
    `revit.dimension_provenance` and `revit.dimension_override_consistency`
    currently report *triage* — a dimension is drafted/overridden — never
    *verdicts* — whether that drafted/overridden value has actually

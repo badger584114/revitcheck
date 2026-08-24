@@ -70,7 +70,7 @@ public class MetadataReconciliationCommand : IExternalCommand
         catch (Exception ex)
         {
             TaskDialog.Show("RevitCheck - Metadata Reconciliation",
-                $"Could not load mapping or CSV:\n\n{FullMessage(ex)}");
+                $"Could not load mapping or CSV:\n\n{ExceptionMessage.Full(ex)}");
             return Result.Failed;
         }
 
@@ -81,7 +81,7 @@ public class MetadataReconciliationCommand : IExternalCommand
         }
         catch (Exception ex)
         {
-            TaskDialog.Show("RevitCheck - Metadata Reconciliation", $"Could not collect elements:\n\n{FullMessage(ex)}");
+            TaskDialog.Show("RevitCheck - Metadata Reconciliation", $"Could not collect elements:\n\n{ExceptionMessage.Full(ex)}");
             return Result.Failed;
         }
 
@@ -110,7 +110,7 @@ public class MetadataReconciliationCommand : IExternalCommand
             // Not being able to write the file is not a reason to hide the
             // result from the user - report the count either way.
             TaskDialog.Show("RevitCheck - Metadata Reconciliation",
-                $"{issues.Count} issue(s) found, but the results file could not be written:\n\n{FullMessage(ex)}");
+                $"{issues.Count} issue(s) found, but the results file could not be written:\n\n{ExceptionMessage.Full(ex)}");
             return Result.Succeeded;
         }
 
@@ -122,25 +122,6 @@ public class MetadataReconciliationCommand : IExternalCommand
             $"Written to (JSON and CSV, same folder):\n{outputPath}");
 
         return Result.Succeeded;
-    }
-
-    /// <summary>
-    /// The outer message on a <see cref="TypeInitializationException"/> (or
-    /// any wrapped exception) is close to useless on its own - "the type
-    /// initializer for X threw an exception" names the symptom, not the
-    /// cause, which is nested in InnerException. Walking the chain into the
-    /// TaskDialog is the difference between a user being able to tell us
-    /// what actually broke and a guessing game over chat.
-    /// </summary>
-    private static string FullMessage(Exception ex)
-    {
-        var parts = new List<string>();
-        for (var current = ex; current is not null; current = current.InnerException)
-        {
-            parts.Add($"{current.GetType().Name}: {current.Message}");
-        }
-
-        return string.Join("\n  --> ", parts);
     }
 
     private static string? PromptForFile(string title, string filter)
