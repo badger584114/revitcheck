@@ -148,6 +148,18 @@ mismatch (the "incorrectly filled" signal) rather than a coverage note, and
 zero noise from a 1000+ row whole-of-project CSV against a 20-30 element
 model.
 
+**Element sweep is scoped to a curated view, not the whole document** -
+found necessary on the first real Revit-machine run (2026-08-24): the
+category scope alone (Floors/Generic Models/Structural
+Connections/Foundations/Framing) matched far more of the model than the
+intended trackable set, since those categories exist all over a real
+project. `ParameterMapping.ScopeViewName` names a view (both real mappings
+use `"NavisworksExport"`, the view the user's other tools already treat as
+the source of truth for which elements are tracked) whose visible elements
+`RevitMetadataElementSource.Collect` sweeps instead - `FilteredElementCollector(doc, view.Id)`. Left unset, a mapping falls back to the
+original whole-document-within-category-scope sweep; the adapter fails
+loudly (not a silent fallback) if a named view doesn't exist.
+
 ### Dimension checks, ported from Python (`checks/dimensions.py`)
 
 `revit.dimension_provenance` and `revit.dimension_override_consistency`,

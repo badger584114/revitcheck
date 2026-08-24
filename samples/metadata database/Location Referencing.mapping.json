@@ -5,11 +5,19 @@
     "numeric to exact_string - both are ID codes, not measurements (this",
     "firm's real dimension parameters are all T2D_-prefixed). The",
     "remaining exact_string fields are auto-matched by identical",
-    "parameter name, not individually confirmed."
+    "parameter name, not individually confirmed.",
+    "",
+    "scope_view_name added 2026-08-24, from a real Revit-machine run: the",
+    "category scope alone matched far more of the model than the intended",
+    "trackable set. 'NavisworksExport' is the view the user's existing",
+    "tools already use to define exactly the trackable elements - confirmed",
+    "by the user to apply here too, same as Asset Classification, since",
+    "both track the same physical assets."
   ],
   "schema_version": 1,
   "key_parameter_name": "DIT_LocationHierarchyCode",
   "key_csv_column": "DIT_LocationHierarchyCode",
+  "scope_view_name": "NavisworksExport",
   "fields": {
     "locationheirarchykey": {
       "comparison": "exact_string",

@@ -26,6 +26,23 @@ public sealed class ParameterMapping
     /// <summary>The CSV column holding the same key. Defaults to KeyParameterName if unset - a CSV header and a Revit parameter name are unlikely to match byte-for-byte.</summary>
     public string? KeyCsvColumn { get; init; }
 
+    /// <summary>
+    /// The name of a Revit view whose visible elements define the sweep -
+    /// found necessary from a real Revit-machine run 2026-08-24: the
+    /// category scope alone (Floors, Generic Models, Structural
+    /// Connections/Foundations/Framing) matched far more of the model than
+    /// the intended trackable set, because those categories exist all over
+    /// a real project, not just on the tracked assets. The user's existing
+    /// tools already solve this the same way: a curated view (their example
+    /// - "NavisworksExport") with its own visibility/filter overrides
+    /// showing exactly the elements meant to be interrogated. Null means
+    /// "sweep the whole document within the category scope" - the original,
+    /// now-known-too-broad behaviour - kept as the default rather than
+    /// removed, since not every future client/project will necessarily
+    /// have an equivalent curated view.
+    /// </summary>
+    public string? ScopeViewName { get; init; }
+
     public Dictionary<string, FieldMapping> Fields { get; init; } = new();
 
     [JsonIgnore]

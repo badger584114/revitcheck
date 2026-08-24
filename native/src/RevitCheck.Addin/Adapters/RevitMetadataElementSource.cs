@@ -55,16 +55,42 @@ public static class RevitMetadataElementSource
         BuiltInCategory.OST_StructuralFraming,
     };
 
-    public static MetadataCollectionResult Collect(Document doc, IEnumerable<BuiltInCategory>? categories = null)
+    /// <summary>
+    /// Sweeps <paramref name="doc"/> for the tracked metadata elements.
+    /// </summary>
+    /// <param name="viewName">
+    /// When set, scopes the sweep to elements visible in the named view
+    /// (<see cref="FilteredElementCollector(Document, ElementId)"/>) instead
+    /// of the whole document - see <see cref="ParameterMapping.ScopeViewName"/>
+    /// for why this exists: category alone matched far more of a real
+    /// project than the intended trackable set. Throws
+    /// <see cref="InvalidOperationException"/> if no view with this exact
+    /// name exists - deliberately not a silent fall-back to a whole-document
+    /// sweep, which is exactly the too-broad behaviour this parameter exists
+    /// to avoid.
+    /// </param>
+    public static MetadataCollectionResult Collect(Document doc, string? viewName = null, IEnumerable<BuiltInCategory>? categories = null)
     {
         var scope = categories?.ToList() ?? DefaultCategories.ToList();
         var elements = new List<ElementMetadata>();
         var errors = new List<string>();
         var seen = new HashSet<long>();
 
-        var collector = new FilteredElementCollector(doc)
-            .WhereElementIsNotElementType()
-            .WherePasses(new ElementMulticategoryFilter(scope));
+        var categoryFilter = new ElementMulticategoryFilter(scope);
+        FilteredElementCollector collector;
+        if (string.IsNullOrWhiteSpace(viewName))
+        {
+            collector = new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType()
+                .WherePasses(categoryFilter);
+        }
+        else
+        {
+            var view = ResolveView(doc, viewName!);
+            collector = new FilteredElementCollector(doc, view.Id)
+                .WhereElementIsNotElementType()
+                .WherePasses(categoryFilter);
+        }
 
         var queue = new Queue<(Element Element, long? HostId)>();
         foreach (var element in collector)
@@ -280,6 +306,23 @@ public static class RevitMetadataElementSource
     }
 
     private static long ElementIdValue(ElementId id) => id.Value;
+
+    private static View ResolveView(Document doc, string viewName)
+    {
+        var view = new FilteredElementCollector(doc)
+            .OfClass(typeof(View))
+            .Cast<View>()
+            .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, viewName, StringComparison.Ordinal));
+
+        if (view is null)
+        {
+            throw new InvalidOperationException(
+                $"No view named '{viewName}' was found in this document (ParameterMapping.ScopeViewName). " +
+                "Check the exact view name, and that it isn't a view template (which has no elements of its own).");
+        }
+
+        return view;
+    }
 }
 
 /// <summary>

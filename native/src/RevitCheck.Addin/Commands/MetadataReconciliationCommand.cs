@@ -74,7 +74,17 @@ public class MetadataReconciliationCommand : IExternalCommand
             return Result.Failed;
         }
 
-        var collected = RevitMetadataElementSource.Collect(doc);
+        MetadataCollectionResult collected;
+        try
+        {
+            collected = RevitMetadataElementSource.Collect(doc, mapping.ScopeViewName);
+        }
+        catch (Exception ex)
+        {
+            TaskDialog.Show("RevitCheck - Metadata Reconciliation", $"Could not collect elements:\n\n{FullMessage(ex)}");
+            return Result.Failed;
+        }
+
         var model = new RevitModel
         {
             DocTitle = doc.Title,

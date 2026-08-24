@@ -13,11 +13,20 @@
     "non-required cells read literally 'N/A' rather than being empty, and",
     "the model should never leave one of these truly unset - even when the",
     "reference CSV cell is itself blank (a data gap there), a blank model",
-    "value is still its own finding."
+    "value is still its own finding.",
+    "",
+    "scope_view_name added 2026-08-24, from a real Revit-machine run: the",
+    "category scope alone (Floors/Generic Models/Structural",
+    "Connections/Foundations/Framing) matched far more of the model than",
+    "the intended trackable set - those categories exist all over a real",
+    "project. 'NavisworksExport' is the view the user's existing tools",
+    "already use to define exactly the trackable elements, confirmed by",
+    "the user for this table."
   ],
   "schema_version": 1,
   "key_parameter_name": "ATM_Asset_Identifier",
   "key_csv_column": "Asset Identifier (Label)",
+  "scope_view_name": "NavisworksExport",
   "fields": {
     "managed": {
       "comparison": "exact_string",
