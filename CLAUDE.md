@@ -23,6 +23,12 @@ choice.
 > for the full reasoning, including the decision on what happens to
 > the Python rule engine (kept — see below) and what the add-in needs
 > to build next (dimension-vs-model verification, not more triage).
+>
+> **PLANNING.md §13 (2026-08-24):** the native add-in's first real
+> feature — metadata reconciliation — is now built, deployed, calibrated
+> against real data, and merged. §14 is the current (drafted, not yet
+> executed) plan for what's next: the dimension/sheet/view adapter, then
+> dimension-vs-model verification.
 
 Two categories of check:
 
@@ -188,6 +194,7 @@ this file is the one still worth keeping.
 | `revit.dimension_provenance` | For each dimension, do its references resolve to model geometry, a datum, or view-specific linework? Four-way classification, rolled up per view. |
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. Always reports how much was checkable. |
 | `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
+| `revitcheck.metadata_reconciliation` | Native add-in only (no Python equivalent) — joins captured model elements to an external reference CSV via a per-run-chosen mapping file, flags missing/mismatched fields. Built, wired to a real ribbon button, deployed, and calibrated against two real reference tables on a real model — see PLANNING.md §13. |
 
 **Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
 split at 100 issues per file for Forma's import cap, exposed as
@@ -267,29 +274,49 @@ Notes worth not rediscovering:
 
 ## Next
 
-**Verify drafted dimensions against the model** — the harder half, and
-now explicitly the native add-in's work, not pyRevit's (confirmed by
-the user 2026-08-22, PLANNING.md §12). `revit.dimension_provenance` and
-`revit.dimension_override_consistency` currently report *triage* — a
-dimension is drafted/overridden — never *verdicts* — whether that
-drafted/overridden value has actually drifted from the model. That
-distinction matters more than it first looks: bridge curves and the
-need for "clean" issued drawings mean some dimensions will always be
-drafted or overridden, permanently, not a defect any amount of
-filtering removes — a drafted dimension is only a real problem if it
-disagrees with the model. This is the same problem the parked PDF/DWG
-pipeline's `geometry.ifc_setout_consistency` solved for piles
-(ARCHIVE-pdf-dwg.md; real IFC comparison, 0 false positives on 24 real
-piles matched within 10mm) — it just didn't survive the pivot into
-Revit, because "the model is already the source of truth" never got
-followed through to actually comparing against it. One simplification
-versus that old approach: no IFC intermediary is needed anymore — the
-model is one API call away, not a separate export to reconcile
-coordinate systems against. `revit.dimension_provenance`'s
-`drafted_views()` is the existing scope this consumes. It needs new
-adapter geometry (witness points in model space, the view's own cut
-plane and direction, nearby model elements), so it needs a Revit
-machine to debug and a real capture to calibrate regardless of host.
+**The native add-in's metadata-reconciliation path is done, deployed,
+and calibrated against real data (2026-08-24, PLANNING.md §13) — this is
+no longer "next", it's built.** `revitcheck.metadata_reconciliation` +
+`Capture Model` are real ribbon buttons, merged to main. Don't propose
+re-scoping or re-validating that path without a specific real-data reason
+to — see PLANNING.md §13 for what was found and fixed.
+
+**What's actually next: the dimension/sheet/view adapter (phase 6),
+then verifying drafted dimensions against the model.** A draft plan for
+both exists at `~/.claude/plans/crispy-hopping-key.md` (written
+2026-08-24, session ended before execution/approval — read it before
+re-deriving this from scratch) covering:
+
+1. **Port the adapter** (`revit_source.py`'s
+   `_collect_dimensions`/`_collect_sheets_and_views` → C#) and wire up
+   `DimensionProvenanceCommand`/`DimensionOverrideConsistencyCommand` —
+   mechanical, same precedent `RevitMetadataElementSource`/
+   `MetadataReconciliationCommand` already set. The checks themselves
+   (`DimensionProvenanceCheck.cs`, `DimensionOverrideConsistencyCheck.cs`)
+   are already fully ported and tested — only the thing that reads a
+   live document into their input shape is missing.
+2. **Verify drafted dimensions against the model** — the harder half.
+   `revit.dimension_provenance` and `revit.dimension_override_consistency`
+   currently report *triage* — a dimension is drafted/overridden — never
+   *verdicts* — whether that drafted/overridden value has actually
+   drifted from the model. Bridge curves and the need for "clean" issued
+   drawings mean some dimensions will always be drafted or overridden,
+   permanently, not a defect any amount of filtering removes — a
+   drafted dimension is only a real problem if it disagrees with the
+   model. Same problem the parked PDF/DWG pipeline's
+   `geometry.ifc_setout_consistency` solved for piles (ARCHIVE-pdf-dwg.md;
+   real IFC comparison, 0 false positives on 24 real piles matched
+   within 10mm) — didn't survive the pivot into Revit, because "the
+   model is already the source of truth" never got followed through to
+   actually comparing against it. One simplification versus that old
+   approach: no IFC intermediary needed — the model is one API call
+   away. `revit.dimension_provenance`'s `drafted_views()` is the
+   existing scope this consumes. **Zero existing code in `native/`
+   touches Revit's geometry API** (`Curve`/`XYZ`/`Options`/
+   `GeometryElement`/`Solid`/`BoundingBoxXYZ` — confirmed via grep,
+   2026-08-24) — this is genuinely new, so the plan's first step is a
+   throwaway diagnostic (mirroring `InspectElements.pushbutton`'s role)
+   against real drafted views, not writing comparison logic blind.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a

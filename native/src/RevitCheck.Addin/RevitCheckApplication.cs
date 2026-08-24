@@ -37,21 +37,11 @@ public class RevitCheckApplication : IExternalApplication
 
         var assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-        var metadataButton = new PushButtonData(
-            "RevitCheck.MetadataReconciliation",
-            "Metadata\nReconciliation",
-            assemblyPath,
-            typeof(MetadataReconciliationCommand).FullName)
-        {
-            ToolTip = "Join captured model elements to an external reference CSV via a mapping " +
-                      "file, and flag missing or mismatched fields. Mapping file and CSV are both " +
-                      "chosen per run.",
-        };
-
-        SetIcons(metadataButton, "MetadataReconciliation");
-
-        panel.AddItem(metadataButton);
-
+        // Left-to-right order matches the order someone actually runs
+        // things in, confirmed with the user 2026-08-24: capture first
+        // (the dev-loop snapshot), then the dimension checks (once built -
+        // native/README.md's "Next"), then metadata/data reconciliation
+        // last.
         var captureButton = new PushButtonData(
             "RevitCheck.CaptureModel",
             "Capture\nModel",
@@ -67,6 +57,25 @@ public class RevitCheckApplication : IExternalApplication
         SetIcons(captureButton, "CaptureModel");
 
         panel.AddItem(captureButton);
+
+        // TODO(dimension adapter): DimensionProvenance / DimensionOverrideConsistency
+        // buttons go here, between Capture and Metadata Reconciliation -
+        // native/README.md's "Next".
+
+        var metadataButton = new PushButtonData(
+            "RevitCheck.MetadataReconciliation",
+            "Metadata\nReconciliation",
+            assemblyPath,
+            typeof(MetadataReconciliationCommand).FullName)
+        {
+            ToolTip = "Join captured model elements to an external reference CSV via a mapping " +
+                      "file, and flag missing or mismatched fields. Mapping file and CSV are both " +
+                      "chosen per run.",
+        };
+
+        SetIcons(metadataButton, "MetadataReconciliation");
+
+        panel.AddItem(metadataButton);
 
         return Result.Succeeded;
     }
