@@ -44,10 +44,14 @@ native/
         CaptureCoverageCheck.cs               # revitcheck.capture_coverage
       Polyfills/                   # IsExternalInit / required-member shims
                                     #   netstandard2.0 needs for modern C#
-      Reporting/                   # IssueJsonWriter - issues -> JSON, the one
-                                    #   output shape a command needs today
-                                    #   (not a full report.py port - see its
-                                    #   docstring)
+      Reporting/                   # IssueJsonWriter (issues -> JSON, the
+                                    #   complete/lossless record) +
+                                    #   IssueCsvWriter (same data,
+                                    #   spreadsheet-friendly - flattens the
+                                    #   SuggestedFix keys this project's
+                                    #   rules actually use) + IssueGrouping
+                                    #   (not a full report.py port - see
+                                    #   IssueJsonWriter's docstring)
     RevitCheck.Addin/               # net48 (Revit 2024) - the ONLY project that
                                     #   references the Revit API. Compiles cleanly
                                     #   on this Mac (Nice3point.Revit.Api.* NuGet
@@ -222,9 +226,11 @@ bugs" below for what that surfaced and fixed.
   picker is what actually works across all of them, rather than a path
   baked into config that quietly stops matching one project. Neither file
   is written back into this repo - both are client asset data (the old
-  open question #4, below). Results are written as JSON
-  (`Core/Reporting/IssueJsonWriter.cs`) next to the model file, plus a
-  `TaskDialog` summary.
+  open question #4, below). Results are grouped (`IssueGrouping`, below)
+  then written as both JSON (`IssueJsonWriter`, the complete record) and
+  CSV (`IssueCsvWriter`, for reviewing in a spreadsheet - added 2026-08-24
+  at the user's request) next to the model file, plus a `TaskDialog`
+  summary.
 - **`Commands/CaptureModelCommand.cs`** - writes the metadata sweep to a
   `CaptureSerializer` JSON file (a point-in-time snapshot, not a live
   sync). This add-in's counterpart to the Python side's Capture Model
