@@ -1,4 +1,3 @@
-using System.IO;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -65,7 +64,7 @@ public class DimensionProvenanceCommand : IExternalCommand
         string? outputPath = null;
         try
         {
-            outputPath = WriteIssuesNextToModel(doc, issues);
+            outputPath = IssueOutput.WriteNextToModel(doc, issues, "dimension_provenance");
         }
         catch (Exception ex)
         {
@@ -80,20 +79,8 @@ public class DimensionProvenanceCommand : IExternalCommand
             $"{issues.Count} issue(s) found ({collected.Dimensions.Count} dimension(s) across " +
             $"{collected.Views.Count} view(s) checked)" +
             (collected.ExtractionErrors.Count > 0 ? $", {collected.ExtractionErrors.Count} extraction error(s)" : "") +
-            $".\n\nWritten to (JSON and CSV, same folder):\n{outputPath}");
+            $".\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
 
         return Result.Succeeded;
-    }
-
-    /// <summary>See MetadataReconciliationCommand.WriteIssuesNextToModel - same shape, different rule id in the filename.</summary>
-    private static string WriteIssuesNextToModel(Document doc, List<Core.Issues.Issue> issues)
-    {
-        var docPath = doc.PathName;
-        var directory = string.IsNullOrEmpty(docPath) ? Path.GetTempPath() : Path.GetDirectoryName(docPath) ?? Path.GetTempPath();
-        var baseName = string.IsNullOrEmpty(docPath) ? (doc.Title ?? "model") : Path.GetFileNameWithoutExtension(docPath);
-        var jsonPath = Path.Combine(directory, $"{baseName}.dimension_provenance.json");
-        var csvPath = Path.Combine(directory, $"{baseName}.dimension_provenance.csv");
-        IssueCsvWriter.Write(issues, csvPath);
-        return IssueJsonWriter.Write(issues, jsonPath);
     }
 }

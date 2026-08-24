@@ -51,7 +51,11 @@ native/
                                     #   SuggestedFix keys this project's
                                     #   rules actually use) + IssueGrouping
                                     #   (not a full report.py port - see
-                                    #   IssueJsonWriter's docstring)
+                                    #   IssueJsonWriter's docstring) +
+                                    #   IssueBcfWriter (issues -> BCF 2.1,
+                                    #   a line-for-line port of bcf.py -
+                                    #   fully off-Revit, testable and
+                                    #   tested without the Revit machine)
     RevitCheck.Addin/               # net48 (Revit 2024) - the ONLY project that
                                     #   references the Revit API. Compiles cleanly
                                     #   on this Mac (Nice3point.Revit.Api.* NuGet
@@ -89,6 +93,15 @@ native/
                                            #   InnerException chain into a
                                            #   readable TaskDialog message,
                                            #   used by all four commands
+        IssueOutput.cs                     # shared WriteNextToModel(doc,
+                                            #   issues, kind) helper - JSON +
+                                            #   CSV + BCF, same folder as
+                                            #   the model, used by all three
+                                            #   check-producing commands
+        DocumentPaths.cs                   # shared Resolve/SafeBaseName(doc)
+                                            #   helper - safe local path even
+                                            #   against a cloud-worksharing
+                                            #   model's URN-shaped PathName
       RevitCheckApplication.cs      # IExternalApplication.OnStartup - creates
                                      #   the RevitCheck ribbon tab/panel
       RevitCheck.addin              # the manifest Revit actually loads
@@ -327,6 +340,37 @@ real run is not automatically a bug in the check** - verify a fix against
 the real data before shipping it, not just against how plausible it
 sounds.
 
+### A second real run found a fourth bug: cloud-worksharing paths (2026-08-25)
+
+Running Metadata Reconciliation against a real **cloud-shared** model
+(Revit Cloud Worksharing - BIM 360 / Autodesk Construction Cloud /
+Autodesk Docs) crashed writing the output file: `NotSupportedException:
+The given path's format is not supported.` Cause: `Document.PathName` for
+a cloud model isn't a filesystem path at all - it's a URN-shaped string
+(`"BIM 360://ProjectName/Model.rvt"`, or similarly for Autodesk Docs). The
+existing code only guarded against `PathName` being *empty* (a doc never
+saved locally); a cloud model's `PathName` is non-empty and genuinely
+unparseable. .NET Framework's `Path.GetDirectoryName`/
+`GetFileNameWithoutExtension` throw on the `"://"` - any colon outside the
+drive-letter position is invalid to the classic Windows `Path`
+implementation the add-in actually runs under (net48 inside Revit); this
+did **not** reproduce on this Mac's .NET 8, whose cross-platform `Path`
+implementation is far more lenient about the same string - a real
+platform-behaviour gap worth knowing before trusting a `Path.*` sanity
+check run anywhere but the actual net48/Windows target.
+
+Fixed via `Adapters/../Commands/DocumentPaths.cs`: a shared
+`Resolve(doc)`/`SafeBaseName(doc)` pair that tries the local-path parse in
+a try/catch and falls back to the temp folder plus a sanitized
+`Document.Title` on any failure - the same fallback already used for a
+never-saved-locally doc, now covering the cloud case too. Both
+`IssueOutput.WriteNextToModel` and `CaptureModelCommand`'s save-dialog
+default now go through it instead of calling `Path.*` on `doc.PathName`
+directly. No Revit machine needed to write or reason about the fix - the
+underlying `Path` behaviour is well-established .NET Framework behaviour,
+not something needing a live document to confirm - but confirming this
+one actually clears the real cloud-model run still does.
+
 ### Output/reporting: grouping - built and validated against real data
 
 `Core/Reporting/IssueGrouping.cs` collapses many mismatch issues that
@@ -366,15 +410,32 @@ the dimension-adapter plan's own "Validation plan" step 5, not yet run).
 Treat this the way `RevitMetadataElementSource` was treated before its
 first real run: plausible from review and a clean build, not yet proven.
 
-Also still open, per the user 2026-08-24: wiring metadata reconciliation's
-output into the same BCF export pipeline the dimension checks already
-proved out, so a finding is clickable in Forma instead of a JSON file
-someone reads by hand.
+**BCF export is now wired into all three check-producing commands
+(2026-08-25)** — `Core/Reporting/IssueBcfWriter.cs` is a line-for-line
+port of the Python engine's `bcf.py` (same deterministic-Topic-Guid
+scheme via a hand-rolled RFC 4122 UUIDv5, since `System.Guid` has no
+built-in equivalent to `uuid.uuid5` — verified byte-for-byte against real
+`python3 -c "import uuid; ..."` output, not just against the RFC).
+Genuinely no Revit needed to build *or* verify this one: 25 tests ported
+from `test_bcf.py` (found and didn't reproduce a latent indexing bug in
+two of that suite's own tests along the way — see
+`IssueBcfWriterTests`'s remarks) plus 3 UUIDv5 parity fixtures, all
+passing off-Revit. `Commands/IssueOutput.cs` (factored out of the three
+commands' near-identical JSON+CSV writers, the same "shared helper once a
+third caller needs it" call `ExceptionMessage` already made) now writes
+JSON, CSV, and BCF side by side for every run of Metadata Reconciliation,
+Dimension Provenance, and Dimension Overrides — `dotnet build` clean,
+236 Core tests passing. **Still needs the Revit machine to confirm the
+BCF files it produces actually import into Forma**, same as everything
+else added since the metadata-reconciliation round trip was proven
+(PLANNING.md §12); the wiring itself needed no live document to write or
+test.
 
-After both of those: Track B, verifying a drafted dimension against real
-model geometry (PLANNING.md §14, CLAUDE.md's "Next") — genuinely new
-territory needing a throwaway diagnostic on real drafted views before any
-comparison logic gets written.
+Next: Track B, verifying a drafted dimension against real model geometry
+(PLANNING.md §14, CLAUDE.md's "Next") — genuinely new territory needing a
+throwaway diagnostic on real drafted views before any comparison logic
+gets written. This is the one piece of "what's next" that has no further
+Mac-only work left to pull forward; it waits on the Revit machine.
 
 ### Former open questions - now answered from real data
 
