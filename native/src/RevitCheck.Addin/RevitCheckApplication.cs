@@ -9,10 +9,11 @@ namespace RevitCheck.Addin;
 /// <summary>
 /// Ribbon wiring - the "no IExternalCommands, no ribbon, no .addin manifest"
 /// gap native/README.md named as the real precondition for archiving
-/// pyRevit. Deliberately one button today (Metadata Reconciliation): the
-/// dimension-checks adapter is a separate, later phase (native/README.md's
-/// "What's not done"), and this file's job is proving the wiring itself on
-/// the simpler case first, not shipping every check at once.
+/// pyRevit. Deliberately narrow: Metadata Reconciliation plus its Capture
+/// Model dev-loop companion. The dimension-checks adapter is a separate,
+/// later phase (native/README.md's "What's not done"), and this file's job
+/// is proving the wiring itself on the simpler case first, not shipping
+/// every check at once.
 /// </summary>
 public class RevitCheckApplication : IExternalApplication
 {
@@ -50,6 +51,22 @@ public class RevitCheckApplication : IExternalApplication
         SetIcons(metadataButton, "MetadataReconciliation");
 
         panel.AddItem(metadataButton);
+
+        var captureButton = new PushButtonData(
+            "RevitCheck.CaptureModel",
+            "Capture\nModel",
+            assemblyPath,
+            typeof(CaptureModelCommand).FullName)
+        {
+            ToolTip = "Write the metadata sweep to a JSON capture file - a point-in-time snapshot, " +
+                      "not a live sync - so checks can be developed and tested off this machine. " +
+                      "Prompts for a mapping file only to read its scope view; its fields and any " +
+                      "CSV are not used here.",
+        };
+
+        SetIcons(captureButton, "CaptureModel");
+
+        panel.AddItem(captureButton);
 
         return Result.Succeeded;
     }

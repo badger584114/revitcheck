@@ -62,6 +62,12 @@ native/
                                            #   mapping file + CSV (per run -
                                            #   see its docstring for why),
                                            #   runs the check, writes results
+        CaptureModelCommand.cs            # IExternalCommand: writes the
+                                           #   metadata sweep to a
+                                           #   CaptureSerializer JSON file -
+                                           #   this side's dev-loop capture,
+                                           #   not a live sync (see its
+                                           #   docstring)
       RevitCheckApplication.cs      # IExternalApplication.OnStartup - creates
                                      #   the RevitCheck ribbon tab/panel
       RevitCheck.addin              # the manifest Revit actually loads
@@ -198,9 +204,11 @@ Against real `Autodesk.Revit.DB`/`.UI` types, with no Revit installed, via
 the `Nice3point.Revit.Api.*` NuGet packages — confirmed with a throwaway
 sanity file during the build, not just assumed.
 
-## Wired up (2026-08-24) - compiles, not yet run inside Revit
+## Wired up and proven on the Revit machine (2026-08-24)
 
-The metadata-reconciliation path is now fully wired end to end:
+The metadata-reconciliation path is fully wired end to end, deployed, and
+has run for real against the full model - see "First real runs found real
+bugs" below for what that surfaced and fixed.
 
 - **`Adapters/RevitMetadataElementSource.cs`** - the metadata adapter.
   Category scope, key-parameter identity, and nested-sub-component shape
@@ -217,8 +225,16 @@ The metadata-reconciliation path is now fully wired end to end:
   open question #4, below). Results are written as JSON
   (`Core/Reporting/IssueJsonWriter.cs`) next to the model file, plus a
   `TaskDialog` summary.
+- **`Commands/CaptureModelCommand.cs`** - writes the metadata sweep to a
+  `CaptureSerializer` JSON file (a point-in-time snapshot, not a live
+  sync). This add-in's counterpart to the Python side's Capture Model
+  button and its whole dev-loop role: build output/reporting logic (e.g.
+  grouping by family/type/field/values) against real element diversity off
+  the Revit machine, without a round trip for every change. Prompts for a
+  mapping file the same way `MetadataReconciliationCommand` does, but only
+  to read its `ScopeViewName` - fields and any CSV aren't used here.
 - **`RevitCheckApplication.cs`** - `IExternalApplication.OnStartup`,
-  creates the "RevitCheck" ribbon tab/panel with one button (the icons
+  creates the "RevitCheck" ribbon tab/panel with both buttons (the icons
   under `Resources/Icons/`).
 - **`RevitCheck.addin`** - the manifest. Deploys to the shared
   `Addins\2024\` folder itself, while the DLL and its dependencies go one
@@ -238,7 +254,7 @@ separate, later phase - proving the wiring itself on the simpler case
 first, rather than shipping every check's plumbing at once and debugging
 all of it on the Revit machine simultaneously.
 
-### Next: prove it on the Revit machine
+### Deploying to a Revit machine
 
 Revit only scans `*.addin` files directly in
 `%APPDATA%\Autodesk\Revit\Addins\2024\` (not subfolders), and that folder
@@ -256,20 +272,56 @@ confirmed with the user 2026-08-24:
    `<Assembly>` path (`.\RevitCheck\RevitCheck.Addin.dll`) already points
    there.
 3. Launch Revit, confirm the "RevitCheck" tab/"Checks" panel appears with
-   the Metadata Reconciliation button showing its icon.
-4. Run it against the same real project the Asset Classification /
-   Location Referencing mappings came from; sanity-check the output
-   against what's actually in the model and the CSV. The reference-CSV
-   picker opening to wherever the user already keeps these files (their
-   other tools' existing workflow, confirmed 2026-08-24) is expected -
-   nothing to configure for that, it's just `OpenFileDialog`'s normal
-   last-used-folder behaviour.
-5. Only then: the dimension/sheet/view adapter, its two
-   `IExternalCommand`s, and their ribbon buttons - a genuine line-for-line
-   port of `revit_source.py`'s `_collect_dimensions`/
-   `_collect_sheets_and_views`, including the documented `OwnerViewId`
-   per-view-collection fix, but still needing the Revit machine to build
-   and debug against real element/API behaviour.
+   both buttons showing their icons.
+
+### First real runs found real bugs, all since fixed
+
+Running Metadata Reconciliation against the full real model (both real
+mappings) found three genuine bugs, not just theoretical risk - real data
+finding real problems is exactly why this deploy step exists rather than
+trusting the compile:
+
+1. **Category-only scoping swept far more than intended** (1644+ elements
+   vs. the curated view's 861) - fixed by `ParameterMapping.ScopeViewName`,
+   scoping to a curated view instead of the whole document.
+2. **`ComparisonType.ContainsCsvValue`** - a model value that's
+   legitimately a semicolon-separated list (an element belonging to more
+   than one group) was being compared for exact equality against a CSV
+   that only ever records one entry.
+3. **`ReconciliationConfig.BlankKeySentinels`** - a key parameter literally
+   holding `"N/A"` was being looked up as a real key instead of treated
+   like blank.
+
+After those fixes, **both real mappings' issue counts are understood and
+real** (Location Referencing 296, Asset Classification 151) - not tool
+bugs. One investigation into Asset Classification's cluster looked like it
+needed a fourth fix (`ParameterMapping.DisambiguationField`, for CSVs that
+carry multiple rows per key) before checking the real CSV directly showed
+that wasn't the actual cause - see that field's own docstring and the
+mapping file's `_note` for the real one (a genuine wrong-identifier error
+in the model). Worth remembering generally: **a large mismatch count on a
+real run is not automatically a bug in the check** - verify a fix against
+the real data before shipping it, not just against how plausible it
+sounds.
+
+### Next
+
+Per the user 2026-08-24: finish this calibration cycle (done, as above),
+then output/reporting work - group issues by family + type + field +
+(model value, csv value) pair before they're ever shown to a person (the
+same "a wholly-drafted view is one finding, not twenty" precedent
+`revit.dimension_provenance` already established), likely followed by
+wiring these into the same BCF export pipeline the dimension checks
+already proved out. `Commands/CaptureModelCommand.cs` exists to support
+that work - a real capture of the metadata sweep to build and test
+grouping logic against off the Revit machine.
+
+Only after that: the dimension/sheet/view adapter, its two
+`IExternalCommand`s, and their ribbon buttons - a genuine line-for-line
+port of `revit_source.py`'s `_collect_dimensions`/
+`_collect_sheets_and_views`, including the documented `OwnerViewId`
+per-view-collection fix, but still needing the Revit machine to build and
+debug against real element/API behaviour.
 
 ### Former open questions - now answered from real data
 
