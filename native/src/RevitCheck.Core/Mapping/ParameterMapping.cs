@@ -43,6 +43,23 @@ public sealed class ParameterMapping
     /// </summary>
     public string? ScopeViewName { get; init; }
 
+    /// <summary>
+    /// Names an entry in <see cref="Fields"/> whose value picks which CSV
+    /// row is the right one when a key matches more than one row - for a
+    /// reference table where the same identifier genuinely appears on
+    /// several rows (e.g. one per discipline package). Built 2026-08-24
+    /// while investigating a real mismatch cluster that looked like exactly
+    /// this shape - turned out not to be (Asset Classification has zero
+    /// genuine duplicate keys; the real cause was a wrong identifier value
+    /// in the model, see that mapping file's own "_note"). Kept as
+    /// available machinery rather than removed, since the scenario it
+    /// handles is a real, common one even though it wasn't this bug - but
+    /// not yet confirmed necessary on any mapping this project actually
+    /// has. Null means "use whichever row matches first" (the original
+    /// behaviour, and every mapping's current setting).
+    /// </summary>
+    public string? DisambiguationField { get; init; }
+
     public Dictionary<string, FieldMapping> Fields { get; init; } = new();
 
     [JsonIgnore]
