@@ -66,15 +66,19 @@ choice.
 > bug** — the candidate point was 527.5m from the face it needed to
 > project onto (this dimension's text was evidently dragged far from
 > its own witness lines, real drafting practice), so `Face.Project`
-> correctly found nothing and fell back to the old bbox-midpoint. The
-> projection approach itself still hasn't had a real test — every
-> `CUT_EDGE`-bearing dimension in this one view has the same problem.
-> **Next step is a different real view (a pile/abutment/foundation
-> setout view, matching the plan's original scope), not another code
-> patch** — no code change needed, the current build is ready. Don't
+> correctly found nothing and fell back to the old bbox-midpoint. **Run
+> 6:** re-run against a real pile-layout plan view instead — confirmed
+> `View.SketchPlane` *is* populated for an `EngineeringPlan` view
+> (unlike Section, always `null`), a useful second-view-type answer to
+> question 2 — but the one dimension selected turned out to be a road/
+> lane-width label (`"EVERARD AVENUE EASTBOUND TRAFFIC LANE VARIES"`,
+> both references `AnnotationSymbol`s), not a real pile measurement, so
+> `Face.Project` never engaged. **The projection approach still hasn't
+> had a real test.** Next: re-run the same view with *nothing*
+> selected, sweeping every dimension instead of hand-picking one — no
+> code change needed; see PLANNING.md §14 for the full detail. Don't
 > design the comparison IR/algorithm before a real test confirms or
-> refutes the projection approach; see PLANNING.md §14 for the full
-> detail.
+> refutes the projection approach.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -415,14 +419,17 @@ it before re-deriving Track B from scratch:
    measurable effect, and not a code bug** — the candidate point was
    527.5m from the face it needed to project onto (this dimension's
    text had evidently been dragged far from its own witness lines,
-   real drafting practice, not something to special-case). The
-   projection approach itself still hasn't had a real test — every
-   `CUT_EDGE`-bearing dimension in this one view has the same problem.
-   **Next step: a different real view** (pile/abutment/foundation
-   setout, matching the plan's original scope — this median/planter
-   section was picked for expedience on the first run, not for
-   representativeness) — no code change needed, current build is
-   ready. See PLANNING.md §14 for the full detail. Nothing about the
+   real drafting practice, not something to special-case). **Run 6:**
+   re-run against a real pile-layout plan view (`DRG-2873041 - PILE
+   LAYOUT`, `EngineeringPlan`) instead of the same section — confirmed
+   `View.SketchPlane` *is* populated for this view type (unlike
+   Section, always `null`), but the one hand-selected dimension turned
+   out to be a road/lane-width label (both references
+   `AnnotationSymbol`s, no `CUT_EDGE`/model reference at all), so the
+   projection fix still never engaged. **The projection approach still
+   hasn't had a real test.** Next: same view, nothing selected, sweep
+   every dimension instead of hand-picking one — no code change needed.
+   See PLANNING.md §14 for the full detail. Nothing about the
    comparison logic's design should be decided before a real test
    confirms or refutes the projection approach.
 
