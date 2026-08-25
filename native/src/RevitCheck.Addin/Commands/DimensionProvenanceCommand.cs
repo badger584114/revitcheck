@@ -61,25 +61,33 @@ public class DimensionProvenanceCommand : IExternalCommand
         var config = new RuleConfig();
         var issues = DimensionProvenanceCheck.Run(model, config);
 
-        string? outputPath = null;
+        var summary = $"{issues.Count} issue(s) found ({collected.Dimensions.Count} dimension(s) across " +
+            $"{collected.Views.Count} view(s) checked)" +
+            (collected.ExtractionErrors.Count > 0 ? $", {collected.ExtractionErrors.Count} extraction error(s)" : "") +
+            ".";
+
+        string? outputPath;
         try
         {
-            outputPath = IssueOutput.WriteNextToModel(doc, issues, "dimension_provenance");
+            outputPath = IssueOutput.WriteNextToModel(doc, issues, "dimension_provenance", "RevitCheck - Dimension Provenance");
         }
         catch (Exception ex)
         {
             // Not being able to write the file is not a reason to hide the
             // result from the user - report the count either way.
             TaskDialog.Show("RevitCheck - Dimension Provenance",
-                $"{issues.Count} issue(s) found, but the results file could not be written:\n\n{ExceptionMessage.Full(ex)}");
+                $"{summary}\n\nBut the results file could not be written:\n\n{ExceptionMessage.Full(ex)}");
+            return Result.Succeeded;
+        }
+
+        if (outputPath is null)
+        {
+            TaskDialog.Show("RevitCheck - Dimension Provenance", $"{summary}\n\nSave cancelled - nothing written.");
             return Result.Succeeded;
         }
 
         TaskDialog.Show("RevitCheck - Dimension Provenance",
-            $"{issues.Count} issue(s) found ({collected.Dimensions.Count} dimension(s) across " +
-            $"{collected.Views.Count} view(s) checked)" +
-            (collected.ExtractionErrors.Count > 0 ? $", {collected.ExtractionErrors.Count} extraction error(s)" : "") +
-            $".\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
+            $"{summary}\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
 
         return Result.Succeeded;
     }

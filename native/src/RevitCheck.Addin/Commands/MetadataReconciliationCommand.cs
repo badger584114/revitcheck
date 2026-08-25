@@ -99,26 +99,33 @@ public class MetadataReconciliationCommand : IExternalCommand
         // per element (see IssueGrouping's own docstring).
         var issues = IssueGrouping.GroupMetadataMismatches(model, rawIssues);
 
-        string? outputPath = null;
+        var groupingNote = rawIssues.Count != issues.Count
+            ? $" ({rawIssues.Count} before grouping repeated findings together)"
+            : "";
+        var summary = $"{issues.Count} issue(s) found{groupingNote} ({collected.Elements.Count} element(s) checked).";
+
+        string? outputPath;
         try
         {
-            outputPath = IssueOutput.WriteNextToModel(doc, issues, "metadata_reconciliation");
+            outputPath = IssueOutput.WriteNextToModel(doc, issues, "metadata_reconciliation", "RevitCheck - Metadata Reconciliation");
         }
         catch (Exception ex)
         {
             // Not being able to write the file is not a reason to hide the
             // result from the user - report the count either way.
             TaskDialog.Show("RevitCheck - Metadata Reconciliation",
-                $"{issues.Count} issue(s) found, but the results file could not be written:\n\n{ExceptionMessage.Full(ex)}");
+                $"{summary}\n\nBut the results file could not be written:\n\n{ExceptionMessage.Full(ex)}");
             return Result.Succeeded;
         }
 
-        var groupingNote = rawIssues.Count != issues.Count
-            ? $" ({rawIssues.Count} before grouping repeated findings together)"
-            : "";
+        if (outputPath is null)
+        {
+            TaskDialog.Show("RevitCheck - Metadata Reconciliation", $"{summary}\n\nSave cancelled - nothing written.");
+            return Result.Succeeded;
+        }
+
         TaskDialog.Show("RevitCheck - Metadata Reconciliation",
-            $"{issues.Count} issue(s) found{groupingNote} ({collected.Elements.Count} element(s) checked).\n\n" +
-            $"Written to (JSON, CSV and BCF, same folder):\n{outputPath}");
+            $"{summary}\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
 
         return Result.Succeeded;
     }

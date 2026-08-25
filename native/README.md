@@ -94,14 +94,22 @@ native/
                                            #   readable TaskDialog message,
                                            #   used by all four commands
         IssueOutput.cs                     # shared WriteNextToModel(doc,
-                                            #   issues, kind) helper - JSON +
-                                            #   CSV + BCF, same folder as
-                                            #   the model, used by all three
-                                            #   check-producing commands
-        DocumentPaths.cs                   # shared Resolve/SafeBaseName(doc)
-                                            #   helper - safe local path even
-                                            #   against a cloud-worksharing
-                                            #   model's URN-shaped PathName
+                                            #   issues, kind, dialogTitle)
+                                            #   helper - prompts for a save
+                                            #   location (SaveFileDialog,
+                                            #   same UX as Capture Model),
+                                            #   then writes JSON + CSV + BCF
+                                            #   sharing whatever base name
+                                            #   the user picked; used by all
+                                            #   three check-producing
+                                            #   commands
+        DocumentPaths.cs                   # SafeBaseName(doc) - a safe
+                                            #   suggested filename for that
+                                            #   dialog, tolerating
+                                            #   doc.PathName/doc.Title
+                                            #   throwing (cloud-worksharing
+                                            #   models) rather than just
+                                            #   parsing badly
       RevitCheckApplication.cs      # IExternalApplication.OnStartup - creates
                                      #   the RevitCheck ribbon tab/panel
       RevitCheck.addin              # the manifest Revit actually loads
@@ -359,17 +367,32 @@ implementation is far more lenient about the same string - a real
 platform-behaviour gap worth knowing before trusting a `Path.*` sanity
 check run anywhere but the actual net48/Windows target.
 
-Fixed via `Adapters/../Commands/DocumentPaths.cs`: a shared
-`Resolve(doc)`/`SafeBaseName(doc)` pair that tries the local-path parse in
-a try/catch and falls back to the temp folder plus a sanitized
-`Document.Title` on any failure - the same fallback already used for a
-never-saved-locally doc, now covering the cloud case too. Both
-`IssueOutput.WriteNextToModel` and `CaptureModelCommand`'s save-dialog
-default now go through it instead of calling `Path.*` on `doc.PathName`
-directly. No Revit machine needed to write or reason about the fix - the
-underlying `Path` behaviour is well-established .NET Framework behaviour,
-not something needing a live document to confirm - but confirming this
-one actually clears the real cloud-model run still does.
+**First fix attempt didn't clear it.** The first `DocumentPaths.cs`
+wrapped `Path.GetDirectoryName`/`GetFileNameWithoutExtension` in a
+try/catch, but read `doc.PathName` itself as a bare, unguarded argument
+expression at the call site. Deployed and re-run: identical error, on
+Metadata Reconciliation *and* the brand-new Dimension Provenance/
+Overrides (which had never touched this code before - rules out a
+stale-build explanation). The real failure sits one layer earlier than
+assumed: either `PathName`'s property getter itself throws for a cloud
+model, or something downstream of the parse that wasn't wrapped either -
+genuinely couldn't pin down which without a Windows/net48 machine to test
+against directly.
+
+**Fixed properly (second pass): sidestep the question entirely.** Rather
+than keep guessing which exact call throws, the three check commands
+(Metadata Reconciliation, Dimension Provenance, Dimension Overrides) now
+**prompt for a save location via dialog** - the same `SaveFileDialog` UX
+`CaptureModelCommand` already had. Requested by the user directly, having
+seen Capture Model's dialog and asked why the others didn't have one - it
+turned out to also be the more robust fix, since it never needs to touch
+`doc.PathName` at all. `DocumentPaths.cs` now only supplies a *suggested*
+filename for that dialog, with every property read (`PathName`, `Title`)
+wrapped individually. `dotnet build` clean, all 243 tests still pass
+(Addin-side, untestable off Revit like the rest of that layer) - still
+needs the Revit machine to confirm this clears the real cloud-model run,
+but the design no longer depends on correctly guessing Revit's cloud-path
+behaviour at all.
 
 ### Output/reporting: grouping - built and validated against real data
 
