@@ -33,9 +33,13 @@ choice.
 > sheets/833 views/538 dimensions, 0 extraction errors, run via the
 > updated Capture Model button. `native/tools/RevitCheck.CheckRunner`
 > (new) then ran both dimension checks against that capture off-Revit and
-> found 125 real issues, including two override-consistency findings
-> worth a second look — see PLANNING.md §14. Track B (dimension-vs-model
-> verification) is still entirely unbuilt.
+> found 125 real issues, including two override-consistency findings —
+> both triaged by the user as correct, expected flags, not bugs (sheet
+> 2871008 is diagrammatic; sheet 2871071's is a pipe-clearance call-out)
+> — see PLANNING.md §14. Track B (dimension-vs-model verification):
+> comparison logic is still unbuilt, but its required first step — a
+> throwaway diagnostic, `InspectDimensionGeometry.pushbutton` — is now
+> built (2026-08-25), not yet run.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -317,8 +321,9 @@ it before re-deriving Track B from scratch:
    run on the Revit machine yet, so the §15 second-pass save-dialog fix is
    still unconfirmed there specifically — this run used Capture Model,
    which already had a working dialog before that fix.
-2. **Verify drafted dimensions against the model** — the harder half, still
-   entirely unbuilt.
+2. **Verify drafted dimensions against the model** — the harder half.
+   Comparison logic is still entirely unbuilt; the required first step,
+   the diagnostic below, is now built (2026-08-25) but not yet run.
    `revit.dimension_provenance` and `revit.dimension_override_consistency`
    currently report *triage* — a dimension is drafted/overridden — never
    *verdicts* — whether that drafted/overridden value has actually
@@ -338,8 +343,16 @@ it before re-deriving Track B from scratch:
    touches Revit's geometry API** (`Curve`/`XYZ`/`Options`/
    `GeometryElement`/`Solid`/`BoundingBoxXYZ` — confirmed via grep,
    2026-08-24) — this is genuinely new, so the plan's first step is a
-   throwaway diagnostic (mirroring `InspectElements.pushbutton`'s role)
-   against real drafted views, not writing comparison logic blind.
+   throwaway diagnostic against real drafted views, not writing
+   comparison logic blind. That diagnostic —
+   `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
+   `InspectElements.pushbutton`'s role and disposal discipline — is now
+   built (2026-08-25): resolves witness points to real 3D positions
+   where possible, dumps the owning view's cut-plane/direction, and
+   searches for nearby model geometry around each resolved point. **Not
+   yet run** — needs the Revit machine and a real drafted view (see
+   PLANNING.md §14 for what it answers); nothing about the comparison
+   logic's design should be decided before it has.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a

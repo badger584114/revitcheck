@@ -1,0 +1,12 @@
+title: Inspect Dimension Geometry (diagnostic)
+tooltip: >
+  ONE-OFF diagnostic, not part of the frozen RevitCheck extension. Dumps a
+  dimension's witness-point geometry (resolved 3D positions, nearby model
+  elements), its view's cut plane/direction, and value/segment data to
+  JSON. Answers PLANNING.md §14 Track B's open questions before any
+  dimension-vs-model comparison logic gets written: whether a witness
+  point resolves to a real position, what a view's geometry actually looks
+  like via the API, and whether there's a real geometric signal nearby.
+  Open a drafted view (see Dimension Provenance's "views to verify" list),
+  select some/all of its dimensions - or leave nothing selected to sweep
+  the whole active view - then run this.
