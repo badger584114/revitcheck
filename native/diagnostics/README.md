@@ -73,31 +73,22 @@ geometry and element identities, treat it like a capture (PLANNING.md
 §2), send it back for review, then delete it and the scratch extension
 copy — don't commit it.
 
-**Four real runs (2026-08-25) already found real bugs in the script
-itself** (see PLANNING.md §14 for the full findings): run 1 found
-`Reference.GlobalPoint`/the `Location` fallback both unreliable for real
-model geometry, fixed by anchoring on `DimensionSegment.Origin`; run 2
-found that anchor real but not actually near what a dimension measures,
-and the search itself polluted by document-wide noise, fixed by resolving
-each reference's real touched geometry directly
-(`Element.GetGeometryObjectFromReference`) and excluding the categories
-that run confirmed as noise; run 3 found that resolution working for
-`Edge`/`Curve` geometry but throwing (and silently falling back to the
-same broken `Location`) for `Face` geometry — exactly the `CUT_EDGE`
-references pointing at real Wall/Floor model elements — fixed by giving
-`Face` its own `GetBoundingBox()`-midpoint resolution; run 4 found every
-reference resolving cleanly but the actual distances not checking out
-against the dimension's own typed values (a face's bounding-box midpoint
-can be far from where a dimension actually touches it) — fixed by
-projecting a real nearby candidate point onto the face (`Face.Project`)
-instead of guessing a point on it; run 5 (with that fix) found no
-measurable change — not a code bug this time, but the specific
-dimension tested having its own drafted text dragged ~527m from its
-witness lines, so the "candidate point" the projection needs was never
-close enough to work. **The projection approach itself hasn't had a
-real test yet** — that needs a different real view (a pile/abutment/
-foundation setout view, not this one) where the dimension's own
-position is actually near what it measures. If you're running this for
-the first time, you already have the latest version, unchanged since
-run 4; if re-running to confirm a fix, that's expected and is the
-point.
+**Run seven times against real data (2026-08-25) — see PLANNING.md §14
+for the full run-by-run findings.** Runs 1-4 each found and fixed a real
+code bug: unusable `Reference.GlobalPoint`/misleading `Location` →
+`DimensionSegment.Origin` (real, but not close to anything — the
+value-text position) plus document-wide search noise → `Face` geometry
+needing its own resolution (`Evaluate`'s signature doesn't fit it) → a
+`Face` bbox-midpoint too imprecise, needing `Face.Project(candidate_point)`
+instead. Runs 5-6 found the specific test dimensions weren't
+representative (dragged dimension text 527m from its witness lines; a
+road-label dimension with no model reference), not code bugs. **Run 7
+swept a whole real pile-layout plan view and found zero `CUT_EDGE`
+references anywhere** — pile setout on this project is drafted
+tag-to-tag (`AnnotationSymbol`-to-`AnnotationSymbol`/`Grid`), not
+tag-to-geometry, a different case than the `Face.Project` fix was built
+for. The diagnostic loop is paused there in favour of writing up Track
+B's actual design, which now needs two matching strategies (direct-to-
+geometry and tag-to-tag), not one. The current build is unchanged since
+run 4's fix; if you're running this again, that's for a specific new
+question, not to re-chase the same one.

@@ -38,47 +38,32 @@ choice.
 > 2871008 is diagrammatic; sheet 2871071's is a pipe-clearance call-out)
 > — see PLANNING.md §14. Track B (dimension-vs-model verification):
 > comparison logic is still unbuilt. Its required first step — the
-> `InspectDimensionGeometry.pushbutton` diagnostic — has now been run
-> against real data **four times** (2026-08-25, same 7 dimensions/17
-> references), each run finding and fixing a real bug: run 1 found
-> `Reference.GlobalPoint` unusable and `Location` actively misleading
-> (silently returns Revit's internal origin) for real model geometry;
-> fixed by anchoring on `DimensionSegment.Origin`. Run 2 found that
-> anchor real but not close to anything (the dimension's value-text
-> position, not what it measures), plus document-wide search noise;
-> fixed by resolving each reference's actual touched geometry via
-> `Element.GetGeometryObjectFromReference` and excluding confirmed-noise
-> categories. Run 3: that resolution worked for `Edge`/`Curve`
-> geometry but `Face` geometry — the `CUT_EDGE` references pointing at
-> real Wall/Floor model elements, the case that matters most — threw
-> (wrong `Evaluate` signature) and silently fell back to the same
-> broken `Location` `(0,0,0)`; fixed via `Face`'s own `GetBoundingBox()`
-> UV midpoint, and dropped `Location` from the fallback chain entirely.
-> Run 4: every reference resolved with no errors, but the actual
-> distances didn't check out — on a real 2-segment chain, Face-resolved
-> points came out 4191mm/1897mm apart against typed values of
-> 451mm/1489mm, because a face's bounding-box midpoint has no reason to
-> be near where a dimension actually touches it. Fixed:
-> `Face.Project(candidate_point)` — the correct member for "nearest
-> point on this face to a given point" — using the dimension's own
-> `Origin` (or its first segment's, when the whole dimension has none)
-> as that candidate. **Run 5: no measurable effect, and not a code
-> bug** — the candidate point was 527.5m from the face it needed to
-> project onto (this dimension's text was evidently dragged far from
-> its own witness lines, real drafting practice), so `Face.Project`
-> correctly found nothing and fell back to the old bbox-midpoint. **Run
-> 6:** re-run against a real pile-layout plan view instead — confirmed
-> `View.SketchPlane` *is* populated for an `EngineeringPlan` view
-> (unlike Section, always `null`), a useful second-view-type answer to
-> question 2 — but the one dimension selected turned out to be a road/
-> lane-width label (`"EVERARD AVENUE EASTBOUND TRAFFIC LANE VARIES"`,
-> both references `AnnotationSymbol`s), not a real pile measurement, so
-> `Face.Project` never engaged. **The projection approach still hasn't
-> had a real test.** Next: re-run the same view with *nothing*
-> selected, sweeping every dimension instead of hand-picking one — no
-> code change needed; see PLANNING.md §14 for the full detail. Don't
-> design the comparison IR/algorithm before a real test confirms or
-> refutes the projection approach.
+> `InspectDimensionGeometry.pushbutton` diagnostic — has been run
+> against real data **seven times** (2026-08-25); runs 1-4 each found
+> and fixed a real code bug (`GlobalPoint`/`Location` unusable →
+> `DimensionSegment.Origin` anchor → document-wide search noise →
+> `Face` geometry needing its own resolution → imprecise bbox-midpoint
+> needing `Face.Project` instead) and runs 5-6 found the specific test
+> dimensions weren't representative (dragged dimension text; a
+> road-label dimension with no model reference), not code bugs. **Run 7
+> is the one that matters: swept a real pile-layout plan view (46
+> dimensions, 92 references, real un-overridden pile-spacing values)
+> and found zero `CUT_EDGE` references anywhere — every one is
+> `AnnotationSymbol`-to-`AnnotationSymbol` or `AnnotationSymbol`-to-
+> `Grid`.** Pile setout on this project is drafted **tag-to-tag**, not
+> tag-to-geometry — a materially different case than the Wall/Floor
+> `CUT_EDGE` dimensions runs 1-5 were built around. `Face.Project`
+> still hasn't had a clean test and may never get one from a
+> tag-to-tag dimension; verifying these instead likely needs
+> **proximity matching** against real `Pile` elements (the
+> `geometry.ifc_setout_consistency` algorithm shape the plan already
+> named as the template to reuse) — confirmed necessary by real data,
+> not assumed. **The diagnostic loop is paused here** (seven real
+> Revit-machine round trips today) in favour of writing up Track B's
+> actual design — two dimensioning conventions now confirmed to
+> coexist (direct-to-geometry and tag-to-tag), so it needs two matching
+> strategies, not one. See PLANNING.md §14 for the full run-by-run
+> detail.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -386,52 +371,31 @@ it before re-deriving Track B from scratch:
    comparison logic blind. That diagnostic —
    `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
    `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built **and run five times** (2026-08-25, same 7 dimensions/17
-   references from a real drafted section view each time). Run 1 found
-   `Reference.GlobalPoint` unusable (null on every reference, every
-   type), `Dimension.Curve` throwing on every real dimension chain, and
-   the `Location`-based fallback silently returning Revit's internal
-   origin (not a real position, no exception either) for hosted model
-   `FamilyInstance`s specifically — the exact case a real comparison
-   needs most; fixed by anchoring on `DimensionSegment.Origin`. Run 2
-   (with that fix) found the new anchor real but still not close to
-   anything real — it's the dimension's value-text position, not what it
-   measures — and the unscoped search was dominated by Camera/Scope
-   Box/Group noise from unrelated views; fixed by resolving each
-   reference's actual touched geometry via
-   `Element.GetGeometryObjectFromReference` and excluding the
-   confirmed-noise categories. Run 3 (with that fix) found it working
-   for `Edge`/`Curve` geometry — real points, real nearby structural
-   content found — but `Face` geometry (the `CUT_EDGE` references
-   pointing at real Wall/Floor model elements) threw on the wrong
-   `Evaluate` signature and silently fell back to the same broken
-   `Location` `(0,0,0)` a second time; fixed via `Face`'s own
-   `GetBoundingBox()` UV midpoint, and dropped `Location` from the
-   search-anchor chain entirely. Run 4 (with that fix) found every
-   reference resolving with no errors, but the numbers didn't check
-   out — on a real 2-segment chain, Face-resolved points came out
-   4191mm/1897mm apart against typed segment values of 451mm/1489mm,
-   because a face's bounding-box midpoint has no reason to be near
-   where a dimension actually touches it. Fixed:
-   `Face.Project(candidate_point)` — the right member for "nearest
-   point on this face to a given point" — using the dimension's own
-   `Origin` (or its first segment's) as that candidate. **Run 5: no
-   measurable effect, and not a code bug** — the candidate point was
-   527.5m from the face it needed to project onto (this dimension's
-   text had evidently been dragged far from its own witness lines,
-   real drafting practice, not something to special-case). **Run 6:**
-   re-run against a real pile-layout plan view (`DRG-2873041 - PILE
-   LAYOUT`, `EngineeringPlan`) instead of the same section — confirmed
-   `View.SketchPlane` *is* populated for this view type (unlike
-   Section, always `null`), but the one hand-selected dimension turned
-   out to be a road/lane-width label (both references
-   `AnnotationSymbol`s, no `CUT_EDGE`/model reference at all), so the
-   projection fix still never engaged. **The projection approach still
-   hasn't had a real test.** Next: same view, nothing selected, sweep
-   every dimension instead of hand-picking one — no code change needed.
-   See PLANNING.md §14 for the full detail. Nothing about the
-   comparison logic's design should be decided before a real test
-   confirms or refutes the projection approach.
+   built and **run seven times against real data** (2026-08-25).
+   Runs 1-4 each found and fixed a real code bug in turn — unusable
+   `GlobalPoint`/misleading `Location` → an anchor real but not close
+   to anything (`DimensionSegment.Origin`, the value-text position,
+   plus unscoped search noise) → `Face` geometry needing its own
+   resolution (`Evaluate` has the wrong signature for it) → a `Face`
+   bbox-midpoint too imprecise, needing `Face.Project(candidate_point)`
+   instead. Runs 5-6 found the specific test dimensions weren't
+   representative (dragged dimension text 527m from its own witness
+   lines; a road-label dimension with no model reference at all), not
+   code bugs. **Run 7 swept a whole real pile-layout plan view (46
+   dimensions, 92 references, real un-overridden pile-spacing values)
+   and found zero `CUT_EDGE` references anywhere** — pile setout on
+   this project is drafted tag-to-tag (`AnnotationSymbol`-to-
+   `AnnotationSymbol`/`Grid`), not tag-to-geometry, a materially
+   different case than the Wall/Floor dimensions runs 1-5 were built
+   around. `Face.Project` still hasn't had a clean test and may never
+   get one from a tag-to-tag dimension; verifying these instead likely
+   needs proximity matching against real `Pile` elements — the
+   `geometry.ifc_setout_consistency` algorithm shape already named as
+   the template to reuse, now confirmed necessary by real data rather
+   than assumed. **The diagnostic loop is paused here** in favour of
+   writing up Track B's actual design, which now needs two matching
+   strategies (direct-to-geometry and tag-to-tag), not one — see
+   PLANNING.md §14 for the full run-by-run detail.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a
