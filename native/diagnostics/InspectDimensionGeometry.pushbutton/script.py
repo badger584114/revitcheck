@@ -65,6 +65,23 @@ specifically, which is exactly the case a real comparison needs most.
 plausible for every segment that had one, so `_describe_segments` now
 runs its own nearby-geometry search anchored there too, not only on the
 (sometimes-misleading) per-reference points.
+
+**Revised again after the second real run (2026-08-25, same view,
+segment-Origin fix in place):** the segment-Origin anchor was real and
+plausible, but still didn't land near real geometry — the search from it
+found the dimension's own referenced elements 0% of the time (checked
+directly: neither of two references on one dimension turned up in that
+dimension's own 750mm nearby-list), and the document-wide, unscoped
+search was dominated by Cameras/Work Plane Grids/Scope Boxes/Groups
+pulled in from unrelated views. Two fixes: (1) `_describe_reference` now
+resolves each `Reference` to its actual touched `GeometryObject` via
+`Element.GetGeometryObjectFromReference(ref)` and uses *that* real
+point (`geometry_point`) as the search anchor, ahead of `GlobalPoint`/
+`Location` — the correct API for "what does this specific reference
+touch", not a proximity guess. (2) `_nearby_elements` now excludes the
+categories/classes this run actually returned as pure noise
+(`_NOISE_CATEGORIES`/`_NOISE_CLASSES`) rather than searching the whole
+unfiltered document. Not yet run with either fix.
 """
 
 import os
@@ -211,6 +228,26 @@ def _describe_view(view):
     return entry
 
 
+# Categories/classes confirmed as pure noise on the first real run
+# (2026-08-25, PLANNING.md §14): a document-wide bounding-box search with
+# no scoping pulled in cameras, work-plane grids, scope boxes, and
+# view-specific annotation groups from *unrelated* views/3D views - none
+# of which can ever be "model geometry a dimension might be verifying
+# against", and their presence buried the few real hits. Data-driven, not
+# a guess ahead of a sample: every name here is something this run
+# actually returned as noise, not a speculative exclusion list.
+_NOISE_CATEGORIES = {
+    "Cameras",
+    "Work Plane Grid",
+    "Scope Boxes",
+    "Guide Grid",
+    "Internal Origin",
+    "Survey Point",
+    "Project Base Point",
+}
+_NOISE_CLASSES = {"Group"}
+
+
 def _nearby_elements(global_point_xyz, exclude_element_id):
     """Elements whose bounding box intersects a small region around a
     witness point - question 3's "is there a real geometric signal
@@ -238,18 +275,53 @@ def _nearby_elements(global_point_xyz, exclude_element_id):
         eid = _eid(element.Id)
         if eid is None or eid == exclude_element_id:
             continue
+
+        class_name = type(element).__name__
+        category_name = None
+        try:
+            if element.Category is not None:
+                category_name = element.Category.Name
+        except Exception:  # noqa: BLE001
+            pass
+
+        if class_name in _NOISE_CLASSES or category_name in _NOISE_CATEGORIES:
+            continue
+
         total += 1
         if len(found) >= MAX_NEARBY_ELEMENTS_LISTED:
             continue
-        entry = {"element_id": eid, "class_name": type(element).__name__, "category": None, "workset": _workset_name(element)}
-        try:
-            if element.Category is not None:
-                entry["category"] = element.Category.Name
-        except Exception:  # noqa: BLE001
-            pass
-        found.append(entry)
+        found.append(
+            {"element_id": eid, "class_name": class_name, "category": category_name, "workset": _workset_name(element)}
+        )
 
     return {"search_radius_mm": NEARBY_SEARCH_RADIUS_MM, "total_nearby": total, "listed": found, "truncated": total > len(found)}
+
+
+def _geometry_object_point(geom_obj):
+    """A representative 3D point actually on a resolved GeometryObject
+    (Edge/Curve/Face/Point) - not a guess, the real touched geometry.
+    `Evaluate(0.5, True)` (normalized parameter) works for both Edge and
+    Curve; a PlanarFace has no single natural "midpoint" so its own
+    `Origin` is used instead - good enough to sanity-check proximity to a
+    dimension line, not claimed to be the exact measured point on a
+    non-planar face."""
+    if geom_obj is None:
+        return None
+    evaluate = getattr(geom_obj, "Evaluate", None)
+    if evaluate is not None:
+        try:
+            return evaluate(0.5, True)
+        except Exception:  # noqa: BLE001
+            pass
+    as_curve = getattr(geom_obj, "AsCurve", None)
+    if as_curve is not None:
+        try:
+            curve = as_curve()
+            if curve is not None:
+                return curve.Evaluate(0.5, True)
+        except Exception:  # noqa: BLE001
+            pass
+    return getattr(geom_obj, "Origin", None)
 
 
 def _describe_reference(ref, dimension_element_id):
@@ -263,6 +335,8 @@ def _describe_reference(ref, dimension_element_id):
         "stable_representation": None,
         "global_point": None,
         "element_location_point": None,
+        "geometry_object_kind": None,
+        "geometry_point": None,
         "nearby_geometry": None,
     }
     errors = []
@@ -278,6 +352,7 @@ def _describe_reference(ref, dimension_element_id):
         errors.append("stable_representation: {0}".format(exc))
 
     resolved_element = None
+    host_element = None
     try:
         linked_id = _eid(getattr(ref, "LinkedElementId", None))
         host_element = doc.GetElement(ref.ElementId) if ref.ElementId is not None else None
@@ -330,7 +405,35 @@ def _describe_reference(ref, dimension_element_id):
     except Exception as exc:  # noqa: BLE001 - the actual thing question 1 is asking
         errors.append("global_point: {0}".format(exc))
 
-    search_point = global_xyz
+    # Added after the first real run (2026-08-25) found GlobalPoint always
+    # null and the Location fallback silently wrong for hosted model
+    # FamilyInstances (see PLANNING.md §14). This is the actually-correct
+    # API for "what does this specific Reference touch": not a position
+    # guess, the real Edge/Face/Curve GeometryObject the reference was
+    # built from - only meaningful on the host element that owns the
+    # reference's stable representation, so this is skipped for a
+    # followed-link reference (`entry["linked"]`), which needs its own,
+    # not-yet-built handling.
+    geometry_xyz = None
+    if host_element is not None and not entry["linked"]:
+        try:
+            geom_obj = host_element.GetGeometryObjectFromReference(ref)
+            entry["geometry_object_kind"] = type(geom_obj).__name__ if geom_obj is not None else None
+            geometry_xyz = _geometry_object_point(geom_obj)
+            entry["geometry_point"] = _point(geometry_xyz)
+        except Exception as exc:  # noqa: BLE001
+            errors.append("geometry_object: {0}".format(exc))
+
+    # Preference order for where to search from: the actual touched
+    # geometry (new, most trustworthy) > GlobalPoint (proved unusable so
+    # far, kept as a fallback in case a reference type turns up where it
+    # isn't) > Location (proved actively misleading for FamilyInstances,
+    # last resort only).
+    # Explicit None-checks, not `or` - an XYZ from the Revit API has no
+    # defined truthiness, and a legitimate point can have all-zero
+    # coordinates (seen for real on this project's Internal Origin), so
+    # `or` risks silently falling through past a valid point.
+    search_point = geometry_xyz if geometry_xyz is not None else global_xyz
     if search_point is None and resolved_element is not None:
         try:
             location = resolved_element.Location

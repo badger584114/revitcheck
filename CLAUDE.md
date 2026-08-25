@@ -39,14 +39,20 @@ choice.
 > — see PLANNING.md §14. Track B (dimension-vs-model verification):
 > comparison logic is still unbuilt. Its required first step — the
 > `InspectDimensionGeometry.pushbutton` diagnostic — has now been run
-> against real data too (2026-08-25, 7 dimensions/17 references): found
-> that `Reference.GlobalPoint` is unusable (null on every reference) and
-> the `Location` fallback is actively misleading for real model geometry
-> (silently returns Revit's internal origin instead of a real position
-> for Wall/Floor FamilyInstances), while `DimensionSegment.Origin` is a
-> real, reliable anchor. Fixed the diagnostic to use it and search from
-> it — not yet re-run. Don't design the comparison IR/algorithm before
-> that re-run confirms the fix; see PLANNING.md §14 for the full detail.
+> against real data **twice** (2026-08-25, same 7 dimensions/17
+> references), each run finding and fixing a real bug: run 1 found
+> `Reference.GlobalPoint` unusable (null always) and `Location` actively
+> misleading for real model geometry (silently returns Revit's internal
+> origin for Wall/Floor FamilyInstances); the fix (anchor on
+> `DimensionSegment.Origin` instead) went out, and run 2 found *that*
+> anchor real but still not close to anything — the dimension's value-text
+> position, not what it measures — while the unscoped document-wide search
+> was dominated by Camera/Scope Box/Group noise from unrelated views. Fix
+> 2: resolve each reference's actual touched geometry directly via
+> `Element.GetGeometryObjectFromReference`, and exclude the confirmed-noise
+> categories from the search. Not yet run. Don't design the comparison
+> IR/algorithm before that run confirms this fix; see PLANNING.md §14 for
+> the full detail.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -354,18 +360,24 @@ it before re-deriving Track B from scratch:
    comparison logic blind. That diagnostic —
    `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
    `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built **and run** (2026-08-25, 7 dimensions/17 references from a real
-   drafted section view). Found real, non-obvious limits: `Reference.
-   GlobalPoint` is unusable (null on every reference, every type),
-   `Dimension.Curve` throws on every real dimension chain, and the
-   `Location`-based fallback silently returns Revit's internal origin
+   built **and run twice** (2026-08-25, same 7 dimensions/17 references
+   from a real drafted section view each time). Run 1 found `Reference.
+   GlobalPoint` unusable (null on every reference, every type),
+   `Dimension.Curve` throwing on every real dimension chain, and the
+   `Location`-based fallback silently returning Revit's internal origin
    (not a real position, no exception either) for hosted model
    `FamilyInstance`s specifically — the exact case a real comparison
-   needs most. `DimensionSegment.Origin` is the one position that came
-   back reliable. Fixed the diagnostic to search from it too; **not yet
-   re-run with that fix** — see PLANNING.md §14 for the full detail.
-   Nothing about the comparison logic's design should be decided before
-   that re-run confirms the fix.
+   needs most; fixed by anchoring on `DimensionSegment.Origin`. Run 2
+   (with that fix) found the new anchor real but still not close to
+   anything real — it's the dimension's value-text position, not what it
+   measures — and the unscoped search was dominated by Camera/Scope
+   Box/Group noise from unrelated views. Fixed again: each reference now
+   resolves its actual touched geometry via
+   `Element.GetGeometryObjectFromReference`, and the confirmed-noise
+   categories are excluded from the search. **Not yet run with this
+   fix** — see PLANNING.md §14 for the full detail. Nothing about the
+   comparison logic's design should be decided before that run confirms
+   it.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a
