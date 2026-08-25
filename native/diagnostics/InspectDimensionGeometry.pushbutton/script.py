@@ -53,6 +53,18 @@ The output contains real client geometry (coordinates, element
 identities). Treat it the way this project treats a capture
 (PLANNING.md §2): check before it leaves this machine, and do not
 commit it to git.
+
+**Revised after the first real run (2026-08-25, section DRG-2873022,
+7 dimensions/17 references — see PLANNING.md §14 for the full
+write-up):** `Reference.GlobalPoint` came back null for every reference
+seen (LINEAR/SURFACE/CUT_EDGE alike), and the `Location`-based fallback
+silently returned `(0, 0, 0)` — Revit's internal origin, not a real
+position — for hosted model `FamilyInstance`s (Walls/Floors)
+specifically, which is exactly the case a real comparison needs most.
+`DimensionSegment.Origin` was the one position that came back real and
+plausible for every segment that had one, so `_describe_segments` now
+runs its own nearby-geometry search anchored there too, not only on the
+(sometimes-misleading) per-reference points.
 """
 
 import os
@@ -353,31 +365,52 @@ def _describe_curve(dim):
     return entry
 
 
-def _describe_segments(dim):
+def _describe_segments(dim, dimension_element_id):
+    """Each segment's value/origin, plus a nearby-geometry search anchored
+    on the segment's own `Origin` - found necessary on the first real run
+    (2026-08-25, see PLANNING.md §14): `Reference.GlobalPoint` came back
+    null for every reference type seen, and the `Location`-based fallback
+    silently returned (0,0,0) - Revit's internal origin, not a real
+    position - for hosted model FamilyInstances specifically (Walls/
+    Floors), which polluted their `nearby_geometry` search with whatever
+    happens to sit near the model's internal origin instead of near the
+    dimension. `DimensionSegment.Origin` was the one position in that run
+    that came back real and plausible (matching the view's own Origin's
+    coordinate range) for every segment that had one - worth its own
+    independent nearby-geometry search rather than trusting only the
+    per-reference anchors, which is what this fixes.
+    """
     count = int(getattr(dim, "NumberOfSegments", 0) or 0)
     if count == 0:
+        raw_origin = None
+        try:
+            raw_origin = dim.Origin
+        except Exception:  # noqa: BLE001 - some dimension geometries have no single origin
+            raw_origin = None
         return [
             {
                 "index": 0,
                 "value_mm": _mm(getattr(dim, "Value", None)),
                 "value_override": getattr(dim, "ValueOverride", None),
-                "origin": None,
+                "origin": _point(raw_origin),
+                "nearby_geometry": _nearby_elements(raw_origin, dimension_element_id) if raw_origin is not None else None,
             }
         ]
 
     segments = []
     for index, seg in enumerate(dim.Segments):
-        origin = None
+        raw_origin = None
         try:
-            origin = _point(seg.Origin)
+            raw_origin = seg.Origin
         except Exception:  # noqa: BLE001 - not every segment has one
-            origin = None
+            raw_origin = None
         segments.append(
             {
                 "index": index,
                 "value_mm": _mm(getattr(seg, "Value", None)),
                 "value_override": getattr(seg, "ValueOverride", None),
-                "origin": origin,
+                "origin": _point(raw_origin),
+                "nearby_geometry": _nearby_elements(raw_origin, dimension_element_id) if raw_origin is not None else None,
             }
         )
     return segments
@@ -415,9 +448,10 @@ def _describe_dimension(dim):
         entry["origin"] = None
 
     entry["curve"] = _describe_curve(dim)
-    entry["segments"] = _describe_segments(dim)
 
     dim_element_id = entry["element_id"]
+    entry["segments"] = _describe_segments(dim, dim_element_id)
+
     try:
         entry["references"] = [_describe_reference(ref, dim_element_id) for ref in (dim.References or [])]
     except Exception as exc:  # noqa: BLE001

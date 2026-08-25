@@ -72,3 +72,12 @@ Same handling as `InspectElements.pushbutton`'s output: real client
 geometry and element identities, treat it like a capture (PLANNING.md
 §2), send it back for review, then delete it and the scratch extension
 copy — don't commit it.
+
+**First real run (2026-08-25) already found a real bug in the script
+itself** — `Reference.GlobalPoint`/the `Location` fallback were both
+unreliable for real model geometry (see PLANNING.md §14 for the full
+findings), which the script has since been fixed to work around
+(`DimensionSegment.Origin` as the witness-point anchor instead). If
+you're running this for the first time, you already have the fixed
+version; if re-running to confirm the fix, that's expected and is the
+point.

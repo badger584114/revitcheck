@@ -37,9 +37,16 @@ choice.
 > both triaged by the user as correct, expected flags, not bugs (sheet
 > 2871008 is diagrammatic; sheet 2871071's is a pipe-clearance call-out)
 > — see PLANNING.md §14. Track B (dimension-vs-model verification):
-> comparison logic is still unbuilt, but its required first step — a
-> throwaway diagnostic, `InspectDimensionGeometry.pushbutton` — is now
-> built (2026-08-25), not yet run.
+> comparison logic is still unbuilt. Its required first step — the
+> `InspectDimensionGeometry.pushbutton` diagnostic — has now been run
+> against real data too (2026-08-25, 7 dimensions/17 references): found
+> that `Reference.GlobalPoint` is unusable (null on every reference) and
+> the `Location` fallback is actively misleading for real model geometry
+> (silently returns Revit's internal origin instead of a real position
+> for Wall/Floor FamilyInstances), while `DimensionSegment.Origin` is a
+> real, reliable anchor. Fixed the diagnostic to use it and search from
+> it — not yet re-run. Don't design the comparison IR/algorithm before
+> that re-run confirms the fix; see PLANNING.md §14 for the full detail.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -347,12 +354,18 @@ it before re-deriving Track B from scratch:
    comparison logic blind. That diagnostic —
    `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
    `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built (2026-08-25): resolves witness points to real 3D positions
-   where possible, dumps the owning view's cut-plane/direction, and
-   searches for nearby model geometry around each resolved point. **Not
-   yet run** — needs the Revit machine and a real drafted view (see
-   PLANNING.md §14 for what it answers); nothing about the comparison
-   logic's design should be decided before it has.
+   built **and run** (2026-08-25, 7 dimensions/17 references from a real
+   drafted section view). Found real, non-obvious limits: `Reference.
+   GlobalPoint` is unusable (null on every reference, every type),
+   `Dimension.Curve` throws on every real dimension chain, and the
+   `Location`-based fallback silently returns Revit's internal origin
+   (not a real position, no exception either) for hosted model
+   `FamilyInstance`s specifically — the exact case a real comparison
+   needs most. `DimensionSegment.Origin` is the one position that came
+   back reliable. Fixed the diagnostic to search from it too; **not yet
+   re-run with that fix** — see PLANNING.md §14 for the full detail.
+   Nothing about the comparison logic's design should be decided before
+   that re-run confirms the fix.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a
