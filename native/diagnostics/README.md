@@ -73,7 +73,7 @@ geometry and element identities, treat it like a capture (PLANNING.md
 §2), send it back for review, then delete it and the scratch extension
 copy — don't commit it.
 
-**Three real runs (2026-08-25) already found real bugs in the script
+**Four real runs (2026-08-25) already found real bugs in the script
 itself** (see PLANNING.md §14 for the full findings): run 1 found
 `Reference.GlobalPoint`/the `Location` fallback both unreliable for real
 model geometry, fixed by anchoring on `DimensionSegment.Origin`; run 2
@@ -85,7 +85,11 @@ that run confirmed as noise; run 3 found that resolution working for
 `Edge`/`Curve` geometry but throwing (and silently falling back to the
 same broken `Location`) for `Face` geometry — exactly the `CUT_EDGE`
 references pointing at real Wall/Floor model elements — fixed by giving
-`Face` its own `GetBoundingBox()`-midpoint resolution and dropping
-`Location` from the search-anchor chain entirely. If you're running this
-for the first time, you already have the latest fixed version; if
+`Face` its own `GetBoundingBox()`-midpoint resolution; run 4 found every
+reference resolving cleanly but the actual distances not checking out
+against the dimension's own typed values (a face's bounding-box midpoint
+can be far from where a dimension actually touches it) — fixed by
+projecting a real nearby candidate point onto the face
+(`Face.Project`) instead of guessing a point on it. If you're running
+this for the first time, you already have the latest fixed version; if
 re-running to confirm a fix, that's expected and is the point.

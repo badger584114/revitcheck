@@ -39,7 +39,7 @@ choice.
 > — see PLANNING.md §14. Track B (dimension-vs-model verification):
 > comparison logic is still unbuilt. Its required first step — the
 > `InspectDimensionGeometry.pushbutton` diagnostic — has now been run
-> against real data **three times** (2026-08-25, same 7 dimensions/17
+> against real data **four times** (2026-08-25, same 7 dimensions/17
 > references), each run finding and fixing a real bug: run 1 found
 > `Reference.GlobalPoint` unusable and `Location` actively misleading
 > (silently returns Revit's internal origin) for real model geometry;
@@ -49,14 +49,20 @@ choice.
 > fixed by resolving each reference's actual touched geometry via
 > `Element.GetGeometryObjectFromReference` and excluding confirmed-noise
 > categories. Run 3: that resolution worked for `Edge`/`Curve`
-> geometry (real points, real nearby structural content found) but
-> `Face` geometry — the `CUT_EDGE` references pointing at real Wall/
-> Floor model elements, the case that matters most — threw (wrong
-> `Evaluate` signature) and silently fell back to the same broken
-> `Location` `(0,0,0)`. Fixed: `Face` now resolves via its own
-> `GetBoundingBox()` UV midpoint, and `Location` is no longer in the
-> search-anchor fallback chain at all (it produced the same silently-
-> wrong answer twice). Not yet run. Don't design the comparison
+> geometry but `Face` geometry — the `CUT_EDGE` references pointing at
+> real Wall/Floor model elements, the case that matters most — threw
+> (wrong `Evaluate` signature) and silently fell back to the same
+> broken `Location` `(0,0,0)`; fixed via `Face`'s own `GetBoundingBox()`
+> UV midpoint, and dropped `Location` from the fallback chain entirely.
+> Run 4: every reference resolved with no errors, but the actual
+> distances didn't check out — on a real 2-segment chain, Face-resolved
+> points came out 4191mm/1897mm apart against typed values of
+> 451mm/1489mm, because a face's bounding-box midpoint has no reason to
+> be near where a dimension actually touches it. Fixed:
+> `Face.Project(candidate_point)` — the correct member for "nearest
+> point on this face to a given point" — using the dimension's own
+> `Origin` (or its first segment's, when the whole dimension has none)
+> as that candidate. Not yet run. Don't design the comparison
 > IR/algorithm before that run confirms this fix; see PLANNING.md §14 for
 > the full detail.
 >
@@ -366,7 +372,7 @@ it before re-deriving Track B from scratch:
    comparison logic blind. That diagnostic —
    `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
    `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built **and run three times** (2026-08-25, same 7 dimensions/17
+   built **and run four times** (2026-08-25, same 7 dimensions/17
    references from a real drafted section view each time). Run 1 found
    `Reference.GlobalPoint` unusable (null on every reference, every
    type), `Dimension.Curve` throwing on every real dimension chain, and
@@ -385,11 +391,20 @@ it before re-deriving Track B from scratch:
    content found — but `Face` geometry (the `CUT_EDGE` references
    pointing at real Wall/Floor model elements) threw on the wrong
    `Evaluate` signature and silently fell back to the same broken
-   `Location` `(0,0,0)` a second time. Fixed: `Face` now resolves via
-   its own `GetBoundingBox()` UV midpoint, and `Location` is out of the
-   search-anchor chain entirely. **Not yet run with this fix** — see
-   PLANNING.md §14 for the full detail. Nothing about the comparison
-   logic's design should be decided before that run confirms it.
+   `Location` `(0,0,0)` a second time; fixed via `Face`'s own
+   `GetBoundingBox()` UV midpoint, and dropped `Location` from the
+   search-anchor chain entirely. Run 4 (with that fix) found every
+   reference resolving with no errors, but the numbers didn't check
+   out — on a real 2-segment chain, Face-resolved points came out
+   4191mm/1897mm apart against typed segment values of 451mm/1489mm,
+   because a face's bounding-box midpoint has no reason to be near
+   where a dimension actually touches it. Fixed:
+   `Face.Project(candidate_point)` — the right member for "nearest
+   point on this face to a given point" — using the dimension's own
+   `Origin` (or its first segment's) as that candidate. **Not yet run
+   with this fix** — see PLANNING.md §14 for the full detail. Nothing
+   about the comparison logic's design should be decided before that
+   run confirms it.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a

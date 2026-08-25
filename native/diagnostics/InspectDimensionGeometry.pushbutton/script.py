@@ -81,7 +81,46 @@ point (`geometry_point`) as the search anchor, ahead of `GlobalPoint`/
 touch", not a proximity guess. (2) `_nearby_elements` now excludes the
 categories/classes this run actually returned as pure noise
 (`_NOISE_CATEGORIES`/`_NOISE_CLASSES`) rather than searching the whole
-unfiltered document. Not yet run with either fix.
+unfiltered document.
+
+**Revised a third time after the third real run (2026-08-25, same view,
+both prior fixes in place):** `GetGeometryObjectFromReference` resolved
+cleanly for every `LINEAR` reference (real `Line`/`Edge` points via
+`Evaluate(0.5, True)`) and the noise filter worked — no more Cameras/
+Scope Boxes/Groups/internal-origin garbage, real structural content
+(Floors, Structural Framing) turning up near resolved points instead.
+But every `CUT_EDGE` reference — the ones pointing at real model
+`FamilyInstance`s (Walls/Floors), the case that matters most — resolved
+to a `Face` (`PlanarFace`/`RuledFace`), and `Face.Evaluate` takes a
+single `UV`, not `(double, bool)`: the call threw, silently fell
+through to `.Origin` (present on `PlanarFace` but not guaranteed near
+the visible face; absent on `RuledFace` entirely), and from there fell
+all the way back to the same broken `Location` `(0, 0, 0)` a *second*
+time — confirmed directly (`element_location_point: [0,0,0]` on the
+Floor reference that returned `geometry_point: null`). Fixed: `Face`
+now resolves via its own `GetBoundingBox()` UV midpoint, and `Location`
+is out of the search-anchor fallback chain entirely (a missing result
+is more honest than a wrong one that looks like data).
+
+**Revised a fourth time after the fourth real run (2026-08-25, same
+view, the Face-bbox-midpoint fix in place):** every reference now
+resolved to a real point with no errors — genuine progress. But
+checking the actual numbers against the dimension's own typed values
+exposed the bbox-midpoint's real limit: on a real 2-segment chain, the
+3D distance between two Face-resolved points came out 4191mm and
+1897mm against typed segment values of 451mm and 1489mm. A face can be
+large, and its bounding-box midpoint has no reason to be anywhere near
+where a specific dimension actually touches it — real geometry, wrong
+point on it. Fixed properly: `Face.Project(candidate_point)` returns
+the point *on the face* nearest to an arbitrary input point, so given
+any reasonably-nearby real point it lands on the actual touched
+location instead of an arbitrary one on the same face.
+`_projection_candidate_xyz` supplies that input — the dimension's own
+`Origin` when it has one (only single-value dimensions do), else its
+first segment's `Origin` (real and in-range per the first real run,
+just not itself precise enough to be the answer - which is exactly why
+it's a projection candidate and not the final point). Not yet run with
+this fix.
 """
 
 import os
@@ -299,7 +338,7 @@ def _nearby_elements(global_point_xyz, exclude_element_id):
     return {"search_radius_mm": NEARBY_SEARCH_RADIUS_MM, "total_nearby": total, "listed": found, "truncated": total > len(found)}
 
 
-def _geometry_object_point(geom_obj):
+def _geometry_object_point(geom_obj, candidate_point=None):
     """A representative 3D point actually on a resolved GeometryObject
     (Edge/Curve/Face) - not a guess, the real touched geometry.
 
@@ -310,18 +349,37 @@ def _geometry_object_point(geom_obj):
     `(double, bool)`) - silently caught, falling through to `Origin`,
     which a `PlanarFace` has (but isn't guaranteed to be anywhere *on*
     the visible bounded face - it's the point defining the face's
-    underlying infinite plane) and a `RuledFace` doesn't have at all,
-    returning None for exactly the `CUT_EDGE`-on-a-curved-element case
-    real bridge geometry produces. Face is now handled on its own terms:
-    the midpoint of its `GetBoundingBox()` UV domain, evaluated - a real
-    point guaranteed inside the face's parameter domain (not guaranteed
-    inside a non-convex trimmed boundary, but reliably close, and worlds
-    better than a plane-definition point or nothing at all).
+    underlying infinite plane) and a `RuledFace` doesn't have at all.
+    The `GetBoundingBox()`-midpoint fix that followed resolved every
+    Face without erroring, but the fourth real run found it too
+    imprecise to be useful for anything more than "yes, this is roughly
+    the right geometry": on a real 2-segment chain, the distance between
+    two Face-resolved bbox-midpoints came out 4191mm and 1897mm against
+    typed segment values of 451mm and 1489mm - a real face can be large,
+    and its own bounding-box midpoint has no reason to be anywhere near
+    where a specific dimension actually touches it.
+
+    `candidate_point` (see `_projection_candidate_xyz` - the dimension's
+    own `Origin` when it has one, else its first segment's) fixes this
+    the correct way: `Face.Project(point)` returns the point *on the
+    face* nearest to an arbitrary input point - given any reasonably-
+    nearby real point, it lands on the actual touched location instead
+    of an arbitrary one. Falls back to the bbox midpoint when there's no
+    candidate point or the projection fails (e.g. the candidate is
+    degenerate or off the face's parameter domain entirely) - still real
+    geometry, just not this precise.
     """
     if geom_obj is None:
         return None
 
     if isinstance(geom_obj, Face):
+        if candidate_point is not None:
+            try:
+                result = geom_obj.Project(candidate_point)
+                if result is not None:
+                    return result.XYZPoint
+            except Exception:  # noqa: BLE001 - candidate point may be off the face entirely
+                pass
         try:
             bbox = geom_obj.GetBoundingBox()
             mid_uv = UV((bbox.Min.U + bbox.Max.U) / 2.0, (bbox.Min.V + bbox.Max.V) / 2.0)
@@ -349,7 +407,7 @@ def _geometry_object_point(geom_obj):
     return getattr(geom_obj, "Origin", None)
 
 
-def _describe_reference(ref, dimension_element_id):
+def _describe_reference(ref, dimension_element_id, projection_candidate_xyz):
     entry = {
         "element_reference_type": None,
         "linked": False,
@@ -444,7 +502,7 @@ def _describe_reference(ref, dimension_element_id):
         try:
             geom_obj = host_element.GetGeometryObjectFromReference(ref)
             entry["geometry_object_kind"] = type(geom_obj).__name__ if geom_obj is not None else None
-            geometry_xyz = _geometry_object_point(geom_obj)
+            geometry_xyz = _geometry_object_point(geom_obj, projection_candidate_xyz)
             entry["geometry_point"] = _point(geometry_xyz)
         except Exception as exc:  # noqa: BLE001
             errors.append("geometry_object: {0}".format(exc))
@@ -542,6 +600,36 @@ def _describe_segments(dim, dimension_element_id):
     return segments
 
 
+def _projection_candidate_xyz(dim):
+    """A raw XYZ reasonably near the dimension, for `Face.Project` to
+    project from - doesn't need to be exact, just in the right
+    neighbourhood, since `Project` finds the true nearest point on the
+    face from wherever it's given. `Dimension.Origin` only exists for a
+    single-value dimension (`NumberOfSegments == 0`); a real chain's own
+    `Origin` came back null on this project's real data, so the first
+    segment's `Origin` is the fallback - itself real and in-range (see
+    PLANNING.md §14's run 2), just not close enough to *be* the answer,
+    which is exactly why this is a projection candidate and not the
+    final point."""
+    try:
+        origin = dim.Origin
+        if origin is not None:
+            return origin
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        if int(getattr(dim, "NumberOfSegments", 0) or 0) > 0:
+            for seg in dim.Segments:
+                try:
+                    return seg.Origin
+                except Exception:  # noqa: BLE001
+                    continue
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def _describe_dimension(dim):
     entry = {
         "element_id": _eid(dim.Id),
@@ -578,8 +666,11 @@ def _describe_dimension(dim):
     dim_element_id = entry["element_id"]
     entry["segments"] = _describe_segments(dim, dim_element_id)
 
+    projection_candidate_xyz = _projection_candidate_xyz(dim)
     try:
-        entry["references"] = [_describe_reference(ref, dim_element_id) for ref in (dim.References or [])]
+        entry["references"] = [
+            _describe_reference(ref, dim_element_id, projection_candidate_xyz) for ref in (dim.References or [])
+        ]
     except Exception as exc:  # noqa: BLE001
         errors.append("references: {0}".format(exc))
 
