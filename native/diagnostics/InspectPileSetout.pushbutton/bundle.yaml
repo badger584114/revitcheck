@@ -1,0 +1,11 @@
+title: Inspect Pile Setout (diagnostic)
+tooltip: >
+  ONE-OFF diagnostic, not part of the frozen RevitCheck extension. Dumps
+  everything needed to design pile-setout reconstruction/verification: full
+  parameters on the setout-point origin annotation and a few real piles
+  (family/type, all instance + type parameters, position, and whether
+  Revit's own ProjectLocation transform already gives real Easting/
+  Northing), every bearing TextNote in the active view, and the live pile
+  schedule's real field structure plus a sample of rows. Select the
+  spot-coordinate origin annotation plus 2-3 real piles, with the pile
+  setout view active, then run this.

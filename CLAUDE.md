@@ -37,33 +37,29 @@ choice.
 > both triaged by the user as correct, expected flags, not bugs (sheet
 > 2871008 is diagrammatic; sheet 2871071's is a pipe-clearance call-out)
 > — see PLANNING.md §14. Track B (dimension-vs-model verification):
-> comparison logic is still unbuilt. Its required first step — the
-> `InspectDimensionGeometry.pushbutton` diagnostic — has been run
-> against real data **seven times** (2026-08-25); runs 1-4 each found
-> and fixed a real code bug (`GlobalPoint`/`Location` unusable →
-> `DimensionSegment.Origin` anchor → document-wide search noise →
-> `Face` geometry needing its own resolution → imprecise bbox-midpoint
-> needing `Face.Project` instead) and runs 5-6 found the specific test
-> dimensions weren't representative (dragged dimension text; a
-> road-label dimension with no model reference), not code bugs. **Run 7
-> is the one that matters: swept a real pile-layout plan view (46
-> dimensions, 92 references, real un-overridden pile-spacing values)
-> and found zero `CUT_EDGE` references anywhere — every one is
-> `AnnotationSymbol`-to-`AnnotationSymbol` or `AnnotationSymbol`-to-
-> `Grid`.** Pile setout on this project is drafted **tag-to-tag**, not
-> tag-to-geometry — a materially different case than the Wall/Floor
-> `CUT_EDGE` dimensions runs 1-5 were built around. `Face.Project`
-> still hasn't had a clean test and may never get one from a
-> tag-to-tag dimension; verifying these instead likely needs
-> **proximity matching** against real `Pile` elements (the
-> `geometry.ifc_setout_consistency` algorithm shape the plan already
-> named as the template to reuse) — confirmed necessary by real data,
-> not assumed. **The diagnostic loop is paused here** (seven real
-> Revit-machine round trips today) in favour of writing up Track B's
-> actual design — two dimensioning conventions now confirmed to
-> coexist (direct-to-geometry and tag-to-tag), so it needs two matching
-> strategies, not one. See PLANNING.md §14 for the full run-by-run
-> detail.
+> comparison logic is still unbuilt. `InspectDimensionGeometry.pushbutton`
+> was run seven times (2026-08-25) — runs 1-4 fixed real code bugs,
+> runs 5-7 found real facts about the drawings, culminating in run 7:
+> a whole real pile-layout view swept, zero `CUT_EDGE` references
+> anywhere. **Pile setout on this project is drafted tag-to-tag against
+> a schedule, not tag-to-geometry — confirmed by the user to be
+> PLANNING.md §5b's `geometry.setout_reconstruction` all over again,
+> same real sheet number (2873041) as the old PDF/DWG pipeline's BR08
+> sample.** Two real dimensioning conventions now confirmed on this
+> project: piles (setout table + bearing/dimension-chain reconstruction,
+> the §5b technique) and deck/abutments (direct-to-geometry — what
+> runs 1-5's `Face.Project` work was actually for). A third real
+> wrinkle: the pile schedule is populated by a Dynamo script that isn't
+> always rerun after the model changes, so **two pile checks are
+> wanted, not one** — drawing-vs-schedule (the direct §5b port) and
+> model-vs-schedule (comparing each `Pile`'s own current position to
+> the schedule directly — cheaper if `ProjectLocation.
+> GetProjectPosition` already gives real coordinates for this model,
+> unconfirmed). `native/diagnostics/InspectPileSetout.pushbutton`
+> (new) was built to answer the remaining real unknowns (schedule
+> field structure, origin/pile parameter names, whether
+> `GetProjectPosition` works here) before writing either port — not
+> yet run. See PLANNING.md §14 for the full detail.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -371,31 +367,25 @@ it before re-deriving Track B from scratch:
    comparison logic blind. That diagnostic —
    `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
    `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built and **run seven times against real data** (2026-08-25).
-   Runs 1-4 each found and fixed a real code bug in turn — unusable
-   `GlobalPoint`/misleading `Location` → an anchor real but not close
-   to anything (`DimensionSegment.Origin`, the value-text position,
-   plus unscoped search noise) → `Face` geometry needing its own
-   resolution (`Evaluate` has the wrong signature for it) → a `Face`
-   bbox-midpoint too imprecise, needing `Face.Project(candidate_point)`
-   instead. Runs 5-6 found the specific test dimensions weren't
-   representative (dragged dimension text 527m from its own witness
-   lines; a road-label dimension with no model reference at all), not
-   code bugs. **Run 7 swept a whole real pile-layout plan view (46
-   dimensions, 92 references, real un-overridden pile-spacing values)
-   and found zero `CUT_EDGE` references anywhere** — pile setout on
-   this project is drafted tag-to-tag (`AnnotationSymbol`-to-
-   `AnnotationSymbol`/`Grid`), not tag-to-geometry, a materially
-   different case than the Wall/Floor dimensions runs 1-5 were built
-   around. `Face.Project` still hasn't had a clean test and may never
-   get one from a tag-to-tag dimension; verifying these instead likely
-   needs proximity matching against real `Pile` elements — the
-   `geometry.ifc_setout_consistency` algorithm shape already named as
-   the template to reuse, now confirmed necessary by real data rather
-   than assumed. **The diagnostic loop is paused here** in favour of
-   writing up Track B's actual design, which now needs two matching
-   strategies (direct-to-geometry and tag-to-tag), not one — see
-   PLANNING.md §14 for the full run-by-run detail.
+   built and run seven times against real data (2026-08-25) — runs 1-4
+   each found and fixed a real code bug, runs 5-7 found real facts
+   about the drawings, run 7 (a real pile-layout view swept, zero
+   `CUT_EDGE` references anywhere) being the one that mattered:
+   **confirmed by the user to be PLANNING.md §5b's
+   `geometry.setout_reconstruction` all over again** — pile setout on
+   this project is drafted tag-to-tag against a live schedule, on the
+   same real sheet number (2873041) the old PDF/DWG pipeline already
+   solved this for. Two real dimensioning conventions confirmed:
+   piles (chain+bearing reconstruction) and deck/abutments
+   (direct-to-geometry — what the `Face.Project` work in runs 1-5 was
+   actually for). The pile schedule is Dynamo-populated and can go
+   stale after a model move, so two pile checks are wanted: drawing-
+   vs-schedule (the direct §5b port) and model-vs-schedule (cheaper if
+   `ProjectLocation.GetProjectPosition` already gives real coordinates
+   for this model). `native/diagnostics/InspectPileSetout.pushbutton`
+   (new) was built to answer the remaining real unknowns before
+   writing either port — not yet run. See PLANNING.md §14 for the full
+   detail.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a

@@ -92,3 +92,32 @@ B's actual design, which now needs two matching strategies (direct-to-
 geometry and tag-to-tag), not one. The current build is unchanged since
 run 4's fix; if you're running this again, that's for a specific new
 question, not to re-chase the same one.
+
+## `InspectPileSetout.pushbutton`
+
+The follow-on diagnostic after run 7 pivoted the pile-setout question away
+from `InspectDimensionGeometry.pushbutton`'s geometry-resolution work
+entirely: this project's pile setout is the exact same problem
+`extraction/setout_reconstruction.py` already solved once for the PDF/DWG
+pipeline (PLANNING.md §5b — same real sheet number, 2873041, confirmed by
+the user), and needs its own real-data grounding before that port gets
+written: what parameters the setout-point origin annotation and a real
+`Pile` element actually carry, what the bearing `TextNote`'s real text
+looks like, what the live pile schedule's real field structure is, and
+whether Revit's own `ProjectLocation.GetProjectPosition` already gives
+real Easting/Northing (which would let a model-vs-schedule check skip
+bearing/dimension-chain reconstruction entirely — see the script's own
+docstring for the full reasoning, grounded against real Revit API
+documentation on Survey Point vs. Project Base Point).
+
+**How to run it:** open `DRG-2873041 - PILE LAYOUT` (or whichever sheet
+carries the pile setout), select the spot-coordinate origin annotation
+(family type `Coordinate_Survey (m)_2.5` on this project) plus 2-3 real
+piles, then run this button — it also sweeps the active view's bearing
+`TextNote`s and the whole document's `ViewSchedule`s automatically, no
+selection needed for those.
+
+Same handling as the other diagnostics' output: real client coordinates,
+parameter values, and schedule data — treat it like a capture (PLANNING.md
+§2), send it back for review, then delete it and the scratch extension
+copy — don't commit it.
