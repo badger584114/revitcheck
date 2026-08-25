@@ -39,18 +39,24 @@ choice.
 > — see PLANNING.md §14. Track B (dimension-vs-model verification):
 > comparison logic is still unbuilt. Its required first step — the
 > `InspectDimensionGeometry.pushbutton` diagnostic — has now been run
-> against real data **twice** (2026-08-25, same 7 dimensions/17
+> against real data **three times** (2026-08-25, same 7 dimensions/17
 > references), each run finding and fixing a real bug: run 1 found
-> `Reference.GlobalPoint` unusable (null always) and `Location` actively
-> misleading for real model geometry (silently returns Revit's internal
-> origin for Wall/Floor FamilyInstances); the fix (anchor on
-> `DimensionSegment.Origin` instead) went out, and run 2 found *that*
-> anchor real but still not close to anything — the dimension's value-text
-> position, not what it measures — while the unscoped document-wide search
-> was dominated by Camera/Scope Box/Group noise from unrelated views. Fix
-> 2: resolve each reference's actual touched geometry directly via
-> `Element.GetGeometryObjectFromReference`, and exclude the confirmed-noise
-> categories from the search. Not yet run. Don't design the comparison
+> `Reference.GlobalPoint` unusable and `Location` actively misleading
+> (silently returns Revit's internal origin) for real model geometry;
+> fixed by anchoring on `DimensionSegment.Origin`. Run 2 found that
+> anchor real but not close to anything (the dimension's value-text
+> position, not what it measures), plus document-wide search noise;
+> fixed by resolving each reference's actual touched geometry via
+> `Element.GetGeometryObjectFromReference` and excluding confirmed-noise
+> categories. Run 3: that resolution worked for `Edge`/`Curve`
+> geometry (real points, real nearby structural content found) but
+> `Face` geometry — the `CUT_EDGE` references pointing at real Wall/
+> Floor model elements, the case that matters most — threw (wrong
+> `Evaluate` signature) and silently fell back to the same broken
+> `Location` `(0,0,0)`. Fixed: `Face` now resolves via its own
+> `GetBoundingBox()` UV midpoint, and `Location` is no longer in the
+> search-anchor fallback chain at all (it produced the same silently-
+> wrong answer twice). Not yet run. Don't design the comparison
 > IR/algorithm before that run confirms this fix; see PLANNING.md §14 for
 > the full detail.
 >
@@ -360,24 +366,30 @@ it before re-deriving Track B from scratch:
    comparison logic blind. That diagnostic —
    `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
    `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built **and run twice** (2026-08-25, same 7 dimensions/17 references
-   from a real drafted section view each time). Run 1 found `Reference.
-   GlobalPoint` unusable (null on every reference, every type),
-   `Dimension.Curve` throwing on every real dimension chain, and the
-   `Location`-based fallback silently returning Revit's internal origin
-   (not a real position, no exception either) for hosted model
+   built **and run three times** (2026-08-25, same 7 dimensions/17
+   references from a real drafted section view each time). Run 1 found
+   `Reference.GlobalPoint` unusable (null on every reference, every
+   type), `Dimension.Curve` throwing on every real dimension chain, and
+   the `Location`-based fallback silently returning Revit's internal
+   origin (not a real position, no exception either) for hosted model
    `FamilyInstance`s specifically — the exact case a real comparison
    needs most; fixed by anchoring on `DimensionSegment.Origin`. Run 2
    (with that fix) found the new anchor real but still not close to
    anything real — it's the dimension's value-text position, not what it
    measures — and the unscoped search was dominated by Camera/Scope
-   Box/Group noise from unrelated views. Fixed again: each reference now
-   resolves its actual touched geometry via
-   `Element.GetGeometryObjectFromReference`, and the confirmed-noise
-   categories are excluded from the search. **Not yet run with this
-   fix** — see PLANNING.md §14 for the full detail. Nothing about the
-   comparison logic's design should be decided before that run confirms
-   it.
+   Box/Group noise from unrelated views; fixed by resolving each
+   reference's actual touched geometry via
+   `Element.GetGeometryObjectFromReference` and excluding the
+   confirmed-noise categories. Run 3 (with that fix) found it working
+   for `Edge`/`Curve` geometry — real points, real nearby structural
+   content found — but `Face` geometry (the `CUT_EDGE` references
+   pointing at real Wall/Floor model elements) threw on the wrong
+   `Evaluate` signature and silently fell back to the same broken
+   `Location` `(0,0,0)` a second time. Fixed: `Face` now resolves via
+   its own `GetBoundingBox()` UV midpoint, and `Location` is out of the
+   search-anchor chain entirely. **Not yet run with this fix** — see
+   PLANNING.md §14 for the full detail. Nothing about the comparison
+   logic's design should be decided before that run confirms it.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a

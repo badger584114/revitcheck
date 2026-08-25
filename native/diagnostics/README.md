@@ -73,7 +73,7 @@ geometry and element identities, treat it like a capture (PLANNING.md
 §2), send it back for review, then delete it and the scratch extension
 copy — don't commit it.
 
-**Two real runs (2026-08-25) already found real bugs in the script
+**Three real runs (2026-08-25) already found real bugs in the script
 itself** (see PLANNING.md §14 for the full findings): run 1 found
 `Reference.GlobalPoint`/the `Location` fallback both unreliable for real
 model geometry, fixed by anchoring on `DimensionSegment.Origin`; run 2
@@ -81,6 +81,11 @@ found that anchor real but not actually near what a dimension measures,
 and the search itself polluted by document-wide noise, fixed by resolving
 each reference's real touched geometry directly
 (`Element.GetGeometryObjectFromReference`) and excluding the categories
-that run confirmed as noise. If you're running this for the first time,
-you already have the latest fixed version; if re-running to confirm a
-fix, that's expected and is the point.
+that run confirmed as noise; run 3 found that resolution working for
+`Edge`/`Curve` geometry but throwing (and silently falling back to the
+same broken `Location`) for `Face` geometry — exactly the `CUT_EDGE`
+references pointing at real Wall/Floor model elements — fixed by giving
+`Face` its own `GetBoundingBox()`-midpoint resolution and dropping
+`Location` from the search-anchor chain entirely. If you're running this
+for the first time, you already have the latest fixed version; if
+re-running to confirm a fix, that's expected and is the point.

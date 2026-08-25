@@ -92,9 +92,11 @@ from Autodesk.Revit.DB import (
     BoundingBoxIntersectsFilter,
     Dimension,
     ElementId,
+    Face,
     FilteredElementCollector,
     Outline,
     SpotDimension,
+    UV,
     XYZ,
 )
 
@@ -299,14 +301,37 @@ def _nearby_elements(global_point_xyz, exclude_element_id):
 
 def _geometry_object_point(geom_obj):
     """A representative 3D point actually on a resolved GeometryObject
-    (Edge/Curve/Face/Point) - not a guess, the real touched geometry.
-    `Evaluate(0.5, True)` (normalized parameter) works for both Edge and
-    Curve; a PlanarFace has no single natural "midpoint" so its own
-    `Origin` is used instead - good enough to sanity-check proximity to a
-    dimension line, not claimed to be the exact measured point on a
-    non-planar face."""
+    (Edge/Curve/Face) - not a guess, the real touched geometry.
+
+    Found necessary on the third real run (2026-08-25, see PLANNING.md
+    §14): the previous version tried `Evaluate(0.5, True)` first for
+    everything, which works for Edge/Curve (both confirmed for real) but
+    throws for Face (`Face.Evaluate` takes a single `UV`, not
+    `(double, bool)`) - silently caught, falling through to `Origin`,
+    which a `PlanarFace` has (but isn't guaranteed to be anywhere *on*
+    the visible bounded face - it's the point defining the face's
+    underlying infinite plane) and a `RuledFace` doesn't have at all,
+    returning None for exactly the `CUT_EDGE`-on-a-curved-element case
+    real bridge geometry produces. Face is now handled on its own terms:
+    the midpoint of its `GetBoundingBox()` UV domain, evaluated - a real
+    point guaranteed inside the face's parameter domain (not guaranteed
+    inside a non-convex trimmed boundary, but reliably close, and worlds
+    better than a plane-definition point or nothing at all).
+    """
     if geom_obj is None:
         return None
+
+    if isinstance(geom_obj, Face):
+        try:
+            bbox = geom_obj.GetBoundingBox()
+            mid_uv = UV((bbox.Min.U + bbox.Max.U) / 2.0, (bbox.Min.V + bbox.Max.V) / 2.0)
+            return geom_obj.Evaluate(mid_uv)
+        except Exception:  # noqa: BLE001
+            pass
+        return getattr(geom_obj, "Origin", None)
+
+    # Edge and Curve both expose Evaluate(double, bool) - normalized
+    # parameter - confirmed working for real on this project's data.
     evaluate = getattr(geom_obj, "Evaluate", None)
     if evaluate is not None:
         try:
@@ -427,19 +452,17 @@ def _describe_reference(ref, dimension_element_id):
     # Preference order for where to search from: the actual touched
     # geometry (new, most trustworthy) > GlobalPoint (proved unusable so
     # far, kept as a fallback in case a reference type turns up where it
-    # isn't) > Location (proved actively misleading for FamilyInstances,
-    # last resort only).
+    # isn't). Location is deliberately NOT in this chain any more - it
+    # silently produced (0,0,0), Revit's internal origin, for real model
+    # FamilyInstances on both of the first two real runs (PLANNING.md
+    # §14), and a missing search result is a far more honest failure mode
+    # than a wrong one that looks like data. `element_location_point`
+    # above still records it for visibility - just not as a search anchor.
     # Explicit None-checks, not `or` - an XYZ from the Revit API has no
     # defined truthiness, and a legitimate point can have all-zero
     # coordinates (seen for real on this project's Internal Origin), so
     # `or` risks silently falling through past a valid point.
     search_point = geometry_xyz if geometry_xyz is not None else global_xyz
-    if search_point is None and resolved_element is not None:
-        try:
-            location = resolved_element.Location
-            search_point = getattr(location, "Point", None)
-        except Exception:  # noqa: BLE001
-            search_point = None
 
     if search_point is not None:
         entry["nearby_geometry"] = _nearby_elements(search_point, dimension_element_id)
