@@ -28,10 +28,14 @@ choice.
 > feature — metadata reconciliation — is now built, deployed, calibrated
 > against real data, and merged. §14 is the current plan for what's next:
 > the dimension/sheet/view adapter, then dimension-vs-model verification.
-> **§14 update (2026-08-25):** the adapter half (Track A) is now built —
-> `dotnet build` clean, all tests passing — but not yet validated on the
-> Revit machine, so not yet calibrated the way §13's feature was. Track B
-> (dimension-vs-model verification) is still entirely unbuilt.
+> **§14 update (2026-08-25):** the adapter half (Track A) is now built and
+> validated against a real cloud-worksharing model the same day — 59
+> sheets/833 views/538 dimensions, 0 extraction errors, run via the
+> updated Capture Model button. `native/tools/RevitCheck.CheckRunner`
+> (new) then ran both dimension checks against that capture off-Revit and
+> found 125 real issues, including two override-consistency findings
+> worth a second look — see PLANNING.md §14. Track B (dimension-vs-model
+> verification) is still entirely unbuilt.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -291,8 +295,8 @@ no longer "next", it's built.** `revitcheck.metadata_reconciliation` +
 re-scoping or re-validating that path without a specific real-data reason
 to — see PLANNING.md §13 for what was found and fixed.
 
-**The dimension/sheet/view adapter (phase 6) is built (2026-08-25), not yet
-validated on the Revit machine.** `~/.claude/plans/crispy-hopping-key.md`
+**The dimension/sheet/view adapter (phase 6) is built and its collection
+step validated on the Revit machine (2026-08-25).** `~/.claude/plans/crispy-hopping-key.md`
 (written 2026-08-24) covers both tracks — Track A executed 2026-08-25, read
 it before re-deriving Track B from scratch:
 
@@ -303,10 +307,16 @@ it before re-deriving Track B from scratch:
    buttons (order: Capture Model → Dimension Provenance → Dimension
    Overrides → Metadata Reconciliation), `CaptureModelCommand` extended to
    capture sheets/views/dimensions too. `dotnet build` clean, all 218 tests
-   still pass. **Not yet run against a real document** — same "needs the
-   Revit machine to prove it" caveat metadata reconciliation carried before
-   its own first real run found three real bugs (PLANNING.md §13); don't
-   treat this as calibrated until that happens here too.
+   still pass. **Collection now confirmed against a real document**: the
+   user ran Capture Model against the real cloud-worksharing model the same
+   day and uploaded the result — 59 sheets, 833 views, 538 dimensions, 0
+   extraction errors. Running both dimension checks against that capture
+   (via the new `native/tools/RevitCheck.CheckRunner`, off-Revit) found 125
+   real issues — see PLANNING.md §14. Still open: the *check-producing*
+   ribbon commands (Dimension Provenance/Overrides) haven't themselves been
+   run on the Revit machine yet, so the §15 second-pass save-dialog fix is
+   still unconfirmed there specifically — this run used Capture Model,
+   which already had a working dialog before that fix.
 2. **Verify drafted dimensions against the model** — the harder half, still
    entirely unbuilt.
    `revit.dimension_provenance` and `revit.dimension_override_consistency`

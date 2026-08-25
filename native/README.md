@@ -122,7 +122,17 @@ native/
     RevitCheck.MappingBuilder/      # net8.0 console app, no Revit refs. Builds a
                                     #   starter mapping file from a real capture +
                                     #   a real CSV's headers - off-machine, the
-                                    #   analogue of scripts/check_capture.py.
+                                    #   analogue of scripts/check_capture.py for
+                                    #   metadata reconciliation's setup step.
+    RevitCheck.CheckRunner/         # net8.0 console app, no Revit refs. Loads a
+                                    #   .capture.json and runs
+                                    #   revit.dimension_provenance +
+                                    #   revit.dimension_override_consistency
+                                    #   against it - the actual off-machine
+                                    #   analogue of scripts/check_capture.py,
+                                    #   filling the gap MappingBuilder's own
+                                    #   comment didn't (it builds a mapping
+                                    #   file, it doesn't run a check).
   diagnostics/
     InspectElements.pushbutton/     # ONE-OFF Revit-machine diagnostic (not part
                                     #   of the frozen extension) - dumps a
@@ -179,6 +189,29 @@ Every auto-matched numeric field is deliberately left with no `tolerance_mm`,
 which means `ParameterMappingSerializer.Load` will refuse to load the file
 until a human has actually reviewed it and filled that in - a real gate, not
 just a comment asking nicely.
+
+### Running the dimension checks against a capture, off-Revit
+
+```
+dotnet run --project tools/RevitCheck.CheckRunner -- <capture.json> \
+    [--json out.json] [--csv out.csv] [--bcf out-dir] [--all-views] [--rule rule-id]...
+```
+
+Runs `revit.dimension_provenance` + `revit.dimension_override_consistency`
+(plus `revitcheck.capture_coverage`) against any `.capture.json` - one
+written by `Capture Model`, or the JSON a check command itself writes, which
+is a superset - and prints the same shape of summary the ribbon buttons'
+`TaskDialog` shows, plus the list of fully-drafted views
+(`DimensionProvenanceCheck.DraftedViews`). `--json`/`--csv`/`--bcf` write the
+same three formats `IssueOutput.WriteNextToModel` does. Built 2026-08-25 to
+close a real gap: `RevitCheck.MappingBuilder` above only builds a mapping
+file, so until this existed there was no way to see what the dimension
+checks say about a real capture without a trip back to the Revit machine -
+exactly the two-machine friction `scripts/check_capture.py` exists to remove
+on the Python side. First real run, against the real capture the user
+uploaded the same day (`samples/T2DPAA-T2D-C3S-BR-M3D-100302.capture.json`,
+59 sheets/833 views/538 dimensions/0 extraction errors) - see PLANNING.md
+§14 for the counts and two override findings worth a second look.
 
 ## What's built
 
@@ -427,11 +460,20 @@ wired in the confirmed order (Capture Model → Dimension Provenance →
 Dimension Overrides → Metadata Reconciliation), and `CaptureModelCommand`
 extended to capture sheets/views/dimensions alongside metadata in one file.
 `dotnet build` is clean (0 warnings/errors) and all 218 existing tests
-still pass — but as with the metadata adapter before it, **none of this is
-verified against a real document yet**; that needs the Revit machine (see
-the dimension-adapter plan's own "Validation plan" step 5, not yet run).
-Treat this the way `RevitMetadataElementSource` was treated before its
-first real run: plausible from review and a clean build, not yet proven.
+still pass.
+
+**The adapter is now validated against a real document (2026-08-25, same
+day)** — the user ran the updated Capture Model button against the real
+cloud-worksharing model: 59 sheets, 833 views, 538 dimensions, 0
+extraction errors. `RevitDimensionSource.cs` collecting real data cleanly
+on the first try is the specific thing this section previously flagged as
+unproven. What that run does *not* cover: it predates, and so doesn't
+test, the §15 second-pass save-dialog fix (above) in the other three
+commands — Capture Model already had a working `SaveFileDialog`, so this
+run never touched the new dialog path. See PLANNING.md §14 for the full
+detail, and "Running the dimension checks against a capture, off-Revit"
+above for what the two dimension checks actually found running against it
+locally via the new `RevitCheck.CheckRunner` tool.
 
 **BCF export is now wired into all three check-producing commands
 (2026-08-25)** — `Core/Reporting/IssueBcfWriter.cs` is a line-for-line
