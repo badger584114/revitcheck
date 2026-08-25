@@ -1,0 +1,3626 @@
+{
+  "dimensions": [
+    {
+      "curve": {
+        "_error": "The input curve is not bound.\r\nParameter name: curve\r\n   at Autodesk.Revit.CurveAPIUtils.GetCurveEndpoint(Curve curve, Int32 index)",
+        "kind": "Line"
+      },
+      "dimension_type_name": "Dimension_Standard_O (mm)",
+      "element_id": 6054551,
+      "is_spot_dimension": false,
+      "number_of_segments": 5,
+      "origin": null,
+      "references": [
+        {
+          "element_location_point": [
+            225819.0560309307,
+            1220424.954103792,
+            22156.215615818463
+          ],
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": null,
+          "resolved_category": "Lines",
+          "resolved_class_name": "DetailLine",
+          "resolved_element_id": 6054533,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "514a3206-0e5a-45e9-94da-45d664efb580-005c6285:0:LINEAR"
+        },
+        {
+          "element_location_point": [
+            227977.92422493428,
+            1212301.6638025169,
+            21966.665028554784
+          ],
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": null,
+          "resolved_category": "Lines",
+          "resolved_class_name": "DetailLine",
+          "resolved_element_id": 6054484,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "514a3206-0e5a-45e9-94da-45d664efb580-005c6254:0:LINEAR"
+        },
+        {
+          "element_location_point": null,
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": null,
+          "resolved_category": "Detail Items",
+          "resolved_class_name": "FilledRegion",
+          "resolved_element_id": 5417639,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "132cc46a-fd5c-45a1-b44a-1611b53cccae-0052a867:7:LINEAR"
+        },
+        {
+          "element_location_point": [
+            229149.70691309738,
+            1207892.5336053164,
+            23460.85696073605
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5058217,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5059313,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5059412,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5251612,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5666436,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5903987,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Walls",
+                "class_name": "FamilyInstance",
+                "element_id": 6013038,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046003,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046004,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046005,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046015,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046034,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046035,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046061,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046062,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046063,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046066,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046067,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046068,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6046069,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046074,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046075,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 80,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 8448277,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "f9d3e3b1-3d3e-46f6-b6ec-a5f46eb0d2c4-0080e30f:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        },
+        {
+          "element_location_point": [
+            229322.6134765178,
+            1207241.928712641,
+            23460.856960736048
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5058217,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5059313,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5059412,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5251612,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5666436,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5903987,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Walls",
+                "class_name": "FamilyInstance",
+                "element_id": 6013038,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046003,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046004,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046005,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046014,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046015,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 6046027,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 6046028,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046029,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046030,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046031,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046033,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046034,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046035,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046037,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046042,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 146,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 8448278,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "f9d3e3b1-3d3e-46f6-b6ec-a5f46eb0d2c4-0080e324:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        },
+        {
+          "element_location_point": [
+            229438.65977615488,
+            1206805.2750146717,
+            23460.856960736048
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5058217,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5059313,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5059412,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5251612,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5666436,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5903987,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Walls",
+                "class_name": "FamilyInstance",
+                "element_id": 6013038,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046003,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046004,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046005,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046014,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046015,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 6046027,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 6046028,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046029,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046030,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046031,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046033,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046034,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046035,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046037,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046042,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 142,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 8445707,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "5d5e4b13-a1f5-45e3-ad68-11e7c0759aab-0080ddf6:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Mass",
+                "class_name": "FamilyInstance",
+                "element_id": 6190424,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 8418741,
+                "workset": "View \"3D View: NavisworksExport Copy 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 4,
+            "truncated": false
+          },
+          "origin": [
+            226898.4901279325,
+            1216363.3089531544,
+            24542.372152594035
+          ],
+          "value_mm": 8405.26960887469,
+          "value_override": "EVERARD AVENUE WESTBOUND TRAFFIC LANE VARIES"
+        },
+        {
+          "index": 1,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 8418741,
+                "workset": "View \"3D View: NavisworksExport Copy 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 4,
+            "truncated": false
+          },
+          "origin": [
+            228491.6926025149,
+            1210368.479696931,
+            24542.372152594035
+          ],
+          "value_mm": 4000.579323993603,
+          "value_override": "4000\u200d"
+        },
+        {
+          "index": 2,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6113558,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Columns",
+                "class_name": "FamilyInstance",
+                "element_id": 7855849,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Columns",
+                "class_name": "FamilyInstance",
+                "element_id": 7855852,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 8418741,
+                "workset": "View \"3D View: NavisworksExport Copy 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 7,
+            "truncated": false
+          },
+          "origin": [
+            229077.58394659642,
+            1208163.9145983309,
+            24542.372152594035
+          ],
+          "value_mm": 561.6025842760255,
+          "value_override": "550\u200d"
+        },
+        {
+          "index": 3,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046004,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046005,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046011,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046012,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046013,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046014,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 6046027,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 6046028,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046030,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046031,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046203,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046264,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046265,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6046266,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046267,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046268,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046269,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046270,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046271,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046272,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046273,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046274,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 174,
+            "truncated": true
+          },
+          "origin": [
+            229236.16019480754,
+            1207567.2311589788,
+            24542.372152594035
+          ],
+          "value_mm": 673.1889824166625,
+          "value_override": "660\u200d"
+        },
+        {
+          "index": 4,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046004,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046005,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046011,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046012,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046013,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046014,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 6046027,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 6046028,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046030,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 6046031,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046203,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046264,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046265,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6046266,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046267,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046268,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046269,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046270,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046271,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046272,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 6046273,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6046274,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 173,
+            "truncated": true
+          },
+          "origin": [
+            229380.63662633626,
+            1207023.6018636562,
+            24542.372152594035
+          ],
+          "value_mm": 451.81101758335825,
+          "value_override": "445\u200d"
+        }
+      ],
+      "unique_id": "514a3206-0e5a-45e9-94da-45d664efb580-005c6297",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            17471.620891927672,
+            15752.630840812884,
+            -0.0
+          ],
+          "min": [
+            -19697.93849551245,
+            7797.2315852249785,
+            -6.096
+          ]
+        },
+        "element_id": 5389239,
+        "name": "DRG-2873022 - SECTION 1",
+        "origin": [
+          225538.50321500478,
+          1221480.6053820574,
+          10849.492730614396
+        ],
+        "right_direction": [
+          0.256846989384394,
+          -0.9664520805731514,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          -0.0,
+          -0.0,
+          1.0
+        ],
+        "view_direction": [
+          -0.9664520805731514,
+          -0.256846989384394,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": {
+        "_error": "The input curve is not bound.\r\nParameter name: curve\r\n   at Autodesk.Revit.CurveAPIUtils.GetCurveEndpoint(Curve curve, Int32 index)",
+        "kind": "Line"
+      },
+      "dimension_type_name": "Dimension_Standard_O (mm)",
+      "element_id": 6113881,
+      "is_spot_dimension": false,
+      "number_of_segments": 0,
+      "origin": [
+        229412.00546814705,
+        1206905.5686232985,
+        20064.803503890325
+      ],
+      "references": [
+        {
+          "element_location_point": [
+            229393.47917807617,
+            1206975.2784985332,
+            20361.053503890333
+          ],
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": null,
+          "resolved_category": "Lines",
+          "resolved_class_name": "DetailLine",
+          "resolved_element_id": 6113520,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "44942d79-e78a-421c-b51f-0478e867d794-005d48f0:0:LINEAR"
+        },
+        {
+          "element_location_point": [
+            229220.51494100448,
+            1207626.1004029799,
+            19768.553503890373
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034617,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034628,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113515,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113518,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113520,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113521,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113522,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113523,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113526,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6113558,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 6233639,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 6233732,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 6233780,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 7504597,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Columns",
+                "class_name": "FamilyInstance",
+                "element_id": 7855849,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Columns",
+                "class_name": "FamilyInstance",
+                "element_id": 7855852,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 8099642,
+                "workset": "View \"Section: DRG-2873071 - ABUTMENT A1 REINFORCEMENT ELEVATION\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 8099662,
+                "workset": "View \"Section: DRG-2873071 - ABUTMENT A1 REINFORCEMENT ELEVATION\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 8100245,
+                "workset": "View \"Section: DRG-2873071 - ABUTMENT A1 REINFORCEMENT ELEVATION\""
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 8418741,
+                "workset": "View \"3D View: NavisworksExport Copy 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 8448284,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 8448285,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 33,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 6113869,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "44942d79-e78a-421c-b51f-0478e867d794-005d4a4d:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:9:SURFACE"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034628,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Scope Boxes",
+                "class_name": "Element",
+                "element_id": 5386823,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Floors",
+                "class_name": "FamilyInstance",
+                "element_id": 5984630,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113495,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113510,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113511,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113512,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113513,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113514,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113515,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113516,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113517,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113518,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113519,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113520,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113521,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113522,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113523,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113524,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113525,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113526,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6113528,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6113558,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 48,
+            "truncated": true
+          },
+          "origin": [
+            229412.00546814705,
+            1206905.5686232985,
+            20064.803503890325
+          ],
+          "value_mm": 592.5000000000003,
+          "value_override": "500\u200d"
+        }
+      ],
+      "unique_id": "44942d79-e78a-421c-b51f-0478e867d794-005d4a59",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            17471.620891927672,
+            15752.630840812884,
+            -0.0
+          ],
+          "min": [
+            -19697.93849551245,
+            7797.2315852249785,
+            -6.096
+          ]
+        },
+        "element_id": 5389239,
+        "name": "DRG-2873022 - SECTION 1",
+        "origin": [
+          225538.50321500478,
+          1221480.6053820574,
+          10849.492730614396
+        ],
+        "right_direction": [
+          0.256846989384394,
+          -0.9664520805731514,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          -0.0,
+          -0.0,
+          1.0
+        ],
+        "view_direction": [
+          -0.9664520805731514,
+          -0.256846989384394,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": {
+        "_error": "The input curve is not bound.\r\nParameter name: curve\r\n   at Autodesk.Revit.CurveAPIUtils.GetCurveEndpoint(Curve curve, Int32 index)",
+        "kind": "Line"
+      },
+      "dimension_type_name": "Dimension_Standard_O (mm)",
+      "element_id": 6120049,
+      "is_spot_dimension": false,
+      "number_of_segments": 0,
+      "origin": [
+        225540.93230877523,
+        1221471.4652993416,
+        24542.372152594035
+      ],
+      "references": [
+        {
+          "element_location_point": [
+            225262.8085866197,
+            1222517.976494891,
+            22073.02761574788
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 4988036,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034534,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034546,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034558,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034570,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108081,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108093,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108105,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108318,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5140395,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Floors",
+                "class_name": "FamilyInstance",
+                "element_id": 5298708,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Mass",
+                "class_name": "FamilyInstance",
+                "element_id": 5299961,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5313095,
+                "workset": "Workset1"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5398456,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5398457,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5401579,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5401580,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5417662,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5417663,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417664,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417668,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417689,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417726,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 160,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 6120048,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d6098:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        },
+        {
+          "element_location_point": [
+            225819.0560309307,
+            1220424.954103792,
+            22156.215615818463
+          ],
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": null,
+          "resolved_category": "Lines",
+          "resolved_class_name": "DetailLine",
+          "resolved_element_id": 6054533,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "514a3206-0e5a-45e9-94da-45d664efb580-005c6285:0:LINEAR"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Floors",
+                "class_name": "FamilyInstance",
+                "element_id": 5984625,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6090663,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6124586,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Mass",
+                "class_name": "FamilyInstance",
+                "element_id": 6190424,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 7512475,
+                "workset": "View \"Section: DRG-2873252 - SECTION 4\""
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 8418741,
+                "workset": "View \"3D View: NavisworksExport Copy 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 8,
+            "truncated": false
+          },
+          "origin": [
+            225540.93230877523,
+            1221471.4652993416,
+            24542.372152594035
+          ],
+          "value_mm": 2165.6763259877803,
+          "value_override": "MEDIAN"
+        }
+      ],
+      "unique_id": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d60ad",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            17471.620891927672,
+            15752.630840812884,
+            -0.0
+          ],
+          "min": [
+            -19697.93849551245,
+            7797.2315852249785,
+            -6.096
+          ]
+        },
+        "element_id": 5389239,
+        "name": "DRG-2873022 - SECTION 1",
+        "origin": [
+          225538.50321500478,
+          1221480.6053820574,
+          10849.492730614396
+        ],
+        "right_direction": [
+          0.256846989384394,
+          -0.9664520805731514,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          -0.0,
+          -0.0,
+          1.0
+        ],
+        "view_direction": [
+          -0.9664520805731514,
+          -0.256846989384394,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": {
+        "_error": "The input curve is not bound.\r\nParameter name: curve\r\n   at Autodesk.Revit.CurveAPIUtils.GetCurveEndpoint(Curve curve, Int32 index)",
+        "kind": "Line"
+      },
+      "dimension_type_name": "Dimension_Standard_O (mm)",
+      "element_id": 6120051,
+      "is_spot_dimension": false,
+      "number_of_segments": 0,
+      "origin": [
+        224130.56351917807,
+        1226778.3363448172,
+        24542.372152594035
+      ],
+      "references": [
+        {
+          "element_location_point": [
+            222998.31845173633,
+            1231038.6961947433,
+            21893.564212378573
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 4988036,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5033831,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034391,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034498,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034510,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034522,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108117,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108129,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108141,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108153,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108165,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5140395,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5201185,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5201188,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5201619,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201626,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201633,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5201659,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201664,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201673,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5232130,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5241469,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5504584,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 54,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 6120050,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d60ba:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        },
+        {
+          "element_location_point": [
+            225262.8085866197,
+            1222517.976494891,
+            22073.02761574788
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 4988036,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034534,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034546,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034558,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034570,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108081,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108093,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108105,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108318,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5140395,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Floors",
+                "class_name": "FamilyInstance",
+                "element_id": 5298708,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Mass",
+                "class_name": "FamilyInstance",
+                "element_id": 5299961,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5313095,
+                "workset": "Workset1"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5398456,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5398457,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5401579,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5401580,
+                "workset": "View \"Section: DRG-2873022 - ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5417662,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5417663,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417664,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417668,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417689,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5417726,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 160,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 6120048,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d6098:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 5827012,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6090663,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6124586,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 7512475,
+                "workset": "View \"Section: DRG-2873252 - SECTION 4\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 6,
+            "truncated": false
+          },
+          "origin": [
+            224130.56351917807,
+            1226778.3363448172,
+            24542.372152594035
+          ],
+          "value_mm": 8816.494755538388,
+          "value_override": "EVERARD AVENUE EASTBOUND TRAFFIC LANE VARIES"
+        }
+      ],
+      "unique_id": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d60be",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            17471.620891927672,
+            15752.630840812884,
+            -0.0
+          ],
+          "min": [
+            -19697.93849551245,
+            7797.2315852249785,
+            -6.096
+          ]
+        },
+        "element_id": 5389239,
+        "name": "DRG-2873022 - SECTION 1",
+        "origin": [
+          225538.50321500478,
+          1221480.6053820574,
+          10849.492730614396
+        ],
+        "right_direction": [
+          0.256846989384394,
+          -0.9664520805731514,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          -0.0,
+          -0.0,
+          1.0
+        ],
+        "view_direction": [
+          -0.9664520805731514,
+          -0.256846989384394,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": {
+        "_error": "The input curve is not bound.\r\nParameter name: curve\r\n   at Autodesk.Revit.CurveAPIUtils.GetCurveEndpoint(Curve curve, Int32 index)",
+        "kind": "Line"
+      },
+      "dimension_type_name": "Dimension_Standard_O (mm)",
+      "element_id": 6120055,
+      "is_spot_dimension": false,
+      "number_of_segments": 0,
+      "origin": [
+        222589.27958519195,
+        1232577.8088958678,
+        24542.372152594035
+      ],
+      "references": [
+        {
+          "element_location_point": [
+            222180.24071864752,
+            1234116.9215969925,
+            22089.83898825831
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 4988036,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5033831,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034391,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034498,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108141,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108153,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108165,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5140395,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Floors",
+                "class_name": "FamilyInstance",
+                "element_id": 5227784,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5232130,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Floors",
+                "class_name": "FamilyInstance",
+                "element_id": 5288994,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 5581387,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5586296,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5586329,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5614690,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5614691,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5614702,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5614704,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5614705,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5669115,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 5695402,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5770800,
+                "workset": "View \"Section: DRG-2873010 - SECTION 1a\""
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5903415,
+                "workset": "40_TempDummyModel"
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 94,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 6120052,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d60d7:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        },
+        {
+          "element_location_point": [
+            222998.31845173633,
+            1231038.6961947433,
+            21893.564212378573
+          ],
+          "element_reference_type": "REFERENCE_TYPE_SURFACE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 4988036,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5033831,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034391,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034498,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034510,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034522,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108117,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108129,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108141,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108153,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108165,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5140395,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5201185,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5201188,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5201619,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201626,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201633,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5201659,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201664,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "ModelLine",
+                "element_id": 5201673,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Floors",
+                "class_name": "Floor",
+                "element_id": 5232130,
+                "workset": "99_SuperSeded"
+              },
+              {
+                "category": "Roofs",
+                "class_name": "FamilyInstance",
+                "element_id": 5241469,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5504584,
+                "workset": "View \"Section: DRG-2873022 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 54,
+            "truncated": true
+          },
+          "resolved_category": "Generic Annotations",
+          "resolved_class_name": "AnnotationSymbol",
+          "resolved_element_id": 6120050,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d60ba:0:INSTANCE:f8eddf23-d9cb-449c-8ccc-08a7043cef86-001ba087:10:SURFACE"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Work Plane Grid",
+                "class_name": "Element",
+                "element_id": 5061519,
+                "workset": "View \"3D View: {3D - kaptan.singh} Copy 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5770800,
+                "workset": "View \"Section: DRG-2873010 - SECTION 1a\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 5827012,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6090663,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 6124586,
+                "workset": "View \"Section: DRG-2873122 - SECTION 1\""
+              },
+              {
+                "category": "Detail Groups",
+                "class_name": "Group",
+                "element_id": 7512475,
+                "workset": "View \"Section: DRG-2873252 - SECTION 4\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 7,
+            "truncated": false
+          },
+          "origin": [
+            222589.27958519195,
+            1232577.8088958678,
+            24542.372152594035
+          ],
+          "value_mm": 3185.078147303026,
+          "value_override": "FOOTPATH"
+        }
+      ],
+      "unique_id": "08bef182-76c6-4a92-93fb-59ceccb9641c-005d610f",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            17471.620891927672,
+            15752.630840812884,
+            -0.0
+          ],
+          "min": [
+            -19697.93849551245,
+            7797.2315852249785,
+            -6.096
+          ]
+        },
+        "element_id": 5389239,
+        "name": "DRG-2873022 - SECTION 1",
+        "origin": [
+          225538.50321500478,
+          1221480.6053820574,
+          10849.492730614396
+        ],
+        "right_direction": [
+          0.256846989384394,
+          -0.9664520805731514,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          -0.0,
+          -0.0,
+          1.0
+        ],
+        "view_direction": [
+          -0.9664520805731514,
+          -0.256846989384394,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": {
+        "_error": "The input curve is not bound.\r\nParameter name: curve\r\n   at Autodesk.Revit.CurveAPIUtils.GetCurveEndpoint(Curve curve, Int32 index)",
+        "kind": "Line"
+      },
+      "dimension_type_name": "Dimension_Standard_O (mm)",
+      "element_id": 8843643,
+      "is_spot_dimension": false,
+      "number_of_segments": 0,
+      "origin": [
+        -291759.6422886825,
+        1097819.8109037608,
+        24542.372152594035
+      ],
+      "references": [
+        {
+          "element_location_point": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "element_reference_type": "REFERENCE_TYPE_CUT_EDGE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Internal Origin",
+                "class_name": "InternalOrigin",
+                "element_id": 77837,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Survey Point",
+                "class_name": "BasePoint",
+                "element_id": 124034,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Project Base Point",
+                "class_name": "BasePoint",
+                "element_id": 124037,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407402,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407403,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407404,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 793366,
+                "workset": "View \"3D View: SCOPE BOX SETOUT\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859740,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859741,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859742,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859743,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859744,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859755,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859756,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859757,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859783,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859784,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859785,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859786,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859787,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859791,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859792,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859793,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859794,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859795,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 1739,
+            "truncated": true
+          },
+          "resolved_category": "Floors",
+          "resolved_class_name": "FamilyInstance",
+          "resolved_element_id": 6799966,
+          "resolved_workset": "Workset1",
+          "stable_representation": "e8f5b53d-54ca-4d25-90ba-29db52872785-0067bb84:1010:CUT_EDGE/1/1"
+        },
+        {
+          "element_location_point": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "element_reference_type": "REFERENCE_TYPE_CUT_EDGE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Internal Origin",
+                "class_name": "InternalOrigin",
+                "element_id": 77837,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Survey Point",
+                "class_name": "BasePoint",
+                "element_id": 124034,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Project Base Point",
+                "class_name": "BasePoint",
+                "element_id": 124037,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407402,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407403,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407404,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 793366,
+                "workset": "View \"3D View: SCOPE BOX SETOUT\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859740,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859741,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859742,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859743,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859744,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859755,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859756,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859757,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859783,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859784,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859785,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859786,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859787,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859791,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859792,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859793,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859794,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859795,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 1739,
+            "truncated": true
+          },
+          "resolved_category": "Floors",
+          "resolved_class_name": "FamilyInstance",
+          "resolved_element_id": 6799966,
+          "resolved_workset": "Workset1",
+          "stable_representation": "e8f5b53d-54ca-4d25-90ba-29db52872785-0067bb84:46:CUT_EDGE/0/2"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [],
+            "search_radius_mm": 750.0,
+            "total_nearby": 0,
+            "truncated": false
+          },
+          "origin": [
+            -291759.6422886825,
+            1097819.8109037608,
+            24542.372152594035
+          ],
+          "value_mm": 558.3990753636433,
+          "value_override": "\u200c550"
+        }
+      ],
+      "unique_id": "30dcf810-de3e-4314-93cc-4570f2308516-0086f17b",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            17471.620891927672,
+            15752.630840812884,
+            -0.0
+          ],
+          "min": [
+            -19697.93849551245,
+            7797.2315852249785,
+            -6.096
+          ]
+        },
+        "element_id": 5389239,
+        "name": "DRG-2873022 - SECTION 1",
+        "origin": [
+          225538.50321500478,
+          1221480.6053820574,
+          10849.492730614396
+        ],
+        "right_direction": [
+          0.256846989384394,
+          -0.9664520805731514,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          -0.0,
+          -0.0,
+          1.0
+        ],
+        "view_direction": [
+          -0.9664520805731514,
+          -0.256846989384394,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": {
+        "_error": "The input curve is not bound.\r\nParameter name: curve\r\n   at Autodesk.Revit.CurveAPIUtils.GetCurveEndpoint(Curve curve, Int32 index)",
+        "kind": "Line"
+      },
+      "dimension_type_name": "Dimension_Standard_O (mm)",
+      "element_id": 8843649,
+      "is_spot_dimension": false,
+      "number_of_segments": 2,
+      "origin": null,
+      "references": [
+        {
+          "element_location_point": [
+            221535.8274559338,
+            1236541.690289011,
+            23285.42440996667
+          ],
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": null,
+          "resolved_category": "Lines",
+          "resolved_class_name": "DetailLine",
+          "resolved_element_id": 8445716,
+          "resolved_workset": "View \"Section: DRG-2873022 - SECTION 1\"",
+          "stable_representation": "5d5e4b13-a1f5-45e3-ad68-11e7c0759aab-0080dec9:0:LINEAR/0"
+        },
+        {
+          "element_location_point": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "element_reference_type": "REFERENCE_TYPE_CUT_EDGE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Internal Origin",
+                "class_name": "InternalOrigin",
+                "element_id": 77837,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Survey Point",
+                "class_name": "BasePoint",
+                "element_id": 124034,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Project Base Point",
+                "class_name": "BasePoint",
+                "element_id": 124037,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407402,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407403,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407404,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 793366,
+                "workset": "View \"3D View: SCOPE BOX SETOUT\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859740,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859741,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859742,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859743,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859744,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859755,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859756,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859757,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859783,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859784,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859785,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859786,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859787,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859791,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859792,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859793,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859794,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859795,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 1739,
+            "truncated": true
+          },
+          "resolved_category": "Walls",
+          "resolved_class_name": "FamilyInstance",
+          "resolved_element_id": 6845345,
+          "resolved_workset": "Workset1",
+          "stable_representation": "da780154-13f7-419d-a777-1a4529242afd-00686fef:0:INSTANCE:da780154-13f7-419d-a777-1a4529242afd-00686fed:161:CUT_EDGE/0/2"
+        },
+        {
+          "element_location_point": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "element_reference_type": "REFERENCE_TYPE_CUT_EDGE",
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Internal Origin",
+                "class_name": "InternalOrigin",
+                "element_id": 77837,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Survey Point",
+                "class_name": "BasePoint",
+                "element_id": 124034,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Project Base Point",
+                "class_name": "BasePoint",
+                "element_id": 124037,
+                "workset": "Project Info"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407402,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407403,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Guide Grid",
+                "class_name": "Element",
+                "element_id": 407404,
+                "workset": "Guide Grids"
+              },
+              {
+                "category": "Cameras",
+                "class_name": "Element",
+                "element_id": 793366,
+                "workset": "View \"3D View: SCOPE BOX SETOUT\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859740,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859741,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859742,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859743,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859744,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859755,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859756,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859757,
+                "workset": "View \"Legend: 02 - COLUMN_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859783,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859784,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859785,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859786,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859787,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859791,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859792,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859793,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859794,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 859795,
+                "workset": "View \"Legend: 01 - GIRDER_LEGEND\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 1739,
+            "truncated": true
+          },
+          "resolved_category": "Floors",
+          "resolved_class_name": "FamilyInstance",
+          "resolved_element_id": 6799966,
+          "resolved_workset": "Workset1",
+          "stable_representation": "e8f5b53d-54ca-4d25-90ba-29db52872785-0067bb84:1010:CUT_EDGE/1/1"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [],
+            "search_radius_mm": 750.0,
+            "total_nearby": 0,
+            "truncated": false
+          },
+          "origin": [
+            -292271.8065318799,
+            1099746.9590460053,
+            24542.372152594035
+          ],
+          "value_mm": 451.30868652878473,
+          "value_override": "\u200c445"
+        },
+        {
+          "index": 1,
+          "nearby_geometry": {
+            "listed": [],
+            "search_radius_mm": 750.0,
+            "total_nearby": 0,
+            "truncated": false
+          },
+          "origin": [
+            -292022.60087127227,
+            1098809.2594071578,
+            24542.372152594035
+          ],
+          "value_mm": 1489.190294634065,
+          "value_override": "PLANTER"
+        }
+      ],
+      "unique_id": "30dcf810-de3e-4314-93cc-4570f2308516-0086f181",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            17471.620891927672,
+            15752.630840812884,
+            -0.0
+          ],
+          "min": [
+            -19697.93849551245,
+            7797.2315852249785,
+            -6.096
+          ]
+        },
+        "element_id": 5389239,
+        "name": "DRG-2873022 - SECTION 1",
+        "origin": [
+          225538.50321500478,
+          1221480.6053820574,
+          10849.492730614396
+        ],
+        "right_direction": [
+          0.256846989384394,
+          -0.9664520805731514,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          -0.0,
+          -0.0,
+          1.0
+        ],
+        "view_direction": [
+          -0.9664520805731514,
+          -0.256846989384394,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    }
+  ],
+  "source": "active view (DRG-2873022 - SECTION 1)"
+}
