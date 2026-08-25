@@ -89,7 +89,15 @@ references pointing at real Wall/Floor model elements — fixed by giving
 reference resolving cleanly but the actual distances not checking out
 against the dimension's own typed values (a face's bounding-box midpoint
 can be far from where a dimension actually touches it) — fixed by
-projecting a real nearby candidate point onto the face
-(`Face.Project`) instead of guessing a point on it. If you're running
-this for the first time, you already have the latest fixed version; if
-re-running to confirm a fix, that's expected and is the point.
+projecting a real nearby candidate point onto the face (`Face.Project`)
+instead of guessing a point on it; run 5 (with that fix) found no
+measurable change — not a code bug this time, but the specific
+dimension tested having its own drafted text dragged ~527m from its
+witness lines, so the "candidate point" the projection needs was never
+close enough to work. **The projection approach itself hasn't had a
+real test yet** — that needs a different real view (a pile/abutment/
+foundation setout view, not this one) where the dimension's own
+position is actually near what it measures. If you're running this for
+the first time, you already have the latest version, unchanged since
+run 4; if re-running to confirm a fix, that's expected and is the
+point.

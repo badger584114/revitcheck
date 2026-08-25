@@ -62,9 +62,19 @@ choice.
 > `Face.Project(candidate_point)` — the correct member for "nearest
 > point on this face to a given point" — using the dimension's own
 > `Origin` (or its first segment's, when the whole dimension has none)
-> as that candidate. Not yet run. Don't design the comparison
-> IR/algorithm before that run confirms this fix; see PLANNING.md §14 for
-> the full detail.
+> as that candidate. **Run 5: no measurable effect, and not a code
+> bug** — the candidate point was 527.5m from the face it needed to
+> project onto (this dimension's text was evidently dragged far from
+> its own witness lines, real drafting practice), so `Face.Project`
+> correctly found nothing and fell back to the old bbox-midpoint. The
+> projection approach itself still hasn't had a real test — every
+> `CUT_EDGE`-bearing dimension in this one view has the same problem.
+> **Next step is a different real view (a pile/abutment/foundation
+> setout view, matching the plan's original scope), not another code
+> patch** — no code change needed, the current build is ready. Don't
+> design the comparison IR/algorithm before a real test confirms or
+> refutes the projection approach; see PLANNING.md §14 for the full
+> detail.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
@@ -372,7 +382,7 @@ it before re-deriving Track B from scratch:
    comparison logic blind. That diagnostic —
    `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
    `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built **and run four times** (2026-08-25, same 7 dimensions/17
+   built **and run five times** (2026-08-25, same 7 dimensions/17
    references from a real drafted section view each time). Run 1 found
    `Reference.GlobalPoint` unusable (null on every reference, every
    type), `Dimension.Curve` throwing on every real dimension chain, and
@@ -401,10 +411,20 @@ it before re-deriving Track B from scratch:
    where a dimension actually touches it. Fixed:
    `Face.Project(candidate_point)` — the right member for "nearest
    point on this face to a given point" — using the dimension's own
-   `Origin` (or its first segment's) as that candidate. **Not yet run
-   with this fix** — see PLANNING.md §14 for the full detail. Nothing
-   about the comparison logic's design should be decided before that
-   run confirms it.
+   `Origin` (or its first segment's) as that candidate. **Run 5: no
+   measurable effect, and not a code bug** — the candidate point was
+   527.5m from the face it needed to project onto (this dimension's
+   text had evidently been dragged far from its own witness lines,
+   real drafting practice, not something to special-case). The
+   projection approach itself still hasn't had a real test — every
+   `CUT_EDGE`-bearing dimension in this one view has the same problem.
+   **Next step: a different real view** (pile/abutment/foundation
+   setout, matching the plan's original scope — this median/planter
+   section was picked for expedience on the first run, not for
+   representativeness) — no code change needed, current build is
+   ready. See PLANNING.md §14 for the full detail. Nothing about the
+   comparison logic's design should be decided before a real test
+   confirms or refutes the projection approach.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a
