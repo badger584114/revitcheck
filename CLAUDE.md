@@ -59,7 +59,15 @@ choice.
 > (new) was built to answer the remaining real unknowns (schedule
 > field structure, origin/pile parameter names, whether
 > `GetProjectPosition` works here) before writing either port — not
-> yet run. See PLANNING.md §14 for the full detail.
+> yet run. **This project already has real history bearing directly on
+> the coordinate question** — `native/`'s current model is the literal
+> same file as the old PDF/DWG pipeline's BR08 sample (both
+> `T2DPAA-T2D-C3S-BR-M3D-100304`), which found a real, twice-confirmed
+> Survey Point convention (~278,000mE/6,129,000mN) for this client, and
+> separately a cautionary case from a *different* client (Flinders'
+> "Massachusetts problem" — an unconfigured Revit template default
+> masquerading as real geodata). See PLANNING.md §14 for the full
+> detail.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
