@@ -128,6 +128,9 @@ choice.
 > reference's Z sitting ~180m from a real pile's) so a pile dimension's
 > own stated value can be checked directly against the measured distance
 > between its two nearest real piles, no schedule needed — not yet run.
+> `_collect_piles` is scoped to the active view (`FilteredElementCollector(doc,
+> view.Id)`), not document-wide — the user's own suggestion, avoiding
+> false matches against foundation instances from unrelated structures.
 >
 > **PLANNING.md §14 update (2026-08-26, same day, stage 3 design
 > started):** `Core/Reporting/InvestigationReconciliation.cs` (new,

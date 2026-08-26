@@ -582,8 +582,13 @@ shape `InspectDimensionGeometry` run 4 already hit once). **Built the same
 day (2026-08-26):** `InspectDimensionGeometry.pushbutton` extended with
 `_collect_piles`/`_nearest_pile` (2D X/Y only, per the real Z gap above)
 and a per-dimension `pile_match` block reporting real pile-to-pile
-distance next to the dimension's own value. Not yet run - needs the Revit
-machine.
+distance next to the dimension's own value. **Refined the same day, before
+the first run, per the user's own suggestion:** `_collect_piles` is
+scoped to the active view (`FilteredElementCollector(doc, view.Id)`), not
+a document-wide sweep - avoids false-matching against foundation
+instances from unrelated structures elsewhere in the model, and reuses
+the same per-view scoping the dimension collection already relies on.
+Not yet run - needs the Revit machine.
 
 **Stage 3 (reconciliation + export) design started, same day, ahead of the
 check above being run - the mechanism itself doesn't need real client
