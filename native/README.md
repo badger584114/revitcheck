@@ -675,6 +675,23 @@ Addin adapter needs real new work beyond the other two: populating
 into the new `TextNotes` list. `dotnet build`/`dotnet test` clean, 289
 Core tests passing.
 
+**Next: the interactive checking workflow tying all of this together -
+designed 2026-08-26, not yet built.** Full plan at
+`~/.claude/plans/an-idea-of-how-floating-peacock.md` (also summarized in
+PLANNING.md §16/CLAUDE.md) - combines the two triage buttons into one,
+adds a checklist window listing views needing investigation, and marks
+each view resolved/flagged as the relevant investigation button gets run
+against it while it's open, ending in a reconciled BCF export. Needs
+cross-command session state, a custom (code-behind-only, no XAML/SDK
+change) WPF window, and the `ExternalEvent` pattern - none of which exist
+anywhere in this codebase yet. Stage 1 (pure Core - `CheckingSession`,
+`CheckingSessionSerializer`, and a real correctness fix,
+`InvestigationReconciliation.ExpandByElementIdList`, needed before
+`PileChainBearingConsistencyCheck`'s pile-keyed issues can safely feed
+`Reconcile` at all) is testable off-Revit today; Stage 2 builds the two
+pile checks' first real Addin commands, needed regardless of the rest of
+this feature.
+
 ### Former open questions - now answered from real data
 
 1. ~~The actual key-parameter name/identity~~ - `ATM_Asset_Identifier`,

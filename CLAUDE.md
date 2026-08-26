@@ -184,6 +184,25 @@ choice.
 > against that, only against an empty path. Fixed (`DocumentPaths.cs`);
 > full diagnosis and the .NET Framework-vs-.NET-8 `Path` behaviour gap
 > that made it not reproduce on this Mac are in §15.
+>
+> **PLANNING.md §16 (2026-08-26): the interactive checking workflow tying
+> triage/investigation/reconciliation together is designed, not built.**
+> Full plan saved at `~/.claude/plans/an-idea-of-how-floating-peacock.md`
+> — read it before starting this work, don't re-derive it. Headline: a
+> real correctness bug (`PileChainBearingConsistencyCheck`'s issues are
+> pile-keyed, `Reconcile` joins on dimension ids — feeding it unmodified
+> would silently reconcile a flagged chain's dimensions as clean) was
+> found and designed around before any code was written, via a new
+> `ExpandByElementIdList` helper. First feature needing cross-command
+> session state, a custom code-behind-only WPF window (no XAML/SDK
+> change), and the `ExternalEvent` pattern (all new to this codebase).
+> Manual sheet-resolution (for diagrammatic sheets no check will ever
+> resolve, e.g. construction-sequence drawings) deliberately cannot
+> override a real confirmed-problem finding. Staged: Stage 1 is pure
+> Core, testable off-Revit today; Stage 2 builds the two pile checks'
+> first real Addin commands (needed regardless of this feature); Stage 3
+> is the window/session/combined-triage-command wiring; Stage 4 is real
+> Revit-machine validation.
 
 Two categories of check:
 
@@ -430,6 +449,8 @@ Notes worth not rediscovering:
   compliance/review tool, not a black box.
 
 ## Next
+
+**The actual current frontier: the interactive checking workflow tying triage → investigation → reconciliation → BCF export together, designed 2026-08-26, not yet built.** Full plan at `~/.claude/plans/an-idea-of-how-floating-peacock.md` — read it before starting, don't re-derive it; §16 above has the headline points. Start with Stage 1 (pure Core, testable off-Revit today) and Stage 2 (the two pile checks' first real Addin commands — they don't exist as buttons yet, and are worth building regardless of the rest of this feature).
 
 **The native add-in's metadata-reconciliation path is done, deployed,
 and calibrated against real data (2026-08-24, PLANNING.md §13) — this is
