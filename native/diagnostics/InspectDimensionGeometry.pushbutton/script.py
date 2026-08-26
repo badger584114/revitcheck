@@ -121,14 +121,45 @@ first segment's `Origin` (real and in-range per the first real run,
 just not itself precise enough to be the answer - which is exactly why
 it's a projection candidate and not the final point). Not yet run with
 this fix.
+
+**Extended 2026-08-26, a different question than any of the above — not
+another patch to the Face-projection logic, a genuinely new probe.**
+Run 7 (a whole real pile-layout view, separate from this diagnostic's
+own runs above, see PLANNING.md §14) found pile setout on this project
+is drafted tag-to-tag against `AnnotationSymbol`s, never touching model
+geometry at all - so `CUT_EDGE`/`Face.Project` has nothing to resolve
+for a pile dimension specifically, no matter how precise it gets. This
+raised a more direct question the same day: since a dimension's
+reference already resolves to a tag's own `element_location_point`, can
+that tag be matched to the nearest real `Pile` element, and can the
+dimension's own stated value then be checked directly against the
+measured distance between two real piles - no schedule, no bearing/DMS
+parsing, no chain walk? `_collect_piles`/`_nearest_pile`/the new
+`pile_match` section on each dimension exist to answer that from real
+data before any matching/comparison logic gets written blind, same
+discipline as every probe above. Two real risks, neither validated yet:
+whether the nearest pile to a tag is actually the *correct* pile
+(cross-checkable here against `DIT_SiteID`, and against the schedule's
+own `LOCATION`/`SITE ID` columns by hand), and whether a tag sits at/near
+its own pile at all rather than leader-offset (which would make
+tag-to-tag and pile-to-pile distances disagree even when everything is
+drafted correctly - the same *shape* of failure the Face-projection work
+above hit once, for a different underlying reason). Matching is
+deliberately 2D (X/Y) only, never 3D: a real check of this project's own
+committed diagnostic output found an `AnnotationSymbol` reference's Z
+sitting at a symbolic ~200,000mm annotation-plane value against a real
+pile's ~18,500mm Z - a ~180m gap that would defeat any 3D search outright.
+Not yet run.
 """
 
+import math
 import os
 
 from pyrevit import revit, script
 
 from Autodesk.Revit.DB import (
     BoundingBoxIntersectsFilter,
+    BuiltInCategory,
     Dimension,
     ElementId,
     Face,
@@ -288,6 +319,100 @@ _NOISE_CATEGORIES = {
 }
 _NOISE_CLASSES = {"Group"}
 
+# --- Pile proximity matching (added 2026-08-26) - see the module
+# docstring's "Extended" note for the real question this answers. ---
+
+PILE_KEY_PARAMETER_NAME = "DIT_SiteID"
+
+
+def _pile_key_value(pile_element):
+    try:
+        param = pile_element.LookupParameter(PILE_KEY_PARAMETER_NAME)
+        if param is None:
+            return None
+        return param.AsString() or param.AsValueString()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _collect_piles():
+    """Every OST_StructuralFoundation element with a resolvable Location.
+    Point, its own real 3D position, and its DIT_SiteID - collected once,
+    document-wide. Real pile counts on this project are small enough
+    (dozens per schedule) that a plain document-wide sweep is simpler and
+    more honest than tuning a search-radius collector filter."""
+    piles = []
+    errors = []
+    try:
+        collector = (
+            FilteredElementCollector(doc)
+            .OfCategory(BuiltInCategory.OST_StructuralFoundation)
+            .WhereElementIsNotElementType()
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"piles": [], "_error": str(exc)}
+
+    for element in collector:
+        try:
+            location = element.Location
+            point = getattr(location, "Point", None)
+        except Exception as exc:  # noqa: BLE001
+            errors.append("pile {0}: {1}".format(_eid(element.Id), exc))
+            continue
+        if point is None:
+            continue
+        piles.append(
+            {
+                "element_id": _eid(element.Id),
+                "key_value": _pile_key_value(element),
+                "point": point,  # raw XYZ - kept for distance math, not JSON-serialized directly
+                "point_mm": _point(point),
+            }
+        )
+    return {"piles": piles, "_errors": errors} if errors else {"piles": piles}
+
+
+def _nearest_pile(tag_point_xyz, piles):
+    """2D (X/Y-only) nearest-neighbour search - see the module docstring
+    for why Z is deliberately excluded (a real ~180m Z gap between a real
+    AnnotationSymbol reference and a real pile on this project). Returns
+    the nearest pile's own record plus the 2D distance, or None if there
+    are no piles or no tag point to search from."""
+    if tag_point_xyz is None or not piles:
+        return None
+
+    best = None
+    best_dist_ft = None
+    for pile in piles:
+        p = pile["point"]
+        dx = tag_point_xyz.X - p.X
+        dy = tag_point_xyz.Y - p.Y
+        dist_ft = math.sqrt(dx * dx + dy * dy)
+        if best_dist_ft is None or dist_ft < best_dist_ft:
+            best_dist_ft = dist_ft
+            best = pile
+
+    return {
+        "pile_element_id": best["element_id"],
+        "pile_key_value": best["key_value"],
+        "pile_point_mm": best["point_mm"],
+        "distance_2d_mm": _mm(best_dist_ft),
+    }
+
+
+def _pile_to_pile_distance_mm(pile_a, pile_b):
+    """Real 3D and 2D-only distances between two matched piles' own
+    points - both reported, since it isn't yet known (that's what this
+    diagnostic exists to find out) whether this project's pile dimensions
+    measure a straight 3D distance or a plan-projected one."""
+    a = pile_a["point"]
+    b = pile_b["point"]
+    dx, dy, dz = a.X - b.X, a.Y - b.Y, a.Z - b.Z
+    return {
+        "distance_3d_mm": _mm(math.sqrt(dx * dx + dy * dy + dz * dz)),
+        "distance_2d_mm": _mm(math.sqrt(dx * dx + dy * dy)),
+    }
+
 
 def _nearby_elements(global_point_xyz, exclude_element_id):
     """Elements whose bounding box intersects a small region around a
@@ -407,7 +532,7 @@ def _geometry_object_point(geom_obj, candidate_point=None):
     return getattr(geom_obj, "Origin", None)
 
 
-def _describe_reference(ref, dimension_element_id, projection_candidate_xyz):
+def _describe_reference(ref, dimension_element_id, projection_candidate_xyz, piles=None):
     entry = {
         "element_reference_type": None,
         "linked": False,
@@ -421,6 +546,7 @@ def _describe_reference(ref, dimension_element_id, projection_candidate_xyz):
         "geometry_object_kind": None,
         "geometry_point": None,
         "nearby_geometry": None,
+        "nearest_pile": None,
     }
     errors = []
 
@@ -469,17 +595,30 @@ def _describe_reference(ref, dimension_element_id, projection_candidate_xyz):
             pass
         # A secondary way to get a position when GlobalPoint fails or
         # isn't the point that matters - question 1's fallback.
+        raw_location_point = None
         try:
             location = resolved_element.Location
             point = getattr(location, "Point", None)
             if point is not None:
+                raw_location_point = point
                 entry["element_location_point"] = _point(point)
             else:
                 curve = getattr(location, "Curve", None)
                 if curve is not None:
-                    entry["element_location_point"] = _point(curve.Evaluate(0.5, True))
+                    raw_location_point = curve.Evaluate(0.5, True)
+                    entry["element_location_point"] = _point(raw_location_point)
         except Exception:  # noqa: BLE001 - most references have no simple Location, that's expected
             pass
+
+        # Pile proximity match (added 2026-08-26) - see the module
+        # docstring's "Extended" note. 2D only, from the reference's own
+        # resolved location, whatever it is (an AnnotationSymbol tag on
+        # this project's real pile-layout dimensions, per run 7).
+        if piles:
+            try:
+                entry["nearest_pile"] = _nearest_pile(raw_location_point, piles)
+            except Exception as exc:  # noqa: BLE001
+                errors.append("nearest_pile: {0}".format(exc))
 
     global_xyz = None
     try:
@@ -630,7 +769,7 @@ def _projection_candidate_xyz(dim):
     return None
 
 
-def _describe_dimension(dim):
+def _describe_dimension(dim, piles=None):
     entry = {
         "element_id": _eid(dim.Id),
         "unique_id": None,
@@ -641,6 +780,7 @@ def _describe_dimension(dim):
         "curve": None,
         "segments": [],
         "references": [],
+        "pile_match": None,
     }
     errors = []
 
@@ -669,10 +809,37 @@ def _describe_dimension(dim):
     projection_candidate_xyz = _projection_candidate_xyz(dim)
     try:
         entry["references"] = [
-            _describe_reference(ref, dim_element_id, projection_candidate_xyz) for ref in (dim.References or [])
+            _describe_reference(ref, dim_element_id, projection_candidate_xyz, piles=piles)
+            for ref in (dim.References or [])
         ]
     except Exception as exc:  # noqa: BLE001
         errors.append("references: {0}".format(exc))
+
+    # Pile-to-pile comparison (added 2026-08-26) - see the module
+    # docstring's "Extended" note. Only meaningful with exactly two
+    # distinct matched piles (a straight-line dimension between two
+    # points); a dimension chain with more segments, or references that
+    # matched the same pile twice, is left as None rather than guessed at.
+    if piles:
+        try:
+            matched_ids = [
+                r["nearest_pile"]["pile_element_id"]
+                for r in entry["references"]
+                if r.get("nearest_pile") is not None
+            ]
+            if len(matched_ids) == 2 and matched_ids[0] != matched_ids[1]:
+                by_id = {p["element_id"]: p for p in piles}
+                pile_a, pile_b = by_id.get(matched_ids[0]), by_id.get(matched_ids[1])
+                if pile_a is not None and pile_b is not None:
+                    entry["pile_match"] = {
+                        "pile_a_element_id": matched_ids[0],
+                        "pile_a_key_value": pile_a["key_value"],
+                        "pile_b_element_id": matched_ids[1],
+                        "pile_b_key_value": pile_b["key_value"],
+                    }
+                    entry["pile_match"].update(_pile_to_pile_distance_mm(pile_a, pile_b))
+        except Exception as exc:  # noqa: BLE001
+            errors.append("pile_match: {0}".format(exc))
 
     if errors:
         entry["_errors"] = errors
@@ -715,10 +882,13 @@ if not dimensions:
     )
     script.exit()
 
+pile_collection = _collect_piles()
+piles = pile_collection["piles"]
+
 view_cache = {}
 results = []
 for dim in dimensions:
-    entry = _describe_dimension(dim)
+    entry = _describe_dimension(dim, piles=piles)
     try:
         owner_view = doc.ActiveView
         view_key = _eid(owner_view.Id)
@@ -765,13 +935,29 @@ if not path:
 
 import json  # noqa: E402 - after the early-exit paths above, same style as capture.py
 
+# Strip the raw XYZ objects (not JSON-serializable, and already captured
+# as point_mm) before writing - piles list itself stays in memory as-is
+# for the distance math above, this is only for the dump.
+piles_for_json = [{k: v for k, v in pile.items() if k != "point"} for pile in piles]
+
 with open(path, "w") as f:
-    json.dump({"source": source, "dimensions": results}, f, indent=2, sort_keys=True)
+    json.dump(
+        {
+            "source": source,
+            "piles": piles_for_json,
+            "pile_collection_errors": pile_collection.get("_errors"),
+            "dimensions": results,
+        },
+        f,
+        indent=2,
+        sort_keys=True,
+    )
 
 output.print_md("### Inspection written")
 output.print_md("`{0}`".format(path))
 output.print_md("")
 output.print_md("- {0} dimension(s) captured, from {1}".format(len(results), source))
+output.print_md("- {0} pile(s) collected document-wide for proximity matching".format(len(piles)))
 output.print_md(
     "- Delete this file once you're done with it, and don't commit it — "
     "same caution as a real capture (PLANNING.md §2)."

@@ -63,16 +63,48 @@ public class PileModelScheduleConsistencyCheckTests
     }
 
     [Fact]
-    public void Dit_start_easting_style_constant_parameter_is_not_what_gets_compared()
+    public void Pile_moved_while_dynamo_written_parameters_and_schedule_stayed_frozen_is_still_flagged()
     {
-        // Guards the real correction from the user, 2026-08-26: a
-        // bridge-centre-style constant parameter must never be read as a
-        // per-pile position just because RuleConfig's parameter names were
-        // misconfigured to point at it - two piles sharing one constant
-        // value should never silently "agree" with two different schedule
-        // rows. Using the real (correct) XYZ_Easting/XYZ_Northing names,
-        // confirm two distinct piles are compared independently, not
-        // conflated.
+        // The real bug this rule had until 2026-08-26, confirmed by the
+        // user: XYZ_Easting/XYZ_Northing are themselves written by the same
+        // Dynamo script that (re)writes the schedule, from the insertion
+        // point at the time it last ran - so a version of this check that
+        // compared XYZ_Easting/XYZ_Northing against the schedule would
+        // compare the same stale value to itself, and would report this
+        // exact scenario as clean. This test proves the fix: the pile's
+        // live position (ProjectPositionEastingMm/NorthingMm) has moved
+        // 500mm east, but its XYZ_Easting/XYZ_Northing parameters - and the
+        // schedule, which agrees with them, exactly as it would for real -
+        // are still frozen at the old position. The check must flag this
+        // using the live position, not be fooled by the frozen pair
+        // agreeing with each other.
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[]
+            {
+                RevitCheckTestBuilders.Pile(
+                    5009495, "PIL232132",
+                    eastingMm: 278239310.671, // live position: moved 500mm east
+                    northingMm: 6130224280.728,
+                    frozenXyzEastingMm: 278238810.671, // still the OLD position -
+                    frozenXyzNorthingMm: 6130224280.728), // matches the schedule below exactly
+            },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileSchedule(
+                    "ABUTMENT B, B1 AND B2 PILE SCHEDULE",
+                    new[] { ("PIL232132", "278238.811", "6130224.281") }), // the old position, unchanged
+            });
+
+        var issues = PileModelScheduleConsistencyCheck.Run(model, new RuleConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("high", issue.Severity);
+        Assert.Contains("PIL232132", issue.Description);
+    }
+
+    [Fact]
+    public void Two_piles_are_compared_independently_not_conflated()
+    {
         var model = RevitCheckTestBuilders.Model(
             elements: new[]
             {

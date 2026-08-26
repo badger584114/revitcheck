@@ -59,14 +59,21 @@ public sealed class RuleConfig
 
     // --- revitcheck.pile_model_schedule_consistency ---
     //
-    // Model-vs-schedule pile setout: compares each pile element's own real
-    // Easting/Northing against the live pile schedule's row for that same
-    // pile, catching the case the user named directly - someone moves a
-    // pile in the model, nobody reruns the Dynamo script that (re)writes
+    // Model-vs-schedule pile setout: compares each pile element's own real,
+    // LIVE Easting/Northing (ElementMetadata.ProjectPositionEastingMm/
+    // NorthingMm - computed fresh every capture via GetProjectPosition, see
+    // that field's own remarks) against the pile schedule's row for that
+    // same pile, catching the case the user named directly - someone moves
+    // a pile in the model, nobody reruns the Dynamo script that (re)writes
     // the schedule, the schedule silently goes stale relative to the model.
-    // See PLANNING.md §14 (2026-08-26 update) for the real diagnostic run
-    // this is built from - real field/parameter names, not guessed ahead of
-    // data.
+    // Deliberately does NOT compare against this project's own XYZ_Easting/
+    // XYZ_Northing parameters - confirmed by the user 2026-08-26 that those
+    // are themselves Dynamo-written from the insertion point and are what
+    // the schedule reads, so comparing one against the other would be
+    // comparing the same stale value to itself: both sides freeze together
+    // the moment a pile moves without a Dynamo rerun, which is exactly the
+    // failure this check exists to catch. See PLANNING.md §14 for the full
+    // correction and the real diagnostic run this is otherwise built from.
 
     /// <summary>Category name identifying a pile element (Revit's Category.Name, e.g. "Structural Foundations" on this project). Confirmed real 2026-08-26; kept configurable since a category name is display text, not a stable enum, and can vary by locale/template.</summary>
     public string PileCategoryName { get; init; } = "Structural Foundations";
@@ -95,23 +102,6 @@ public sealed class RuleConfig
     public List<string> PileScheduleNorthingHeaders { get; init; } = new() { "NORTHING (m)", "NORTHING" };
 
     /// <summary>
-    /// Instance parameters holding a pile's own real Easting/Northing,
-    /// already in mm (Length-typed Revit parameters - see ParameterValue's
-    /// remarks on IsLength). Confirmed real on this project as
-    /// <c>XYZ_Easting</c>/<c>XYZ_Northing</c>, agreeing with
-    /// <c>ProjectLocation.GetProjectPosition</c> and the schedule's own
-    /// value to sub-millimetre precision on all 4 piles sampled 2026-08-26
-    /// (PLANNING.md §14). Deliberately NOT `DIT_StartEasting`/
-    /// `DIT_StartNorthing` - confirmed by the user to be a different,
-    /// deliberately-constant value (the bridge's own centre point, matching
-    /// the sheet title-blocks' lat/long), not a per-pile position; using it
-    /// here would compare every pile against the same fixed point.
-    /// </summary>
-    public string PileEastingParameterName { get; init; } = "XYZ_Easting";
-
-    public string PileNorthingParameterName { get; init; } = "XYZ_Northing";
-
-    /// <summary>
     /// Schedule text is real-world metres ("EASTING (m)"); the model
     /// parameter is already mm (IR convention). This is the only place
     /// converting the schedule's units in, so the mm-per-metre factor lives
@@ -120,13 +110,19 @@ public sealed class RuleConfig
     public const double ScheduleMetresToMm = 1000.0;
 
     /// <summary>
-    /// Flag beyond this delta between the pile's own Easting/Northing and
-    /// the schedule's row for it. All four real piles sampled 2026-08-26
-    /// agreed to well under 1mm (PLANNING.md §14) when nothing had gone
-    /// stale, so this default is a generous placeholder against real
-    /// drift/staleness, not a tight figure calibrated against a known-bad
-    /// case yet - no real stale example has been seen. Confirm against a
-    /// real drifted case before tightening it.
+    /// Flag beyond this delta between the pile's own LIVE position
+    /// (GetProjectPosition, computed fresh every capture) and the
+    /// schedule's row for it. All four real piles sampled 2026-08-26 agreed
+    /// to well under 1mm against their schedule row (PLANNING.md §14) -
+    /// that run compared GetProjectPosition to the schedule via the
+    /// (Dynamo-written) XYZ_Easting/XYZ_Northing parameters, which were
+    /// still correct because nobody had moved a pile since Dynamo last ran,
+    /// not because that comparison shape is the right one going forward
+    /// (see this class's remarks above - it isn't). So this default is a
+    /// generous placeholder against real drift/staleness, not a tight
+    /// figure calibrated against a known-bad case - no real stale example
+    /// has been seen yet. Confirm against a real drifted case before
+    /// tightening it.
     /// </summary>
     public double PileSetoutToleranceMm { get; init; } = 10.0;
 }

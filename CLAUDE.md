@@ -93,6 +93,43 @@ choice.
 > PLANNING.md §14 for the full detail, including the exact per-pile
 > numbers.
 >
+> **PLANNING.md §14 correction (2026-08-26, later the same day):** the
+> paragraph above is misleading on one point — `XYZ_Easting`/
+> `XYZ_Northing` must NOT be used as the check's comparison input.
+> Confirmed by the user: those parameters are themselves written by the
+> same Dynamo script that (re)writes the schedule, from the insertion
+> point at the time it last ran, so comparing one against the other
+> compares the same stale value to itself — a pile moved without a
+> Dynamo rerun would show as clean, silently, forever. The sub-mm
+> agreement above only proves nobody had moved a pile since the last
+> Dynamo run; it was never three independent confirmations, only one
+> (`GetProjectPosition`, computed from live geometry) agreeing with a
+> self-consistent pair. Fixed: `ElementMetadata.ProjectPositionEastingMm`/
+> `NorthingMm` (new Core IR field, populated only by a live
+> `GetProjectPosition` call — genuinely new Addin-side work, still
+> unbuilt) is what the check reads now, not any parameter. See
+> PLANNING.md §14 for the full correction and the regression test that
+> proves it.
+>
+> **PLANNING.md §14 update (2026-08-26, later still): the dimension
+> buttons' BCF export was proof-of-concept plumbing, not the intended
+> steady-state output — confirmed by the user.** A real run produces
+> ~250 triage candidates, not confirmed problems, and shipping all of
+> them to Forma isn't the goal — that BCF wiring only ever existed to
+> prove the round trip (§12). Fixed: `DimensionProvenanceCommand`/
+> `DimensionOverrideConsistencyCommand` now pass `writeBcf: false` to
+> `IssueOutput.WriteNextToModel` (new parameter, defaults true so
+> `MetadataReconciliationCommand` — already verdicts, not triage — is
+> unaffected); JSON/CSV still write. Real BCF export now belongs to a
+> later reconciliation stage (not built) that prunes triage against
+> investigation-check verdicts first. Also extended the same day:
+> `InspectDimensionGeometry.pushbutton` gained pile-proximity matching
+> (`_collect_piles`/`_nearest_pile`, 2D/X-Y only — real data shows a tag
+> reference's Z sitting ~180m from a real pile's) so a pile dimension's
+> own stated value can be checked directly against the measured distance
+> between its two nearest real piles, no schedule needed — not yet run.
+> See PLANNING.md §14 for the full detail.
+>
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
 > Worksharing model isn't a filesystem path, and the code didn't guard
@@ -265,7 +302,7 @@ this file is the one still worth keeping.
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. Always reports how much was checkable. |
 | `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
 | `revitcheck.metadata_reconciliation` | Native add-in only (no Python equivalent) — joins captured model elements to an external reference CSV via a per-run-chosen mapping file, flags missing/mismatched fields. Built, wired to a real ribbon button, deployed, and calibrated against two real reference tables on a real model — see PLANNING.md §13. |
-| `revitcheck.pile_model_schedule_consistency` | Native add-in only, Core-side built and tested 2026-08-26 (not yet wired to a ribbon button). Compares each pile's own `XYZ_Easting`/`XYZ_Northing` parameters against its live pile schedule row (joined via `DIT_SiteID`) — the "model-vs-schedule" half of the two pile checks named in PLANNING.md §14, catching a pile moved in the model without the schedule's Dynamo script being rerun. Needs no geometry-API call — real diagnostic data confirmed both parameter sources agree to sub-mm. See PLANNING.md §14 and native/README.md. |
+| `revitcheck.pile_model_schedule_consistency` | Native add-in only, Core-side built and tested 2026-08-26 (not yet wired to a ribbon button). Compares each pile's own LIVE position (`ElementMetadata.ProjectPositionEastingMm`/`NorthingMm`, populated only by a `GetProjectPosition` call — Addin-side geometry-API work, not yet built) against its live pile schedule row (joined via `DIT_SiteID`) — the "model-vs-schedule" half of the two pile checks named in PLANNING.md §14, catching a pile moved in the model without the schedule's Dynamo script being rerun. Deliberately does NOT compare against `XYZ_Easting`/`XYZ_Northing` — those are Dynamo-written from the same insertion point the schedule reads, so they're the value being audited, not an independent check on it (a real design bug caught and fixed same-day, see PLANNING.md §14). See PLANNING.md §14 and native/README.md. |
 
 **Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
 split at 100 issues per file for Forma's import cap, exposed as
@@ -425,13 +462,23 @@ it before re-deriving Track B from scratch:
    reconstruction needed for it at all.** (Correction to the paragraph
    above: `DIT_StartEasting`/`DIT_StartNorthing` isn't a stale-position
    signal — it's a deliberate client convention giving the bridge's
-   *centre* location; `XYZ_Easting`/`XYZ_Northing` are the real per-pile
-   parameters.) Drawing-vs-schedule remains the harder, still-unbuilt
-   half — a same-day `InspectDimensionGeometry.pushbutton` re-run across
-   the whole pile layout view (46 dimensions) confirmed it numerically:
-   87/92 references resolve to `AnnotationSymbol`, 5/92 to `Grid`, zero
-   to model geometry. See PLANNING.md §14 for the full detail, including
-   the exact per-pile numbers.
+   *centre* location, not the piles' own.) **Second correction, same
+   day: `XYZ_Easting`/`XYZ_Northing` are NOT the pile's live position
+   either — they're written by the same Dynamo script that (re)writes
+   the schedule, so comparing one against the other compares the same
+   stale value to itself and would miss a genuinely moved pile.** The
+   check's actual comparison is `GetProjectPosition(Pile.Location.Point)`
+   (a live call, populating the new `ElementMetadata.
+   ProjectPositionEastingMm`/`NorthingMm` — real Addin-side geometry-API
+   work, still unbuilt) against the schedule directly — the one thing
+   "no bearing/chain reconstruction needed" was correctly saying is that
+   this is still far cheaper than the §5b port, not that it needs no
+   geometry API at all. Drawing-vs-schedule remains the harder,
+   still-unbuilt half — a same-day `InspectDimensionGeometry.pushbutton`
+   re-run across the whole pile layout view (46 dimensions) confirmed it
+   numerically: 87/92 references resolve to `AnnotationSymbol`, 5/92 to
+   `Grid`, zero to model geometry. See PLANNING.md §14 for the full
+   detail, including the exact per-pile numbers and the fix.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a

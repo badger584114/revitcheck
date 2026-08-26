@@ -497,50 +497,91 @@ else added since the metadata-reconciliation round trip was proven
 test.
 
 **`revitcheck.pile_model_schedule_consistency` — the model-vs-schedule pile
-check named in PLANNING.md §14 is now built and tested (2026-08-26),
-Core-side only.** `InspectPileSetout.pushbutton`'s real run answered all
-five open questions (PLANNING.md §14 update, 2026-08-26): the join is
-`ElementMetadata.Parameters["DIT_SiteID"]` against the schedule's `SITE ID`
-column, and — the real finding that unblocked this — comparing each pile's
-own `XYZ_Easting`/`XYZ_Northing` parameters (already mm, Length-typed)
-against the schedule's `EASTING (m)`/`NORTHING (m)` row needs **no
-geometry-API call at all**: both already agreed to sub-millimetre precision
-on all 4 real piles sampled. So this check reuses the existing
-metadata-style parameter capture unchanged — no new adapter geometry work,
-just two new IR pieces (`Ir/ScheduleInfo.cs`, `RevitModel.Schedules`) plus
-`Checks/PileModelScheduleConsistencyCheck.cs`, structured like
-`MetadataReconciliationCheck`'s join (ambiguous/missing/blank-key cases all
-their own coverage finding, never guessed) but comparing two fixed numeric
-fields with a planar-distance tolerance instead of an arbitrary mapped
-field set. **Real correction caught before this got built wrong:** an
-earlier read of the same diagnostic output treated `DIT_StartEasting`/
-`DIT_StartNorthing` (identical across every pile sampled) as stale
-per-pile data — the user corrected this directly: it's a deliberate
-convention giving the *bridge's own centre point* (matching the sheet
-title-blocks' lat/long), not a pile position, and `RuleConfig` now points
-at `XYZ_Easting`/`XYZ_Northing` instead. 8 new tests, real-number-shaped
-(the actual PIL232132/232133 figures from the diagnostic run, not invented
-ones) — `dotnet test` clean, 244 Core tests passing.
-**Not yet built:** the Addin-side adapter (populate `XYZ_Easting`/
-`XYZ_Northing`/`DIT_SiteID` via the existing `RevitMetadataElementSource`
-pile-category scope, plus a new schedule-reading piece handling the real
-header/blank-row quirk `GetCellText(SectionType.Body, ...)` has on this
-project) and its ribbon command/button — per-element-type, own button, not
-folded into an existing one (PLANNING.md's Track B button-per-type
-direction). Needs the Revit machine to build and confirm, same as every
-Addin-side piece.
+check named in PLANNING.md §14 is now built and tested (2026-08-26, one
+same-day correction), Core-side only.** `InspectPileSetout.pushbutton`'s
+real run answered the five open questions (PLANNING.md §14 update,
+2026-08-26): the join is `ElementMetadata.Parameters["DIT_SiteID"]` against
+the schedule's `SITE ID` column. **Two real corrections landed on top of
+each other before this was right, both worth keeping in mind for future
+similar checks:**
+
+1. An earlier read of the same diagnostic output treated `DIT_StartEasting`/
+   `DIT_StartNorthing` (identical across every pile sampled) as stale
+   per-pile data — the user corrected this directly: it's a deliberate
+   convention giving the *bridge's own centre point* (matching the sheet
+   title-blocks' lat/long), not a pile position.
+2. The fix for #1 pointed the check at `XYZ_Easting`/`XYZ_Northing`
+   instead — which turned out to be a second, more consequential mistake.
+   Those parameters are themselves written by the *same* Dynamo script
+   that (re)writes the schedule, from the insertion point at the time it
+   last ran. Comparing the schedule against them is comparing the same
+   stale value to itself: move a pile without rerunning Dynamo and both
+   sides stay frozen in agreement, exactly the failure this check exists
+   to catch. The user caught this too, directly. **So this check does
+   need a geometry-API call after all** — the "no adapter geometry work
+   needed" framing an earlier version of this section had was wrong.
+
+Fixed: `ElementMetadata` gained `ProjectPositionEastingMm`/`NorthingMm`/
+`ElevationMm` (new Core IR, populated only by a live `ProjectLocation.
+GetProjectPosition` call at capture time — real, still-unbuilt Addin-side
+geometry work, the genuinely new territory PLANNING.md §14's Track B
+always expected here), and the check compares those against the schedule
+instead of any parameter. `RuleConfig.PileEastingParameterName`/
+`PileNorthingParameterName` were removed rather than left as a misleading
+unused knob. `Checks/PileModelScheduleConsistencyCheck.cs` is otherwise
+structured like `MetadataReconciliationCheck`'s join (ambiguous/missing/
+blank-key cases all their own coverage finding, never guessed) but
+comparing two fixed numeric fields with a planar-distance tolerance
+instead of an arbitrary mapped field set. A new regression test proves
+the fix directly: a pile whose live position has moved 500mm while its
+`XYZ_Easting`/`XYZ_Northing` (and the schedule, which agrees with them,
+exactly as it would for real) stayed frozen at the old position is still
+correctly flagged. 9 pile tests, real-number-shaped (the actual
+`PIL232132`/`PIL232133` figures from the diagnostic run, not invented
+ones) — `dotnet test` clean, 245 Core tests passing.
+
+**Not yet built:** the Addin-side adapter — now genuinely needs to call
+`ProjectLocation.GetProjectPosition(pile.Location.Point)` per pile (not
+just read parameters, per the correction above), plus `DIT_SiteID` via the
+existing `RevitMetadataElementSource` pile-category scope, plus a new
+schedule-reading piece handling the real header/blank-row quirk
+`GetCellText(SectionType.Body, ...)` has on this project — and its ribbon
+command/button, per-element-type, own button, not folded into an existing
+one (PLANNING.md's Track B button-per-type direction). Needs the Revit
+machine to build and confirm, same as every Addin-side piece.
 
 Also next: Track B's other, harder half — verifying a *drawing-vs-schedule*
 pile check (PLANNING.md §14, CLAUDE.md's "Next"), the direct port of the
 old PDF/DWG pipeline's `geometry.setout_reconstruction` bearing/
 dimension-chain walk. A same-day `InspectDimensionGeometry.pushbutton`
-re-run confirmed numerically why this one can't skip the geometry-API work
-the model-vs-schedule check just avoided: 87 of 92 references across the
-whole pile layout view resolve to `AnnotationSymbol` (tags), 5 to `Grid`,
-zero to any model geometry — pile setout dimensions here measure
-tag-to-tag, so there's no `CUT_EDGE`/model reference to read a position
-from directly, and the reconstruction algorithm (PLANNING.md §5b,
-ARCHIVE-pdf-dwg.md) is the proven way to derive one anyway.
+re-run confirmed numerically why this one can't take the *model*-vs-schedule
+check's shortcut (a single `GetProjectPosition` call per pile, no dimension
+data involved at all): 87 of 92 references across the whole pile layout
+view resolve to `AnnotationSymbol` (tags), 5 to `Grid`, zero to any model
+geometry — pile setout dimensions here measure tag-to-tag, so there's no
+`CUT_EDGE`/model reference to read a position from directly, and the
+reconstruction algorithm (PLANNING.md §5b, ARCHIVE-pdf-dwg.md) is the
+proven way to derive one anyway.
+
+**A third, more direct approach was also raised the same day (2026-08-26)
+and is worth building instead of, or ahead of, the full §5b port:** since
+`ReferenceInfo` already carries `ElementId`/`Category`/`ViewSpecific` per
+dimension reference, extending it with the reference's own resolved
+location and matching it to the nearest real `Pile` element (2D
+plan-distance only — a real check of the committed diagnostic data found
+an `AnnotationSymbol` reference's Z sitting at a symbolic ~200,000mm
+annotation-plane value against a real pile Z of ~18,500mm, ruling out 3D
+matching) would let a dimension's *own* stated value be checked directly
+against the measured distance between two real piles - no schedule, no
+bearing/DMS parsing, no chain walk. Two real risks flagged, neither
+validated yet: whether the nearest pile to a tag's location is actually
+the *right* pile, and whether a tag is placed at/near its own pile at all
+rather than leader-offset (which would make tag-to-tag and pile-to-pile
+distances disagree even when everything is correct - the same failure
+shape `InspectDimensionGeometry` run 4 already hit once). Proposed next
+step: extend `InspectDimensionGeometry.pushbutton` to answer both from
+real data before writing any matching/comparison logic, same discipline as
+every other diagnostic in this project. Not started.
 
 ### Former open questions - now answered from real data
 

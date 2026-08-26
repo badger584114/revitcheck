@@ -55,4 +55,32 @@ public sealed class ElementMetadata
     public long? HostElementId { get; init; }
 
     public Dictionary<string, ParameterValue> Parameters { get; init; } = new();
+
+    /// <summary>
+    /// This element's own real Easting/Northing/Elevation (mm), computed
+    /// live from its current <c>Location.Point</c> via <c>ProjectLocation.
+    /// GetProjectPosition</c> at capture time - null for every element the
+    /// adapter didn't choose to compute this for (piles only, today; see
+    /// <see cref="Checks.RuleConfig.PileCategoryName"/>).
+    /// </summary>
+    /// <remarks>
+    /// Deliberately NOT the same value as a shared/asset parameter like this
+    /// project's <c>XYZ_Easting</c>/<c>XYZ_Northing</c> - those are written
+    /// once by a Dynamo script reading the insertion point at the time it
+    /// last ran, and the pile schedule reads that same written value, not
+    /// the model directly (confirmed by the user, 2026-08-26, correcting an
+    /// earlier design here that compared one against the other and would
+    /// have found nothing even when a pile moved - both sides would stay
+    /// frozen at whatever Dynamo last wrote, agreeing with each other
+    /// regardless of where the pile actually is now). This field exists
+    /// specifically to be the side of that comparison neither of those two
+    /// stale-together values can be: computed fresh from live geometry every
+    /// single capture, so it can never go stale the way a script output can.
+    /// See PLANNING.md §14 and <see cref="Checks.PileModelScheduleConsistencyCheck"/>.
+    /// </remarks>
+    public double? ProjectPositionEastingMm { get; init; }
+
+    public double? ProjectPositionNorthingMm { get; init; }
+
+    public double? ProjectPositionElevationMm { get; init; }
 }

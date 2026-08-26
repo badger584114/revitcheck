@@ -33,7 +33,9 @@ internal static class RevitCheckTestBuilders
         string? keyValue = "ASSET-001",
         long? hostElementId = null,
         Dictionary<string, ParameterValue>? parameters = null,
-        string? uniqueId = null)
+        string? uniqueId = null,
+        double? projectPositionEastingMm = null,
+        double? projectPositionNorthingMm = null)
         => new()
         {
             ElementId = elementId,
@@ -44,6 +46,8 @@ internal static class RevitCheckTestBuilders
             KeyValue = keyValue,
             HostElementId = hostElementId,
             Parameters = parameters ?? new Dictionary<string, ParameterValue>(),
+            ProjectPositionEastingMm = projectPositionEastingMm,
+            ProjectPositionNorthingMm = projectPositionNorthingMm,
         };
 
     internal static Ir.RevitModel Model(
@@ -75,25 +79,49 @@ internal static class RevitCheckTestBuilders
 
     // --- Pile / schedule builders, for PileModelScheduleConsistencyCheckTests ---
 
-    /// <summary>A pile element with the real 2026-08-26 parameter shape: DIT_SiteID as the join key, XYZ_Easting/XYZ_Northing already in mm (Length-typed).</summary>
+    /// <summary>
+    /// A pile element with the real 2026-08-26 shape: DIT_SiteID as the
+    /// join key, and a LIVE position (ElementMetadata.ProjectPositionEastingMm/
+    /// NorthingMm) - the check's only real comparison input, per the
+    /// 2026-08-26 correction (see RuleConfig's remarks: the Dynamo-written
+    /// XYZ_Easting/XYZ_Northing parameters must never be read as this side
+    /// of the comparison). `frozenXyzEastingMm`/`frozenXyzNorthingMm` are
+    /// optional and, when given, populate those parameters anyway - purely
+    /// so a test can demonstrate the real failure mode directly: a pile
+    /// whose live position has moved while its Dynamo-written parameters
+    /// (and therefore the schedule, which reads the same stale value)
+    /// stayed frozen at the old position.
+    /// </summary>
     internal static ElementMetadata Pile(
         long elementId,
         string siteId,
         double eastingMm,
         double northingMm,
-        string category = "Structural Foundations")
-        => Element(
+        string category = "Structural Foundations",
+        double? frozenXyzEastingMm = null,
+        double? frozenXyzNorthingMm = null)
+    {
+        var parameters = new Dictionary<string, ParameterValue> { ["DIT_SiteID"] = StringParam(siteId) };
+        if (frozenXyzEastingMm is { } fe)
+        {
+            parameters["XYZ_Easting"] = NumericParam(fe);
+        }
+
+        if (frozenXyzNorthingMm is { } fn)
+        {
+            parameters["XYZ_Northing"] = NumericParam(fn);
+        }
+
+        return Element(
             elementId,
             category: category,
             familyName: "01_SFO_FRP_Pile_CastInPlace_CS_BR08",
             typeName: "CAST-IN-PLACE PILE - 1200",
             keyValue: null,
-            parameters: new Dictionary<string, ParameterValue>
-            {
-                ["DIT_SiteID"] = StringParam(siteId),
-                ["XYZ_Easting"] = NumericParam(eastingMm),
-                ["XYZ_Northing"] = NumericParam(northingMm),
-            });
+            parameters: parameters,
+            projectPositionEastingMm: eastingMm,
+            projectPositionNorthingMm: northingMm);
+    }
 
     /// <summary>A pile schedule with the real 2026-08-26 column shape: SITE ID / EASTING (m) / NORTHING (m), values as printed metres text.</summary>
     internal static ScheduleInfo PileSchedule(

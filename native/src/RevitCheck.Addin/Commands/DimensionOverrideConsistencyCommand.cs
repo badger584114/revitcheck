@@ -59,7 +59,11 @@ public class DimensionOverrideConsistencyCommand : IExternalCommand
         string? outputPath;
         try
         {
-            outputPath = IssueOutput.WriteNextToModel(doc, issues, "dimension_override_consistency", "RevitCheck - Dimension Overrides");
+            // writeBcf: false - see DimensionProvenanceCommand's remark and
+            // IssueOutput's own: this check's overrides need a human to
+            // confirm intent (CLAUDE.md), not an automatic BCF ship. See
+            // PLANNING.md §14 (2026-08-26).
+            outputPath = IssueOutput.WriteNextToModel(doc, issues, "dimension_override_consistency", "RevitCheck - Dimension Overrides", writeBcf: false);
         }
         catch (Exception ex)
         {
@@ -77,7 +81,8 @@ public class DimensionOverrideConsistencyCommand : IExternalCommand
         }
 
         TaskDialog.Show("RevitCheck - Dimension Overrides",
-            $"{summary}\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
+            $"{summary}\n\nThese need human confirmation of intent, not confirmed problems - " +
+            $"no BCF written here (PLANNING.md §14).\n\nWritten to (JSON and CSV, same folder):\n{outputPath}");
 
         return Result.Succeeded;
     }

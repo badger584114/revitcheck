@@ -6,8 +6,9 @@ namespace RevitCheck.Core.Checks;
 
 /// <summary>
 /// Model-vs-schedule pile setout: for each captured pile element, compares
-/// its own real Easting/Northing (<see cref="RuleConfig.PileEastingParameterName"/>/
-/// <see cref="RuleConfig.PileNorthingParameterName"/>) against the live pile
+/// its own real, LIVE Easting/Northing (<see cref="ElementMetadata.ProjectPositionEastingMm"/>/
+/// <see cref="ElementMetadata.ProjectPositionNorthingMm"/> - computed fresh
+/// every capture, see that field's own remarks) against the live pile
 /// schedule's row for that same pile, joined by
 /// <see cref="RuleConfig.PileKeyParameterName"/>. This is the "new, doesn't
 /// exist in the old PDF/DWG pipeline" half of the two pile checks named in
@@ -21,6 +22,7 @@ namespace RevitCheck.Core.Checks;
 /// in the drawing itself to catch it.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Deliberately structured like <see cref="MetadataReconciliationCheck"/>'s
 /// join (key parameter -&gt; matching row, ambiguity reported rather than
 /// silently resolved, a missing match is its own finding) even though the
@@ -34,6 +36,21 @@ namespace RevitCheck.Core.Checks;
 /// established mattered - not implemented in this first slice, since no
 /// real case has surfaced yet needing it; see the module's own coverage
 /// handling below for what is reported today).
+/// </para>
+/// <para>
+/// Correction, 2026-08-26: an earlier version of this rule compared the
+/// schedule against this project's own <c>XYZ_Easting</c>/<c>XYZ_Northing</c>
+/// parameters instead of a live-computed position. The user caught this
+/// directly - those parameters are themselves written by the same Dynamo
+/// script that (re)writes the schedule, reading the insertion point at the
+/// time it last ran. Comparing one against the other is comparing the same
+/// stale value to itself: move a pile without rerunning Dynamo and both
+/// sides stay frozen in agreement, exactly the failure this rule exists to
+/// catch. <see cref="ElementMetadata.ProjectPositionEastingMm"/>/
+/// <see cref="ElementMetadata.ProjectPositionNorthingMm"/> exist specifically
+/// to be the side of this comparison that can't go stale that way - see
+/// their own remarks.
+/// </para>
 /// </remarks>
 public static class PileModelScheduleConsistencyCheck
 {
@@ -167,21 +184,19 @@ public static class PileModelScheduleConsistencyCheck
         RuleConfig config,
         List<Issue> issues)
     {
-        if (!pile.Parameters.TryGetValue(config.PileEastingParameterName, out var eastingParam) ||
-            eastingParam.NumericValue is not { } pileEastingMm)
+        if (pile.ProjectPositionEastingMm is not { } pileEastingMm)
         {
             issues.Add(CoverageIssue(pile,
-                $"Pile has key '{keyValue}' but parameter '{config.PileEastingParameterName}' is missing or " +
-                "not numeric - Easting could not be checked."));
+                $"Pile has key '{keyValue}' but no live position was captured for it " +
+                "(ElementMetadata.ProjectPositionEastingMm is null) - Easting could not be checked."));
             return;
         }
 
-        if (!pile.Parameters.TryGetValue(config.PileNorthingParameterName, out var northingParam) ||
-            northingParam.NumericValue is not { } pileNorthingMm)
+        if (pile.ProjectPositionNorthingMm is not { } pileNorthingMm)
         {
             issues.Add(CoverageIssue(pile,
-                $"Pile has key '{keyValue}' but parameter '{config.PileNorthingParameterName}' is missing or " +
-                "not numeric - Northing could not be checked."));
+                $"Pile has key '{keyValue}' but no live position was captured for it " +
+                "(ElementMetadata.ProjectPositionNorthingMm is null) - Northing could not be checked."));
             return;
         }
 
@@ -225,8 +240,8 @@ public static class PileModelScheduleConsistencyCheck
             ElementId = pile.ElementId,
             UniqueId = pile.UniqueId,
             Description =
-                $"Pile '{keyValue}': model position is {FormatMm(deltaMm)}mm from the schedule's '{schedule.Name}' " +
-                $"row (model E/N {FormatMm(pileEastingMm)}/{FormatMm(pileNorthingMm)}mm, schedule " +
+                $"Pile '{keyValue}': live model position is {FormatMm(deltaMm)}mm from the schedule's " +
+                $"'{schedule.Name}' row (live model E/N {FormatMm(pileEastingMm)}/{FormatMm(pileNorthingMm)}mm, schedule " +
                 $"{FormatMm(scheduleEastingMm)}/{FormatMm(scheduleNorthingMm)}mm) - beyond the " +
                 $"{FormatMm(config.PileSetoutToleranceMm)}mm tolerance. Either the pile moved after the " +
                 "schedule was last generated, or the schedule was edited independently of the model.",
