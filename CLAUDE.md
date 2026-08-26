@@ -69,6 +69,30 @@ choice.
 > masquerading as real geodata). See PLANNING.md §14 for the full
 > detail.
 >
+> **PLANNING.md §14 update (2026-08-26):** `InspectPileSetout.pushbutton`
+> was run for real, and the model-vs-schedule pile check is now fully
+> unblocked — no bearing/chain reconstruction needed for it at all.
+> `ProjectLocation.GetProjectPosition(Pile.Location.Point)`, the pile's
+> own `XYZ_Easting`/`XYZ_Northing` parameters, and the schedule's
+> `EASTING`/`NORTHING` row (joined via `DIT_SiteID` = the schedule's
+> `SITE ID`) **agree to sub-millimetre precision** on all 4 real piles
+> sampled — this model's Survey Point is genuinely configured, not a
+> Massachusetts-style default. **Correction to the read above:**
+> `DIT_StartEasting`/`DIT_StartNorthing` being identical across piles
+> is not staleness — confirmed by the user to be a deliberate client
+> convention giving the *bridge's centre* location (matching the sheet
+> title-blocks' own lat/long), not a per-pile position; `XYZ_Easting`/
+> `XYZ_Northing` are the real per-pile parameters. A same-day re-run of
+> `InspectDimensionGeometry.pushbutton` across the whole pile layout
+> view (46 dimensions) turned run 7's qualitative tag-to-tag finding
+> into hard numbers: 87/92 references resolve to `AnnotationSymbol`,
+> 5/92 to `Grid`, **zero** to any model geometry — confirms
+> drawing-vs-schedule genuinely needs proximity/tag-matching, not
+> `Face.Project`. Next: build the model-vs-schedule pile check as its
+> own ribbon button ([[track-b-per-element-type-buttons]]). See
+> PLANNING.md §14 for the full detail, including the exact per-pile
+> numbers.
+>
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
 > Worksharing model isn't a filesystem path, and the code didn't guard
@@ -241,6 +265,7 @@ this file is the one still worth keeping.
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. Always reports how much was checkable. |
 | `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
 | `revitcheck.metadata_reconciliation` | Native add-in only (no Python equivalent) — joins captured model elements to an external reference CSV via a per-run-chosen mapping file, flags missing/mismatched fields. Built, wired to a real ribbon button, deployed, and calibrated against two real reference tables on a real model — see PLANNING.md §13. |
+| `revitcheck.pile_model_schedule_consistency` | Native add-in only, Core-side built and tested 2026-08-26 (not yet wired to a ribbon button). Compares each pile's own `XYZ_Easting`/`XYZ_Northing` parameters against its live pile schedule row (joined via `DIT_SiteID`) — the "model-vs-schedule" half of the two pile checks named in PLANNING.md §14, catching a pile moved in the model without the schedule's Dynamo script being rerun. Needs no geometry-API call — real diagnostic data confirmed both parameter sources agree to sub-mm. See PLANNING.md §14 and native/README.md. |
 
 **Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
 split at 100 issues per file for Forma's import cap, exposed as
@@ -351,7 +376,8 @@ it before re-deriving Track B from scratch:
    which already had a working dialog before that fix.
 2. **Verify drafted dimensions against the model** — the harder half.
    Comparison logic is still entirely unbuilt; the required first step,
-   the diagnostic below, is now built (2026-08-25) but not yet run.
+   the diagnostic below, is now built and has been run (2026-08-25/26,
+   see below for both diagnostics' real results).
    `revit.dimension_provenance` and `revit.dimension_override_consistency`
    currently report *triage* — a dimension is drafted/overridden — never
    *verdicts* — whether that drafted/overridden value has actually
@@ -391,9 +417,21 @@ it before re-deriving Track B from scratch:
    vs-schedule (the direct §5b port) and model-vs-schedule (cheaper if
    `ProjectLocation.GetProjectPosition` already gives real coordinates
    for this model). `native/diagnostics/InspectPileSetout.pushbutton`
-   (new) was built to answer the remaining real unknowns before
-   writing either port — not yet run. See PLANNING.md §14 for the full
-   detail.
+   was built to answer the remaining real unknowns, and **was run for
+   real 2026-08-26**: `GetProjectPosition`, the pile's own `XYZ_Easting`/
+   `XYZ_Northing` parameters, and the schedule's `EASTING`/`NORTHING`
+   row agree to sub-mm precision on all 4 sampled piles — **the
+   model-vs-schedule pile check is now fully unblocked, no bearing/chain
+   reconstruction needed for it at all.** (Correction to the paragraph
+   above: `DIT_StartEasting`/`DIT_StartNorthing` isn't a stale-position
+   signal — it's a deliberate client convention giving the bridge's
+   *centre* location; `XYZ_Easting`/`XYZ_Northing` are the real per-pile
+   parameters.) Drawing-vs-schedule remains the harder, still-unbuilt
+   half — a same-day `InspectDimensionGeometry.pushbutton` re-run across
+   the whole pile layout view (46 dimensions) confirmed it numerically:
+   87/92 references resolve to `AnnotationSymbol`, 5/92 to `Grid`, zero
+   to model geometry. See PLANNING.md §14 for the full detail, including
+   the exact per-pile numbers.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a

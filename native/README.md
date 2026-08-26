@@ -496,11 +496,51 @@ else added since the metadata-reconciliation round trip was proven
 (PLANNING.md §12); the wiring itself needed no live document to write or
 test.
 
-Next: Track B, verifying a drafted dimension against real model geometry
-(PLANNING.md §14, CLAUDE.md's "Next") — genuinely new territory needing a
-throwaway diagnostic on real drafted views before any comparison logic
-gets written. This is the one piece of "what's next" that has no further
-Mac-only work left to pull forward; it waits on the Revit machine.
+**`revitcheck.pile_model_schedule_consistency` — the model-vs-schedule pile
+check named in PLANNING.md §14 is now built and tested (2026-08-26),
+Core-side only.** `InspectPileSetout.pushbutton`'s real run answered all
+five open questions (PLANNING.md §14 update, 2026-08-26): the join is
+`ElementMetadata.Parameters["DIT_SiteID"]` against the schedule's `SITE ID`
+column, and — the real finding that unblocked this — comparing each pile's
+own `XYZ_Easting`/`XYZ_Northing` parameters (already mm, Length-typed)
+against the schedule's `EASTING (m)`/`NORTHING (m)` row needs **no
+geometry-API call at all**: both already agreed to sub-millimetre precision
+on all 4 real piles sampled. So this check reuses the existing
+metadata-style parameter capture unchanged — no new adapter geometry work,
+just two new IR pieces (`Ir/ScheduleInfo.cs`, `RevitModel.Schedules`) plus
+`Checks/PileModelScheduleConsistencyCheck.cs`, structured like
+`MetadataReconciliationCheck`'s join (ambiguous/missing/blank-key cases all
+their own coverage finding, never guessed) but comparing two fixed numeric
+fields with a planar-distance tolerance instead of an arbitrary mapped
+field set. **Real correction caught before this got built wrong:** an
+earlier read of the same diagnostic output treated `DIT_StartEasting`/
+`DIT_StartNorthing` (identical across every pile sampled) as stale
+per-pile data — the user corrected this directly: it's a deliberate
+convention giving the *bridge's own centre point* (matching the sheet
+title-blocks' lat/long), not a pile position, and `RuleConfig` now points
+at `XYZ_Easting`/`XYZ_Northing` instead. 8 new tests, real-number-shaped
+(the actual PIL232132/232133 figures from the diagnostic run, not invented
+ones) — `dotnet test` clean, 244 Core tests passing.
+**Not yet built:** the Addin-side adapter (populate `XYZ_Easting`/
+`XYZ_Northing`/`DIT_SiteID` via the existing `RevitMetadataElementSource`
+pile-category scope, plus a new schedule-reading piece handling the real
+header/blank-row quirk `GetCellText(SectionType.Body, ...)` has on this
+project) and its ribbon command/button — per-element-type, own button, not
+folded into an existing one (PLANNING.md's Track B button-per-type
+direction). Needs the Revit machine to build and confirm, same as every
+Addin-side piece.
+
+Also next: Track B's other, harder half — verifying a *drawing-vs-schedule*
+pile check (PLANNING.md §14, CLAUDE.md's "Next"), the direct port of the
+old PDF/DWG pipeline's `geometry.setout_reconstruction` bearing/
+dimension-chain walk. A same-day `InspectDimensionGeometry.pushbutton`
+re-run confirmed numerically why this one can't skip the geometry-API work
+the model-vs-schedule check just avoided: 87 of 92 references across the
+whole pile layout view resolve to `AnnotationSymbol` (tags), 5 to `Grid`,
+zero to any model geometry — pile setout dimensions here measure
+tag-to-tag, so there's no `CUT_EDGE`/model reference to read a position
+from directly, and the reconstruction algorithm (PLANNING.md §5b,
+ARCHIVE-pdf-dwg.md) is the proven way to derive one anyway.
 
 ### Former open questions - now answered from real data
 

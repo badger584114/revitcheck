@@ -56,4 +56,77 @@ public sealed class RuleConfig
     public List<string> SetoutCriticalTypeNames { get; init; } = new();
 
     public DimensionProvenanceOptions DimensionProvenance { get; init; } = new();
+
+    // --- revitcheck.pile_model_schedule_consistency ---
+    //
+    // Model-vs-schedule pile setout: compares each pile element's own real
+    // Easting/Northing against the live pile schedule's row for that same
+    // pile, catching the case the user named directly - someone moves a
+    // pile in the model, nobody reruns the Dynamo script that (re)writes
+    // the schedule, the schedule silently goes stale relative to the model.
+    // See PLANNING.md §14 (2026-08-26 update) for the real diagnostic run
+    // this is built from - real field/parameter names, not guessed ahead of
+    // data.
+
+    /// <summary>Category name identifying a pile element (Revit's Category.Name, e.g. "Structural Foundations" on this project). Confirmed real 2026-08-26; kept configurable since a category name is display text, not a stable enum, and can vary by locale/template.</summary>
+    public string PileCategoryName { get; init; } = "Structural Foundations";
+
+    /// <summary>
+    /// Instance parameter holding a pile's own site/tag id - the join key
+    /// against the schedule's own id column. Confirmed real on this project
+    /// as <c>DIT_SiteID</c> - per-project naming, same as a `Mark`
+    /// convention elsewhere, hence configurable rather than hardcoded
+    /// (mirrors <c>ParameterMapping.KeyParameterName</c>'s own reasoning).
+    /// </summary>
+    public string PileKeyParameterName { get; init; } = "DIT_SiteID";
+
+    /// <summary>
+    /// Candidate schedule header names for the pile schedule's own id
+    /// column, first match wins - mirrors the old PDF/DWG pipeline's
+    /// <c>ID_HEADER_CANDIDATES</c> (ARCHIVE-pdf-dwg.md), deliberately a
+    /// candidate list with no bare catch-all rather than a cleverer
+    /// heuristic, for the same reason that pipeline settled on one: only
+    /// one real naming convention has been seen so far.
+    /// </summary>
+    public List<string> PileScheduleIdHeaders { get; init; } = new() { "SITE ID" };
+
+    public List<string> PileScheduleEastingHeaders { get; init; } = new() { "EASTING (m)", "EASTING" };
+
+    public List<string> PileScheduleNorthingHeaders { get; init; } = new() { "NORTHING (m)", "NORTHING" };
+
+    /// <summary>
+    /// Instance parameters holding a pile's own real Easting/Northing,
+    /// already in mm (Length-typed Revit parameters - see ParameterValue's
+    /// remarks on IsLength). Confirmed real on this project as
+    /// <c>XYZ_Easting</c>/<c>XYZ_Northing</c>, agreeing with
+    /// <c>ProjectLocation.GetProjectPosition</c> and the schedule's own
+    /// value to sub-millimetre precision on all 4 piles sampled 2026-08-26
+    /// (PLANNING.md §14). Deliberately NOT `DIT_StartEasting`/
+    /// `DIT_StartNorthing` - confirmed by the user to be a different,
+    /// deliberately-constant value (the bridge's own centre point, matching
+    /// the sheet title-blocks' lat/long), not a per-pile position; using it
+    /// here would compare every pile against the same fixed point.
+    /// </summary>
+    public string PileEastingParameterName { get; init; } = "XYZ_Easting";
+
+    public string PileNorthingParameterName { get; init; } = "XYZ_Northing";
+
+    /// <summary>
+    /// Schedule text is real-world metres ("EASTING (m)"); the model
+    /// parameter is already mm (IR convention). This is the only place
+    /// converting the schedule's units in, so the mm-per-metre factor lives
+    /// here rather than being repeated.
+    /// </summary>
+    public const double ScheduleMetresToMm = 1000.0;
+
+    /// <summary>
+    /// Flag beyond this delta between the pile's own Easting/Northing and
+    /// the schedule's row for it. All four real piles sampled 2026-08-26
+    /// agreed to well under 1mm (PLANNING.md §14) when nothing had gone
+    /// stale, so this default is a generous placeholder against real
+    /// drift/staleness, not a tight figure calibrated against a known-bad
+    /// case yet - no real stale example has been seen. Confirm against a
+    /// real drifted case before tightening it.
+    /// </summary>
+    public double PileSetoutToleranceMm { get; init; } = 10.0;
 }
