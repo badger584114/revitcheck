@@ -257,6 +257,14 @@ public static class DimensionProvenanceCheck
                 ["provenance"] = "drafted",
                 ["dimensions"] = dims.Count,
                 ["drafted_dimensions"] = drafted.Count,
+                // The actual dimension ElementIds behind the count above -
+                // added 2026-08-26 so a later reconciliation step
+                // (Reporting.InvestigationReconciliation) can "un-roll" this
+                // finding and check each individual dimension against a
+                // per-dimension investigation check's verdict, rather than
+                // only ever being able to reconcile the non-rolled-up case.
+                // Not consumed by this check itself - see PLANNING.md §14.
+                ["drafted_dimension_ids"] = drafted.Select(d => d.ElementId).ToList(),
                 ["scope"] = "view",
                 ["action"] = "verify this view's setout against the model",
             },

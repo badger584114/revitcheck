@@ -128,6 +128,32 @@ choice.
 > reference's Z sitting ~180m from a real pile's) so a pile dimension's
 > own stated value can be checked directly against the measured distance
 > between its two nearest real piles, no schedule needed — not yet run.
+>
+> **PLANNING.md §14 update (2026-08-26, same day, stage 3 design
+> started):** `Core/Reporting/InvestigationReconciliation.cs` (new,
+> tested, not yet wired to any command) prunes dimension triage against a
+> per-dimension investigation check's verdicts — the real join needed the
+> investigated-scope to be a parameter separate from the issues list
+> (absence-of-issue is ambiguous between "checked, clean" and "never
+> examined," and treating it as clean would violate "report a coverage
+> indicator, never fail silently"), and most real triage volume needed
+> "un-rolling" first (`DimensionProvenanceCheck`'s view-rollup issue now
+> carries `drafted_dimension_ids` in its `SuggestedFix`, a small additive
+> fix). `revitcheck.pile_model_schedule_consistency` deliberately doesn't
+> participate — it's keyed on Pile ElementIds, never a Dimension's, so it
+> naturally never matches; it should export to BCF directly once wired to
+> its own command, not route through this. Blocked on the one
+> investigation check that would actually feed it (the pile-proximity
+> match above) not existing as a real Core check yet.
+>
+> **PLANNING.md §14 refinement (2026-08-26, same day, per the user's own
+> direction): three outcomes, not two.** `Reconcile` now returns a
+> `ReconciliationResult` (`ConfirmedProblems`/`NeedsManualReview`/
+> `StillOpenTriage`), not one flat list — some dimensions genuinely need
+> drawing interpretation a script can't do, and a future investigation
+> check marks those with `Category = InvestigationReconciliation.
+> ManualReviewCategory` rather than being forced to guess "clean" or
+> "problem". Only `ConfirmedProblems` is meant for automatic BCF export.
 > See PLANNING.md §14 for the full detail.
 >
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata

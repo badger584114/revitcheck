@@ -578,10 +578,54 @@ validated yet: whether the nearest pile to a tag's location is actually
 the *right* pile, and whether a tag is placed at/near its own pile at all
 rather than leader-offset (which would make tag-to-tag and pile-to-pile
 distances disagree even when everything is correct - the same failure
-shape `InspectDimensionGeometry` run 4 already hit once). Proposed next
-step: extend `InspectDimensionGeometry.pushbutton` to answer both from
-real data before writing any matching/comparison logic, same discipline as
-every other diagnostic in this project. Not started.
+shape `InspectDimensionGeometry` run 4 already hit once). **Built the same
+day (2026-08-26):** `InspectDimensionGeometry.pushbutton` extended with
+`_collect_piles`/`_nearest_pile` (2D X/Y only, per the real Z gap above)
+and a per-dimension `pile_match` block reporting real pile-to-pile
+distance next to the dimension's own value. Not yet run - needs the Revit
+machine.
+
+**Stage 3 (reconciliation + export) design started, same day, ahead of the
+check above being run - the mechanism itself doesn't need real client
+data to be correct.** `Core/Reporting/InvestigationReconciliation.cs`
+(new, tested) prunes dimension triage
+(`revit.dimension_provenance`/`revit.dimension_override_consistency`)
+against a per-dimension investigation check's verdicts, so BCF export
+(once wired up) only ever carries confirmed problems. Real design points
+worth knowing:
+- The investigated-scope has to be a parameter separate from the
+  investigation issues list, not derived from it - a check reports
+  "clean" by emitting nothing, identical to "never examined," so treating
+  absence-of-issue as confirmed-clean would silently suppress an
+  unverified triage finding.
+- Most real triage volume is `DimensionProvenanceCheck`'s view-rollup
+  issue, anchored on the view's ElementId, which can never match a
+  per-dimension verdict directly - needed one small additive fix first
+  (`ViewRollupIssue`'s `SuggestedFix` now carries `drafted_dimension_ids`,
+  not just counts) so reconciliation can "un-roll" it and only drop the
+  whole rollup once every one of its underlying dimensions has been
+  examined.
+- **Three outcomes, not two - refined the same day per the user's own
+  direction.** `Reconcile` returns a `ReconciliationResult`
+  (`ConfirmedProblems`/`NeedsManualReview`/`StillOpenTriage`), not one
+  flat list. Some dimensions genuinely need drawing interpretation a
+  script can't do (an ambiguous nearest-pile match, a tag too far from any
+  real pile to trust) - a future investigation check marks those with
+  `Category = InvestigationReconciliation.ManualReviewCategory` instead
+  of being forced to guess clean-or-problem. Only `ConfirmedProblems` is
+  meant for automatic BCF export; `NeedsManualReview` is a separate,
+  shorter list a human decides on. The rollup un-rolling logic needed no
+  change for this - it already only asked "was this dimension examined,"
+  not "was it found clean," so a manual-review verdict counts the same as
+  clean or problem for resolving a rollup.
+
+`revitcheck.pile_model_schedule_consistency` deliberately doesn't
+participate - keyed on Pile ElementIds, never a Dimension's, so it
+naturally never matches anything here; it should get its own
+`writeBcf: true` command once wired up, not route through this. **Not
+wired to any command yet** - blocked on the pile-proximity investigation
+check above not existing as a real Core check (still diagnostic-only,
+unrun). `dotnet build`/`dotnet test` clean, 257 Core tests passing.
 
 ### Former open questions - now answered from real data
 
