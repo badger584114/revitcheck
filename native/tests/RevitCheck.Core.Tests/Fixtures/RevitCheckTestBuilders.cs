@@ -35,7 +35,8 @@ internal static class RevitCheckTestBuilders
         Dictionary<string, ParameterValue>? parameters = null,
         string? uniqueId = null,
         double? projectPositionEastingMm = null,
-        double? projectPositionNorthingMm = null)
+        double? projectPositionNorthingMm = null,
+        Point3D? localPoint = null)
         => new()
         {
             ElementId = elementId,
@@ -48,6 +49,7 @@ internal static class RevitCheckTestBuilders
             Parameters = parameters ?? new Dictionary<string, ParameterValue>(),
             ProjectPositionEastingMm = projectPositionEastingMm,
             ProjectPositionNorthingMm = projectPositionNorthingMm,
+            LocalPoint = localPoint,
         };
 
     internal static Ir.RevitModel Model(
@@ -58,7 +60,8 @@ internal static class RevitCheckTestBuilders
         IEnumerable<SheetInfo>? sheets = null,
         IEnumerable<ViewInfo>? views = null,
         IEnumerable<DimensionInfo>? dimensions = null,
-        IEnumerable<ScheduleInfo>? schedules = null)
+        IEnumerable<ScheduleInfo>? schedules = null,
+        IEnumerable<TextNoteInfo>? textNotes = null)
         => new()
         {
             DocTitle = docTitle,
@@ -75,6 +78,7 @@ internal static class RevitCheckTestBuilders
             Views = views?.ToList() ?? new List<ViewInfo>(),
             Dimensions = dimensions?.ToList() ?? new List<DimensionInfo>(),
             Schedules = schedules?.ToList() ?? new List<ScheduleInfo>(),
+            TextNotes = textNotes?.ToList() ?? new List<TextNoteInfo>(),
         };
 
     // --- Pile / schedule builders, for PileModelScheduleConsistencyCheckTests ---
@@ -99,7 +103,8 @@ internal static class RevitCheckTestBuilders
         double northingMm,
         string category = "Structural Foundations",
         double? frozenXyzEastingMm = null,
-        double? frozenXyzNorthingMm = null)
+        double? frozenXyzNorthingMm = null,
+        Point3D? localPoint = null)
     {
         var parameters = new Dictionary<string, ParameterValue> { ["DIT_SiteID"] = StringParam(siteId) };
         if (frozenXyzEastingMm is { } fe)
@@ -120,8 +125,47 @@ internal static class RevitCheckTestBuilders
             keyValue: null,
             parameters: parameters,
             projectPositionEastingMm: eastingMm,
-            projectPositionNorthingMm: northingMm);
+            projectPositionNorthingMm: northingMm,
+            // Defaults to the same numbers as the project-position pair -
+            // fine for tests that don't care about the local-vs-survey
+            // distinction (see ElementMetadata.LocalPoint's own remarks);
+            // pass localPoint explicitly for pile-chain reconstruction
+            // tests, which do care.
+            localPoint: localPoint ?? new Point3D { X = eastingMm, Y = northingMm, Z = 0 });
     }
+
+    // --- Pile-chain / bearing builders, for PileChainBearingConsistencyCheckTests ---
+
+    internal static Point3D Pt(double x, double y, double z = 0) => new() { X = x, Y = y, Z = z };
+
+    /// <summary>A dimension reference to an AnnotationSymbol tag at a given local point - the real shape confirmed 2026-08-26 for this project's pile-mark tags.</summary>
+    internal static ReferenceInfo TagRef(long elementId, Point3D localPoint) => new()
+    {
+        ElementId = elementId,
+        ClassName = "AnnotationSymbol",
+        Category = "Generic Annotations",
+        ViewSpecific = true,
+        LocalPoint = localPoint,
+    };
+
+    /// <summary>A tag-to-tag dimension between two AnnotationSymbol references, real shape - PileChainReconstruction only ever looks at References/ElementId, not Segments, but a value is still supplied for tests that also check DimensionProvenance-style behaviour incidentally.</summary>
+    internal static DimensionInfo PileChainDimension(
+        long elementId, long viewId, ReferenceInfo refA, ReferenceInfo refB, double? valueMm = null) => new()
+        {
+            ElementId = elementId,
+            ViewId = viewId,
+            References = new List<ReferenceInfo> { refA, refB },
+            Segments = new List<DimensionSegmentInfo> { new() { ValueMm = valueMm } },
+            TypeName = "Dimension_Standard_O (mm)",
+        };
+
+    internal static TextNoteInfo TextNote(long elementId, long viewId, string rawText, Point3D localPoint) => new()
+    {
+        ElementId = elementId,
+        ViewId = viewId,
+        RawText = rawText,
+        LocalPoint = localPoint,
+    };
 
     /// <summary>A pile schedule with the real 2026-08-26 column shape: SITE ID / EASTING (m) / NORTHING (m), values as printed metres text.</summary>
     internal static ScheduleInfo PileSchedule(

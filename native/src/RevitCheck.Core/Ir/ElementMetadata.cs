@@ -83,4 +83,21 @@ public sealed class ElementMetadata
     public double? ProjectPositionNorthingMm { get; init; }
 
     public double? ProjectPositionElevationMm { get; init; }
+
+    /// <summary>
+    /// This element's own Location.Point, in local project coordinates
+    /// (mm) - added 2026-08-26 alongside <see cref="ReferenceInfo.LocalPoint"/>
+    /// for pile-chain reconstruction (see <c>Checks.PileChainReconstruction</c>).
+    /// Deliberately a separate field from <see cref="ProjectPositionEastingMm"/>/
+    /// <see cref="ProjectPositionNorthingMm"/>, not a duplicate of it: this
+    /// one is cheap (no GetProjectPosition call) and is what a
+    /// nearest-neighbour proximity match against a tag's own
+    /// <see cref="ReferenceInfo.LocalPoint"/> needs; the survey-adjusted
+    /// pair is what the final bearing/distance calculation against a
+    /// printed real-world value needs (translation is invariant for
+    /// proximity matching, but bearing is not invariant to a project's
+    /// Angle-to-True-North, so that step must use the real one). A pile
+    /// participating in chain reconstruction needs both.
+    /// </summary>
+    public Point3D? LocalPoint { get; init; }
 }

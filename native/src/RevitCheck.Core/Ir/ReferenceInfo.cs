@@ -29,4 +29,21 @@ public sealed class ReferenceInfo
     public bool Linked { get; init; }
 
     public long? LinkInstanceId { get; init; }
+
+    /// <summary>
+    /// The resolved element's own Location.Point, in local project
+    /// coordinates (mm) - added 2026-08-26 for pile-chain reconstruction
+    /// (PileChainReconstruction). Deliberately local, not survey-adjusted:
+    /// this only ever feeds a nearest-neighbour proximity search
+    /// (PileChainReconstruction.ResolvePileMatch), which is invariant to
+    /// any consistent coordinate frame - local coordinates are what a real
+    /// diagnostic run (InspectDimensionGeometry.pushbutton) already
+    /// validated this works with, and avoid a GetProjectPosition call per
+    /// reference (this can be thousands on a real model). Null for any
+    /// reference whose resolved element has no simple Location.Point (most
+    /// model geometry references, e.g. CUT_EDGE/Face) - not a gap this
+    /// field needs to fill, since chain reconstruction only ever needs a
+    /// tag's own point, not arbitrary model geometry's.
+    /// </summary>
+    public Point3D? LocalPoint { get; init; }
 }

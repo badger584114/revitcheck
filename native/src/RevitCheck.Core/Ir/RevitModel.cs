@@ -34,6 +34,9 @@ public sealed class RevitModel
     /// <summary>Captured ViewSchedules - added for the pile model-vs-schedule check (PLANNING.md §14, 2026-08-26). Additive like Sheets/Views/Dimensions before it: an older capture loads fine with this empty.</summary>
     public List<ScheduleInfo> Schedules { get; init; } = new();
 
+    /// <summary>Captured TextNotes - added for the pile chain bearing check (PLANNING.md §14, 2026-08-26). Additive, same pattern as Schedules.</summary>
+    public List<TextNoteInfo> TextNotes { get; init; } = new();
+
     /// <summary>Per-element extraction failures, isolated rather than raised - one bad element cannot abort a capture.</summary>
     public List<string> ExtractionErrors { get; init; } = new();
 

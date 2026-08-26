@@ -627,10 +627,53 @@ worth knowing:
 `revitcheck.pile_model_schedule_consistency` deliberately doesn't
 participate - keyed on Pile ElementIds, never a Dimension's, so it
 naturally never matches anything here; it should get its own
-`writeBcf: true` command once wired up, not route through this. **Not
-wired to any command yet** - blocked on the pile-proximity investigation
-check above not existing as a real Core check (still diagnostic-only,
-unrun). `dotnet build`/`dotnet test` clean, 257 Core tests passing.
+`writeBcf: true` command once wired up, not route through this.
+
+**The pile-proximity investigation check is no longer just diagnostic-only
+- a view-scoping fix unblocked a real re-run (2026-08-26), and the result
+decisively validated the whole approach.** `_collect_piles` had been
+sweeping the whole document (281 "piles" found against a real ~47) -
+fixed per the user's own suggestion to `FilteredElementCollector(doc,
+view.Id)`, matching real data down to 43. Re-run on the real pile layout
+view: **31 of 32 matched dimensions agree with real pile geometry to
+sub-millimetre precision** (many literally floating-point-exact),
+decisively confirming both that the nearest-pile match is correct and
+that tags sit at their own pile's location, not leader-offset. The one
+real outlier turned out to be dimensioned to a setout-point marker, not a
+pile - confirmed directly by the user, not a drafting bug, and directly
+shaped `RuleConfig.PileTagMatchToleranceMm`'s real calibration (a ~100000x
+real margin between clean ~0mm matches and confirmed-bad ~1300mm ones).
+
+**Proposed by the user directly: reconstruct each pile chain's own
+bearing from live geometry and compare it to the drafted bearing call -
+built the same day, `revitcheck.pile_chain_bearing_consistency`, no
+manual-review fallback needed since the results were decisive.** All 4
+real chains reconstructed from the real view matched their real printed
+bearing call to within a third of an arcsecond - see PLANNING.md §14 for
+the full table. This is a simpler, stronger mechanism than the originally-
+planned drawing-vs-schedule §5b DXF-chain-walk port: no dimension-chain
+traversal, no witness-point matching, no DMS parsing as an input to the
+reconstruction (only as the comparison target) - just the already-
+reconstructed chain and point-to-point bearing math. Built:
+`Checks/PileChainReconstruction.cs` (graph algorithm: confident
+tag-to-pile edges → connected components → simple-path chains, a branch
+or cycle reported separately rather than guessed at), `BearingText.cs`/
+`BearingMath.cs` (DMS parsing + azimuth/reciprocal/angular-difference
+math), `PileChainBearingConsistencyCheck.cs` (ties it together, matching
+each chain to its nearest parsed `TextNote` within
+`PileChainNoteMaxDistanceMm`). New IR: `ReferenceInfo.LocalPoint`/
+`ElementMetadata.LocalPoint` (local, not survey-adjusted - proximity
+matching doesn't need `GetProjectPosition`, bearing math does, so piles
+carry both) and `Ir/TextNoteInfo.cs`. 32 new tests, one built from the
+literal real PIL232115/PIL232116/note-8802924 numbers.
+
+**Not wired to any command yet, either check** - both are Core-only, same
+discipline as `pile_model_schedule_consistency`. The bearing check's
+Addin adapter needs real new work beyond the other two: populating
+`ReferenceInfo.LocalPoint`/`ElementMetadata.LocalPoint` (cheap,
+`Location.Point`, no `GetProjectPosition` call) and capturing `TextNote`s
+into the new `TextNotes` list. `dotnet build`/`dotnet test` clean, 289
+Core tests passing.
 
 ### Former open questions - now answered from real data
 
