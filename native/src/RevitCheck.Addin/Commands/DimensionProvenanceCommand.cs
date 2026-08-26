@@ -69,7 +69,13 @@ public class DimensionProvenanceCommand : IExternalCommand
         string? outputPath;
         try
         {
-            outputPath = IssueOutput.WriteNextToModel(doc, issues, "dimension_provenance", "RevitCheck - Dimension Provenance");
+            // writeBcf: false - this check reports triage, not verdicts (a
+            // real run finds ~250 candidates needing investigation, not 250
+            // confirmed problems). BCF export belongs to the later
+            // reconciliation stage that prunes this against investigation-
+            // check results first, not here - see IssueOutput's remarks and
+            // PLANNING.md §14 (2026-08-26).
+            outputPath = IssueOutput.WriteNextToModel(doc, issues, "dimension_provenance", "RevitCheck - Dimension Provenance", writeBcf: false);
         }
         catch (Exception ex)
         {
@@ -87,7 +93,8 @@ public class DimensionProvenanceCommand : IExternalCommand
         }
 
         TaskDialog.Show("RevitCheck - Dimension Provenance",
-            $"{summary}\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
+            $"{summary}\n\nThese are candidates needing investigation, not confirmed problems - " +
+            $"no BCF written here (PLANNING.md §14).\n\nWritten to (JSON and CSV, same folder):\n{outputPath}");
 
         return Result.Succeeded;
     }
