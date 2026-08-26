@@ -53,7 +53,8 @@ internal static class RevitCheckTestBuilders
         string docTitle = "TEST-BRIDGE",
         IEnumerable<SheetInfo>? sheets = null,
         IEnumerable<ViewInfo>? views = null,
-        IEnumerable<DimensionInfo>? dimensions = null)
+        IEnumerable<DimensionInfo>? dimensions = null,
+        IEnumerable<ScheduleInfo>? schedules = null)
         => new()
         {
             DocTitle = docTitle,
@@ -69,6 +70,47 @@ internal static class RevitCheckTestBuilders
             Sheets = sheets?.ToList() ?? new List<SheetInfo> { new() { ElementId = 1, SheetNumber = "S101", Name = "Plan" } },
             Views = views?.ToList() ?? new List<ViewInfo>(),
             Dimensions = dimensions?.ToList() ?? new List<DimensionInfo>(),
+            Schedules = schedules?.ToList() ?? new List<ScheduleInfo>(),
+        };
+
+    // --- Pile / schedule builders, for PileModelScheduleConsistencyCheckTests ---
+
+    /// <summary>A pile element with the real 2026-08-26 parameter shape: DIT_SiteID as the join key, XYZ_Easting/XYZ_Northing already in mm (Length-typed).</summary>
+    internal static ElementMetadata Pile(
+        long elementId,
+        string siteId,
+        double eastingMm,
+        double northingMm,
+        string category = "Structural Foundations")
+        => Element(
+            elementId,
+            category: category,
+            familyName: "01_SFO_FRP_Pile_CastInPlace_CS_BR08",
+            typeName: "CAST-IN-PLACE PILE - 1200",
+            keyValue: null,
+            parameters: new Dictionary<string, ParameterValue>
+            {
+                ["DIT_SiteID"] = StringParam(siteId),
+                ["XYZ_Easting"] = NumericParam(eastingMm),
+                ["XYZ_Northing"] = NumericParam(northingMm),
+            });
+
+    /// <summary>A pile schedule with the real 2026-08-26 column shape: SITE ID / EASTING (m) / NORTHING (m), values as printed metres text.</summary>
+    internal static ScheduleInfo PileSchedule(
+        string name,
+        IEnumerable<(string SiteId, string EastingM, string NorthingM)> rows)
+        => new()
+        {
+            Name = name,
+            Headers = new List<string> { "SITE ID", "LOCATION", "EASTING (m)", "NORTHING (m)" },
+            Rows = rows
+                .Select(r => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+                {
+                    ["SITE ID"] = r.SiteId,
+                    ["EASTING (m)"] = r.EastingM,
+                    ["NORTHING (m)"] = r.NorthingM,
+                })
+                .ToList(),
         };
 
     // --- ReferenceInfo builders, mirroring conftest.py's model_ref/drafted_ref/datum_ref/unresolved_ref ---
