@@ -125,4 +125,65 @@ public sealed class RuleConfig
     /// tightening it.
     /// </summary>
     public double PileSetoutToleranceMm { get; init; } = 10.0;
+
+    // --- revitcheck.pile_chain_bearing_consistency ---
+    //
+    // Reconstructs a pile chain's own real bearing from live model
+    // geometry (PileChainReconstruction) and compares it against the
+    // drafted bearing call (a TextNote, e.g. "165° 07' 01\""). Calibrated
+    // against real data 2026-08-26: 4 real chains reconstructed from a
+    // real pile-layout view, every one matching a real printed bearing
+    // call to within a third of an arcsecond - see PLANNING.md §14.
+
+    /// <summary>
+    /// A dimension's two references each resolve to the nearest pile
+    /// within this distance (mm) to count as a confident tag-to-pile
+    /// match - PileChainReconstruction.ResolvePileMatch. Calibrated
+    /// against real data: every genuine pile-mark tag sampled sat within
+    /// a fraction of a millimetre of its own pile (many were
+    /// floating-point-exact 0.0mm); the two confirmed non-pile references
+    /// (a setout-point marker, per the user directly) sat 1274.5mm and
+    /// 1400mm away. 50mm is deliberately far below the bad cases and far
+    /// above the clean ones - the real gap is roughly three orders of
+    /// magnitude, so this isn't a knife-edge tuning, but it is only one
+    /// real project's data.
+    /// </summary>
+    public double PileTagMatchToleranceMm { get; init; } = 50.0;
+
+    /// <summary>
+    /// A reconstructed chain is matched to the nearest TextNote (by 2D
+    /// distance from the note to the nearest pile in the chain) only
+    /// within this distance (mm) - beyond it, no confident bearing note
+    /// exists for this chain and it's reported as coverage, not guessed
+    /// at. Calibrated against real data, but with a real caveat noted
+    /// honestly: the 4 correctly-matching real (note, chain) pairs sat
+    /// 3324-8045mm apart, and the one real note that belongs to neither
+    /// of them sat 11889mm from its nearest candidate - a real, but not
+    /// dramatic, margin (roughly 1.5x), unlike the ~1:100000 margin
+    /// PileTagMatchToleranceMm has. Treat this one as the most likely of
+    /// the two to need recalibration against a second real project.
+    /// </summary>
+    public double PileChainNoteMaxDistanceMm { get; init; } = 10_000.0;
+
+    /// <summary>
+    /// Flag a chain whose reconstructed bearing (or its exact reciprocal -
+    /// chain walk direction is arbitrary, both describe the same physical
+    /// line) disagrees with its matched note's parsed bearing by more than
+    /// this many degrees. Real clean deltas were all under 0.35 arcseconds
+    /// (0.0001°) - 60 arcseconds (1/60°) is a deliberately generous
+    /// placeholder several orders of magnitude looser than the real clean
+    /// data, not a tight figure calibrated against a known-bad bearing
+    /// call - no real wrong-bearing example has been seen yet.
+    /// </summary>
+    public double PileChainBearingToleranceDegrees { get; init; } = 60.0 / 3600.0;
+
+    /// <summary>
+    /// Below this many piles, a resolved chain isn't reported at all - a
+    /// 2-pile "chain" is just one dimension and one bearing figure with no
+    /// per-segment redundancy to lend it any real confidence beyond that
+    /// single measurement. Real data has legitimate 2-pile chains (a
+    /// short end run), so this stays at the structural minimum (2) rather
+    /// than being tightened further without a real reason to.
+    /// </summary>
+    public int PileChainMinimumPiles { get; init; } = 2;
 }

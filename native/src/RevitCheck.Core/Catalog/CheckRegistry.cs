@@ -41,5 +41,6 @@ public static class CheckRegistry
         catalog.Register(DimensionProvenanceCheck.RuleId, model => DimensionProvenanceCheck.Run(model, ruleConfig));
         catalog.Register(DimensionOverrideConsistencyCheck.RuleId, model => DimensionOverrideConsistencyCheck.Run(model, ruleConfig));
         catalog.Register(PileModelScheduleConsistencyCheck.RuleId, model => PileModelScheduleConsistencyCheck.Run(model, ruleConfig));
+        catalog.Register(PileChainBearingConsistencyCheck.RuleId, model => PileChainBearingConsistencyCheck.Run(model, ruleConfig));
     }
 }

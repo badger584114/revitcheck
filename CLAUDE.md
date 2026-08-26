@@ -159,6 +159,25 @@ choice.
 > "problem". Only `ConfirmedProblems` is meant for automatic BCF export.
 > See PLANNING.md §14 for the full detail.
 >
+> **PLANNING.md §14 update (2026-08-26, later still): the tag-to-pile
+> approach is now decisively validated on real data, and a third pile
+> check is built.** A view-scoping fix to `InspectDimensionGeometry
+> .pushbutton`'s pile collection (281 "piles" document-wide → 43,
+> matching the real ~47) unblocked a real re-run: 31 of 32 matched
+> dimensions agree with real pile geometry to sub-millimetre precision,
+> and the one real outlier turned out to be dimensioned to a setout-point
+> marker, not a pile — confirmed directly by the user, not a drafting
+> bug. Reconstructing each chain's bearing from live geometry and
+> comparing to the printed bearing call matched all 4 real chains to
+> within a third of an arcsecond. Per the user directly — the results are
+> clear enough that a manual-review fallback isn't needed here, build the
+> automatic comparison. Built: `revitcheck.pile_chain_bearing_consistency`
+> (`Checks/PileChainReconstruction.cs`/`BearingText.cs`/`BearingMath.cs`),
+> new IR (`ReferenceInfo.LocalPoint`/`ElementMetadata.LocalPoint`/
+> `Ir/TextNoteInfo.cs`), 32 new tests including one built from the literal
+> real pile/note numbers — 289 Core tests passing. Not wired to a command
+> yet. See PLANNING.md §14 for the full numbers.
+>
 > **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
 > Reconciliation crashed — `Document.PathName` for a Revit Cloud
 > Worksharing model isn't a filesystem path, and the code didn't guard
@@ -332,6 +351,7 @@ this file is the one still worth keeping.
 | `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
 | `revitcheck.metadata_reconciliation` | Native add-in only (no Python equivalent) — joins captured model elements to an external reference CSV via a per-run-chosen mapping file, flags missing/mismatched fields. Built, wired to a real ribbon button, deployed, and calibrated against two real reference tables on a real model — see PLANNING.md §13. |
 | `revitcheck.pile_model_schedule_consistency` | Native add-in only, Core-side built and tested 2026-08-26 (not yet wired to a ribbon button). Compares each pile's own LIVE position (`ElementMetadata.ProjectPositionEastingMm`/`NorthingMm`, populated only by a `GetProjectPosition` call — Addin-side geometry-API work, not yet built) against its live pile schedule row (joined via `DIT_SiteID`) — the "model-vs-schedule" half of the two pile checks named in PLANNING.md §14, catching a pile moved in the model without the schedule's Dynamo script being rerun. Deliberately does NOT compare against `XYZ_Easting`/`XYZ_Northing` — those are Dynamo-written from the same insertion point the schedule reads, so they're the value being audited, not an independent check on it (a real design bug caught and fixed same-day, see PLANNING.md §14). See PLANNING.md §14 and native/README.md. |
+| `revitcheck.pile_chain_bearing_consistency` | Native add-in only, Core-side built and tested 2026-08-26 (not yet wired to a ribbon button). Reconstructs each real pile chain's own bearing from live model geometry (`Checks/PileChainReconstruction.cs`, tag-to-pile proximity matching) and compares it against the drafted bearing call nearest to it — validated end-to-end against real data: all 4 real chains reconstructed from a real pile-layout view matched their real printed bearing call to within a third of an arcsecond. A simpler, stronger mechanism than the originally-planned drawing-vs-schedule §5b DXF-chain-walk port — no dimension-chain traversal or witness-point matching needed. See PLANNING.md §14 and native/README.md. |
 
 **Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
 split at 100 issues per file for Forma's import cap, exposed as
@@ -502,12 +522,22 @@ it before re-deriving Track B from scratch:
    work, still unbuilt) against the schedule directly — the one thing
    "no bearing/chain reconstruction needed" was correctly saying is that
    this is still far cheaper than the §5b port, not that it needs no
-   geometry API at all. Drawing-vs-schedule remains the harder,
-   still-unbuilt half — a same-day `InspectDimensionGeometry.pushbutton`
+   geometry API at all. Drawing-vs-schedule was expected to remain the
+   harder, unbuilt half — a same-day `InspectDimensionGeometry.pushbutton`
    re-run across the whole pile layout view (46 dimensions) confirmed it
    numerically: 87/92 references resolve to `AnnotationSymbol`, 5/92 to
-   `Grid`, zero to model geometry. See PLANNING.md §14 for the full
-   detail, including the exact per-pile numbers and the fix.
+   `Grid`, zero to model geometry, so there's no `CUT_EDGE`/model
+   reference for the old §5b DXF-chain-walk approach's mechanics to use.
+   **Superseded 2026-08-26 by a stronger, simpler mechanism: reconstruct
+   each pile chain's own bearing directly from live model geometry
+   (tag-to-pile proximity matching) and compare it against the drafted
+   bearing call — no dimension-chain traversal or witness-point matching
+   needed at all.** Validated decisively against real data (31 of 32
+   matched dimensions agree with real pile geometry to sub-millimetre
+   precision; all 4 real reconstructed chains matched their real printed
+   bearing call within a third of an arcsecond) and built the same day as
+   `revitcheck.pile_chain_bearing_consistency` — see PLANNING.md §14 for
+   the full numbers and the built state table above.
 
 **Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
 `unique_id` + the sheet anchor are done (see Built state above), and a
