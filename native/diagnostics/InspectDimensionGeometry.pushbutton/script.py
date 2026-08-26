@@ -149,7 +149,18 @@ deliberately 2D (X/Y) only, never 3D: a real check of this project's own
 committed diagnostic output found an `AnnotationSymbol` reference's Z
 sitting at a symbolic ~200,000mm annotation-plane value against a real
 pile's ~18,500mm Z - a ~180m gap that would defeat any 3D search outright.
-Not yet run.
+
+**Refined the same day, before the first run, per the user's own
+direction: `_collect_piles` is scoped to the active view, not
+document-wide.** A document-wide sweep would also pick up
+`OST_StructuralFoundation` instances belonging to unrelated structures
+elsewhere in the model - exactly the kind of wrong-nearest-pile false
+match this diagnostic exists to catch, not introduce.
+`FilteredElementCollector(doc, view.Id)` already does the right thing for
+a model category (returns what the view would actually show, respecting
+its crop region and visibility/graphics overrides), so this reuses the
+same per-view scoping the dimension collection above already relies on,
+rather than adding a second, different mechanism. Not yet run.
 """
 
 import math
@@ -335,17 +346,25 @@ def _pile_key_value(pile_element):
         return None
 
 
-def _collect_piles():
-    """Every OST_StructuralFoundation element with a resolvable Location.
-    Point, its own real 3D position, and its DIT_SiteID - collected once,
-    document-wide. Real pile counts on this project are small enough
-    (dozens per schedule) that a plain document-wide sweep is simpler and
-    more honest than tuning a search-radius collector filter."""
+def _collect_piles(view):
+    """Every OST_StructuralFoundation element visible in `view`, with a
+    resolvable Location.Point, its own real 3D position, and its
+    DIT_SiteID - collected once. Scoped to the view (added 2026-08-26,
+    the user's own suggestion) rather than a document-wide sweep: a
+    document-wide collector would also pick up foundation family
+    instances belonging to unrelated structures elsewhere in the model,
+    which is exactly the kind of "wrong nearest pile" false match this
+    diagnostic exists to catch, not introduce. FilteredElementCollector(doc,
+    view.Id) already does the right thing for a model category - it
+    returns what the view would actually show (respecting crop region and
+    visibility/graphics overrides), the same per-view scoping this script
+    already uses for dimensions and the real adapter uses document-wide
+    (RevitDimensionSource.cs's own OwnerViewId-isn't-trustworthy fix)."""
     piles = []
     errors = []
     try:
         collector = (
-            FilteredElementCollector(doc)
+            FilteredElementCollector(doc, view.Id)
             .OfCategory(BuiltInCategory.OST_StructuralFoundation)
             .WhereElementIsNotElementType()
         )
@@ -882,7 +901,7 @@ if not dimensions:
     )
     script.exit()
 
-pile_collection = _collect_piles()
+pile_collection = _collect_piles(doc.ActiveView)
 piles = pile_collection["piles"]
 
 view_cache = {}
