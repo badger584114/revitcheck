@@ -719,6 +719,40 @@ anywhere in this codebase yet (still Stage 3's job).
   real before starting Stage 3**, matching this project's own established
   pattern that every real correction so far has come from an actual run,
   not from guessing ahead of one.
+- **Correction, 2026-08-28 (real machine run, same day): both commands were
+  whole-document, and shouldn't have been.** The user ran both against the
+  real model: Pile Model/Schedule reported 281 piles, 0 captured schedules,
+  62 extraction errors; Pile Chain Bearing reported 281 piles, 1297
+  dimensions, 3790 text notes - and pointed out directly that these tools
+  are meant to run on the view someone has open, not process the whole
+  drawing set as noise. 281 is the exact same document-wide over-collection
+  number `InspectDimensionGeometry.pushbutton` already found and fixed once
+  this session (real pile count ~43-47) - a real miss carrying that lesson
+  forward into the new commands, not an ambiguity in the plan text (which
+  said "whole-model, standalone," correctly meaning *not yet Stage 3's
+  session integration*, not *unscoped from any view at all*). Fixed the
+  same day: `RevitMetadataElementSource.Collect`/`RevitDimensionSource
+  .Collect` both gained a `scopeView` parameter (a live `View`, not a name
+  to re-resolve) scoping the expensive per-element/per-view collector calls
+  to one view; both pile commands now pass `ActiveView` and fail cleanly if
+  none is open. `sheetedViewsOnly` is deliberately bypassed when `scopeView`
+  is given, so a caller's one named view is never silently skipped for not
+  being placed on a sheet. Schedule collection stays whole-document on
+  purpose - a schedule isn't "in" a plan view, and the `DIT_SiteID` join
+  already narrows per pile regardless of schedule count. Separately: 0
+  captured schedules where 2 real ones exist, with 62 extraction errors
+  nobody could actually read (no error *text* was ever surfaced anywhere,
+  only a bare count) - new `Commands/ExtractionErrorSample.cs` fixes that
+  visibility gap for the next run, but **the root cause of the 0-schedules
+  result is still unknown** - every Revit API call in `RevitScheduleSource`
+  was copied from `InspectPileSetout.pushbutton`'s confirmed-working
+  diagnostic, but that diagnostic only ever exercised full cell-reading
+  against name-filtered "pile" schedules, never the ~60 other real
+  `ViewSchedule`s (revision schedules, sheet lists, takeoffs, key
+  schedules, ...) this adapter now sweeps unfiltered - needs the actual
+  error text from a re-run to diagnose for real, not another guess ahead
+  of one. `dotnet build` clean, 313 Core tests unaffected. **Needs one
+  more real machine run.**
 
 ### Former open questions - now answered from real data
 
