@@ -385,6 +385,23 @@ invariants survived a second client; logic built on client conventions
 broke.** The Revit API is an invariant. That is the whole argument for
 this direction — see PLANNING.md §5c.
 
+> **Concrete instance, 2026-08-28, per the user's own standing
+> instruction:** the same lesson applies one level down, inside the
+> Revit API surface itself — a schedule's *rendered* text (`GetCellText`,
+> `AsValueString()`, a column heading like "EASTING (m)") is
+> presentation, and presentation is exactly the kind of thing that
+> varies by project/client the way a CAD layer name or a client's
+> drafting convention already did; a parameter's *raw internal* value
+> (`AsDouble()`, `Location.Point`, `ElementId`) is the invariant
+> underneath it. `RevitScheduleSource` learned this the hard way the
+> same day (PLANNING.md §16): a schedule column's own heading claimed
+> metres, but the bound parameter's real display unit was millimetres,
+> and trusting the heading text silently double-converted every value.
+> **Default to raw internal data over any rendered/formatted/labeled
+> string whenever adapter code in this repo has a choice between them.**
+
+## Layout
+
 ## Layout
 
 ```
