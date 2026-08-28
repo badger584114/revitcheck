@@ -212,25 +212,32 @@ public static class InvestigationReconciliation
 
     private static bool AllDraftedDimensionsResolved(Issue rollupIssue, ISet<long> investigatedSet)
     {
-        var ids = DraftedDimensionIds(rollupIssue);
+        var ids = ElementIdList(rollupIssue.SuggestedFix, "drafted_dimension_ids");
         // No ids recorded at all (a capture/issue predating the
         // 2026-08-26 SuggestedFix addition) - skip rather than guess
         // whether it's resolved; keep the rollup as-is.
         return ids.Count > 0 && ids.All(investigatedSet.Contains);
     }
 
-    private static List<long> DraftedDimensionIds(Issue issue)
+    /// <summary>
+    /// Reads a list of element ids out of an <see cref="Issue.SuggestedFix"/>
+    /// entry - shared by <see cref="AllDraftedDimensionsResolved"/> (key
+    /// <c>"drafted_dimension_ids"</c>) and <see cref="ExpandByElementIdList"/>
+    /// (a caller-chosen key, e.g. <c>"dimension_element_ids"</c>). Same shape
+    /// problem both callers have: the value comes straight off a check's own
+    /// <c>List&lt;long&gt;</c> when reconciling in-process, but comes back as
+    /// a <c>List&lt;object&gt;</c> of boxed numeric JSON values when
+    /// reconciling against a capture/session round-tripped through
+    /// System.Text.Json - both handled rather than assumed to be one shape
+    /// or the other.
+    /// </summary>
+    private static List<long> ElementIdList(Dictionary<string, object?>? fix, string key)
     {
-        if (issue.SuggestedFix is not { } fix || !fix.TryGetValue("drafted_dimension_ids", out var raw))
+        if (fix is null || !fix.TryGetValue(key, out var raw))
         {
             return new List<long>();
         }
 
-        // Comes straight off DimensionProvenanceCheck's own
-        // List<long> when reconciling in-process; comes back as a
-        // List<object> of boxed numeric JSON values when reconciling
-        // against a capture round-tripped through System.Text.Json - both
-        // handled rather than assumed to be one shape or the other.
         switch (raw)
         {
             case List<long> longs:
@@ -257,6 +264,93 @@ public static class InvestigationReconciliation
             default:
                 return new List<long>();
         }
+    }
+
+    /// <summary>
+    /// Expands one issue keyed on a "container" element (a pile, for
+    /// <see cref="Checks.PileChainBearingConsistencyCheck"/>) into one copy
+    /// per id in its <c>SuggestedFix[<paramref name="suggestedFixKey"/>]</c>
+    /// list, each copy's <see cref="Issue.ElementId"/> overwritten to that
+    /// id. The original element id is preserved under
+    /// <c>SuggestedFix["source_element_id"]</c> for context; the original
+    /// <see cref="Issue.UniqueId"/> is dropped on every expanded copy - it
+    /// names the container element (a pile's GUID), which would misleadingly
+    /// label a dimension once <see cref="Issue.ElementId"/> no longer does.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why this exists - a real correctness bug caught before any code
+    /// was written (PLANNING.md §16, 2026-08-26).</b>
+    /// <see cref="Reconcile"/> joins purely on <see cref="Issue.ElementId"/>
+    /// matching a dimension id. <see cref="Checks.PileChainBearingConsistencyCheck"/>'s
+    /// issues carry <c>ElementId = &lt;a pile&gt;</c>, with the dimension
+    /// ids that built the chain only inside
+    /// <c>SuggestedFix["dimension_element_ids"]</c>. Fed straight into
+    /// <see cref="Reconcile"/> as <c>investigationIssues</c>, a
+    /// <b>flagged</b> chain's dimensions would each resolve to "investigated
+    /// (their id is in <c>investigatedElementIds</c>), not itself in the
+    /// problem list (the problem is filed under the pile's id, not
+    /// theirs)" - i.e. silently reconciled as <em>clean</em>, dropping a
+    /// real triage finding. Calling this method first, before ever handing
+    /// a check's output to <see cref="Reconcile"/>, is what closes that
+    /// gap: after expansion, the flagged chain's own problem issue is
+    /// already filed under each affected dimension's id, so it lands in
+    /// <see cref="ReconciliationResult.ConfirmedProblems"/> instead.
+    /// </para>
+    /// <para>
+    /// <b>An issue with nothing at that key is passed through unchanged,
+    /// not dropped.</b> Not every issue a check emits carries this
+    /// linkage - a coverage note (e.g. "no piles found") has no element
+    /// list to expand against, and dropping it would violate CLAUDE.md's
+    /// "report a coverage indicator, never fail silently".
+    /// </para>
+    /// <para>
+    /// <b>Known gap:</b> the expanded copies inherit the original issue's
+    /// <see cref="Issue.ViewId"/>/<see cref="Issue.ViewName"/>/
+    /// <see cref="Issue.SheetNo"/> verbatim - null for a whole-model check
+    /// like <c>PileChainBearingConsistencyCheck</c>, which never set them in
+    /// the first place. <see cref="Reconcile"/> itself never reads those
+    /// fields, so this doesn't affect reconciliation - but it does mean a
+    /// caller wiring this into a per-view command (PLANNING.md §16 Stage 3)
+    /// should patch them in afterward from its own known active-view
+    /// context if it wants the exported Issue to show which sheet it's on.
+    /// </para>
+    /// </remarks>
+    public static List<Issue> ExpandByElementIdList(IEnumerable<Issue> issues, string suggestedFixKey)
+    {
+        var expanded = new List<Issue>();
+        foreach (var issue in issues)
+        {
+            var ids = ElementIdList(issue.SuggestedFix, suggestedFixKey);
+            if (ids.Count == 0)
+            {
+                expanded.Add(issue);
+                continue;
+            }
+
+            foreach (var elementId in ids)
+            {
+                var fix = issue.SuggestedFix is { } original
+                    ? new Dictionary<string, object?>(original)
+                    : new Dictionary<string, object?>();
+                fix["source_element_id"] = issue.ElementId;
+
+                expanded.Add(new Issue
+                {
+                    RuleId = issue.RuleId,
+                    Category = issue.Category,
+                    Description = issue.Description,
+                    Severity = issue.Severity,
+                    ElementId = elementId,
+                    ViewId = issue.ViewId,
+                    ViewName = issue.ViewName,
+                    SheetNo = issue.SheetNo,
+                    SuggestedFix = fix,
+                });
+            }
+        }
+
+        return expanded;
     }
 }
 

@@ -203,6 +203,15 @@ choice.
 > first real Addin commands (needed regardless of this feature); Stage 3
 > is the window/session/combined-triage-command wiring; Stage 4 is real
 > Revit-machine validation.
+>
+> **PLANNING.md §16 update (2026-08-28): Stage 1 built.**
+> `InvestigationReconciliation.ExpandByElementIdList` plus
+> `Core/Reporting/CheckingSession.cs`/`CheckingSessionSerializer.cs` are
+> built and tested — 313 Core tests passing, `dotnet build` clean across
+> the whole solution. The regression Stage 1 exists to prevent is directly
+> tested end to end. Stage 2 (the two pile checks' first real ribbon
+> buttons) is next — see PLANNING.md §16 for the full detail, including a
+> handful of interpretation calls the original plan's prose left open.
 
 Two categories of check:
 

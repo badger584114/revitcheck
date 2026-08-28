@@ -268,4 +268,91 @@ public class InvestigationReconciliationTests
         var issue = Assert.Single(result.ConfirmedProblems);
         Assert.Equal(PileModelScheduleConsistencyCheck.RuleId, issue.RuleId);
     }
+
+    private static Issue PileKeyedChainIssue(long pileElementId, string pileUniqueId, IEnumerable<long> dimensionElementIds) => new()
+    {
+        RuleId = PileChainBearingConsistencyCheck.RuleId,
+        Category = "geometry",
+        Severity = "high",
+        ElementId = pileElementId,
+        UniqueId = pileUniqueId,
+        Description = $"Reconstructed a chain: real bearing disagrees with the drafted bearing call.",
+        SuggestedFix = new Dictionary<string, object?>
+        {
+            ["pile_element_ids"] = new List<long> { pileElementId },
+            ["dimension_element_ids"] = dimensionElementIds.ToList(),
+        },
+    };
+
+    [Fact]
+    public void ExpandByElementIdList_emits_one_copy_per_id_reassigning_element_id_and_dropping_unique_id()
+    {
+        var pileIssue = PileKeyedChainIssue(pileElementId: 500, pileUniqueId: "pile-guid-500", dimensionElementIds: new long[] { 10, 20 });
+
+        var expanded = InvestigationReconciliation.ExpandByElementIdList(new[] { pileIssue }, "dimension_element_ids");
+
+        Assert.Equal(2, expanded.Count);
+        Assert.Equal(new long?[] { 10, 20 }, expanded.Select(i => i.ElementId));
+        Assert.All(expanded, i => Assert.Null(i.UniqueId));
+        Assert.All(expanded, i => Assert.Equal(PileChainBearingConsistencyCheck.RuleId, i.RuleId));
+        Assert.All(expanded, i => Assert.Equal(500L, i.SuggestedFix!["source_element_id"]));
+        // The rest of the original SuggestedFix survives the expansion too.
+        Assert.Equal(new List<long> { 500 }, expanded[0].SuggestedFix!["pile_element_ids"]);
+    }
+
+    [Fact]
+    public void ExpandByElementIdList_passes_through_an_issue_with_nothing_at_that_key_unchanged()
+    {
+        var coverageIssue = new Issue
+        {
+            RuleId = PileChainBearingConsistencyCheck.RuleId,
+            Category = "coverage",
+            Severity = "low",
+            Description = "No captured elements have category 'Structural Foundations'.",
+        };
+
+        var expanded = InvestigationReconciliation.ExpandByElementIdList(new[] { coverageIssue }, "dimension_element_ids");
+
+        var issue = Assert.Single(expanded);
+        Assert.Same(coverageIssue, issue);
+    }
+
+    [Fact]
+    public void ExpandByElementIdList_then_Reconcile_confirms_every_dimension_in_a_flagged_chain_regression_test()
+    {
+        // The exact regression PLANNING.md §16 designed ExpandByElementIdList
+        // to prevent: PileChainBearingConsistencyCheck's issue is keyed on a
+        // pile's ElementId (500), not either dimension's (10, 20). Feeding
+        // it straight into Reconcile as investigationIssues would resolve
+        // both dimensions as "investigated, not in the problem list" -
+        // silently clean. Expanding it first is what makes them resolve as
+        // confirmed problems instead.
+        var pileIssue = PileKeyedChainIssue(pileElementId: 500, pileUniqueId: "pile-guid-500", dimensionElementIds: new long[] { 10, 20 });
+        var triage = new[] { PerDimensionTriage(10), PerDimensionTriage(20) };
+
+        // The bug, demonstrated directly: unexpanded, the pile issue's
+        // ElementId (500) never matches either dimension's own triage id
+        // (10, 20), so each dimension's own per-dimension triage finding
+        // silently resolves as "investigated, found clean" - dropped from
+        // every list, nothing keyed to dimension 10 or 20 anywhere in the
+        // result, even though the chain they belong to is genuinely
+        // flagged. (Reconcile does still surface the pile-keyed issue
+        // itself in ConfirmedProblems - it's a real investigation finding -
+        // but that alone doesn't tell a per-dimension reader which
+        // dimensions it actually implicates.)
+        var unexpanded = InvestigationReconciliation.Reconcile(
+            triage, investigatedElementIds: new long[] { 10, 20 }, investigationIssues: new[] { pileIssue });
+        Assert.Empty(unexpanded.StillOpenTriage);
+        Assert.DoesNotContain(unexpanded.ConfirmedProblems, i => i.ElementId == 10 || i.ElementId == 20);
+
+        // Expanded first, as every real caller must: both dimensions surface
+        // as confirmed problems in their own right, not silently dropped.
+        var expanded = InvestigationReconciliation.ExpandByElementIdList(new[] { pileIssue }, "dimension_element_ids");
+        var result = InvestigationReconciliation.Reconcile(
+            triage, investigatedElementIds: new long[] { 10, 20 }, investigationIssues: expanded);
+
+        Assert.Equal(2, result.ConfirmedProblems.Count);
+        Assert.Equal(new long?[] { 10, 20 }, result.ConfirmedProblems.Select(i => i.ElementId).OrderBy(id => id));
+        Assert.Empty(result.StillOpenTriage);
+    }
 }
