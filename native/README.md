@@ -788,6 +788,19 @@ anywhere in this codebase yet (still Stage 3's job).
   its own `Transaction` that's always `RollBack()`'d, never committed -
   satisfies the API without persisting anything. Not yet confirmed - needs
   one more real run.
+- **Real re-run, 2026-08-28 (later the same day): the transaction fix
+  worked, but every pile (43/43) now fails to match its schedule row.**
+  Real issue descriptions confirmed it's a flat zero-match join for every
+  pile, not "ambiguous" and not a numeric mismatch - a systematic bug
+  (4 real piles already confirmed sub-mm agreement, so 100% failure can't
+  be real drift). `PileModelScheduleConsistencyCommand` gained a permanent
+  `ScheduleDiagnostics` summary section (the exact `candidateSchedules`
+  filter the check already applies, made visible): each candidate
+  schedule's name, real captured row count, and its first row's literal id
+  value - enough to tell "the row-skip heuristic ate every real row" from
+  "rows were captured but ids don't textually match" without dumping real
+  coordinates into a dialog. `dotnet build` clean. **Needs one more real
+  run.**
 
 ### Former open questions - now answered from real data
 

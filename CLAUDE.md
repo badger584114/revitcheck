@@ -265,7 +265,20 @@ choice.
 > a read, and `TransactionMode.ReadOnly` blocked that. Fixed:
 > `TransactionMode.Manual` with the schedule read wrapped in a `Transaction`
 > that's always `RollBack()`'d, never committed. Not yet confirmed — needs
-> one more real run. See PLANNING.md §16 for the full detail.
+> one more real run.
+>
+> **PLANNING.md §16 update (2026-08-28, later the same day): the
+> transaction fix worked, but every pile (43/43) now fails its schedule
+> match.** Real issue descriptions confirmed a flat zero-match join for
+> every pile, not "ambiguous," not a numeric mismatch — a systematic bug
+> (4 real piles already confirmed sub-mm agreement, so 100% failure can't
+> be real drift). `PileModelScheduleConsistencyCommand` gained a permanent
+> `ScheduleDiagnostics` summary (the check's own `candidateSchedules`
+> filter, made visible): each candidate schedule's name, real row count,
+> and its first row's literal id value — enough to tell "row-skip heuristic
+> ate every row" from "ids don't textually match" without dumping real
+> coordinates. Needs one more real run. See PLANNING.md §16 for the full
+> detail.
 
 Two categories of check:
 
