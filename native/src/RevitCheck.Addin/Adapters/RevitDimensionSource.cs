@@ -81,6 +81,7 @@ public static class RevitDimensionSource
         var errors = new List<string>();
         var (sheets, views) = CollectSheetsAndViews(doc, errors);
         var dimensions = CollectDimensions(doc, errors, views, includeWorksets, sheetedViewsOnly);
+        var textNotes = CollectTextNotes(doc, errors, views, sheetedViewsOnly);
 
         var excludedWorksets = new List<string>();
         if (includeWorksets is not null)
@@ -97,6 +98,7 @@ public static class RevitDimensionSource
             Sheets = sheets,
             Views = views,
             Dimensions = dimensions,
+            TextNotes = textNotes,
             ExtractionErrors = errors,
             ExcludedWorksets = excludedWorksets,
         };
@@ -376,6 +378,83 @@ public static class RevitDimensionSource
     }
 
     /// <summary>
+    /// Every <see cref="TextNote"/> in the same sheeted-view scope
+    /// <see cref="CollectDimensions"/> uses - added 2026-08-26 for the pile
+    /// chain bearing check, whose bearing calls are ordinary <c>TextNote</c>
+    /// elements (confirmed real format <c>165° 07' 01"</c>,
+    /// <c>InspectPileSetout.pushbutton</c>, PLANNING.md §14). Deliberately
+    /// unfiltered by content - collecting only notes containing '°' would be
+    /// exactly the classification/judgement the adapter-boundary rule
+    /// reserves for <c>Checks/</c> (<c>BearingText.TryParseDegrees</c>
+    /// already does this filtering on the check side); this method's job
+    /// is only "every text note that exists here," full stop.
+    /// </summary>
+    private static List<Core.Ir.TextNoteInfo> CollectTextNotes(
+        Document doc, List<string> errors, List<Core.Ir.ViewInfo> views, bool sheetedViewsOnly)
+    {
+        var seen = new Dictionary<long, Core.Ir.TextNoteInfo>();
+
+        foreach (var view in views)
+        {
+            if (sheetedViewsOnly && view.SheetNo is null)
+            {
+                continue;
+            }
+
+            ElementId viewElementId;
+            try
+            {
+                viewElementId = new ElementId(view.ElementId);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"view {view.ElementId}: could not scope a text-note collector to it: {ex.Message}");
+                continue;
+            }
+
+            FilteredElementCollector collector;
+            try
+            {
+                collector = new FilteredElementCollector(doc, viewElementId).OfClass(typeof(TextNote));
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"collecting text notes in view {view.ElementId}: {ex.Message}");
+                continue;
+            }
+
+            foreach (TextNote note in collector)
+            {
+                var elementId = note.Id.Value;
+                if (seen.ContainsKey(elementId))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    seen[elementId] = new Core.Ir.TextNoteInfo
+                    {
+                        ElementId = elementId,
+                        ViewId = view.ElementId,
+                        RawText = note.Text ?? "",
+                        // TextNote.Coord, not Location.Point - confirmed the
+                        // real property to read by InspectPileSetout.pushbutton
+                        // (PLANNING.md §14).
+                        LocalPoint = PointOf(note.Coord),
+                    };
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"text note {elementId}: {ex.Message}");
+                }
+            }
+        }
+
+        return seen.Values.ToList();
+    }
+
+    /// <summary>
     /// Describes one dimension endpoint. The linked case matters on bridge
     /// projects, where the structure is routinely linked into a
     /// coordination file: <c>Reference.ElementId</c> then points at the
@@ -395,6 +474,7 @@ public static class RevitDimensionSource
         string? category = null;
         long? builtinCategory = null;
         bool? viewSpecific = null;
+        Core.Ir.Point3D? localPoint = null;
 
         try
         {
@@ -431,6 +511,16 @@ public static class RevitDimensionSource
                     category = cat.Name;
                     builtinCategory = cat.Id.Value;
                 }
+
+                // Most model geometry references (CUT_EDGE/Face) have no
+                // simple Location.Point and leave this null - not a gap to
+                // fill, see ReferenceInfo.LocalPoint's own remarks. A tag
+                // (AnnotationSymbol) does, which is the population pile
+                // chain reconstruction actually needs this for.
+                if (element.Location is LocationPoint locationPoint)
+                {
+                    localPoint = PointOf(locationPoint.Point);
+                }
             }
         }
         catch (Exception ex)
@@ -449,6 +539,7 @@ public static class RevitDimensionSource
             ViewSpecific = viewSpecific,
             Linked = linked,
             LinkInstanceId = linkInstanceId,
+            LocalPoint = localPoint,
         };
     }
 
@@ -559,6 +650,10 @@ public sealed class DimensionCollectionResult
     public required List<Core.Ir.SheetInfo> Sheets { get; init; }
     public required List<Core.Ir.ViewInfo> Views { get; init; }
     public required List<Core.Ir.DimensionInfo> Dimensions { get; init; }
+
+    /// <summary>Every TextNote in the same sheeted-view scope as Dimensions - added 2026-08-26 for the pile chain bearing check. See CollectTextNotes for why this is unfiltered by content.</summary>
+    public List<Core.Ir.TextNoteInfo> TextNotes { get; init; } = new();
+
     public required List<string> ExtractionErrors { get; init; }
 
     /// <summary>

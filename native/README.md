@@ -675,22 +675,50 @@ Addin adapter needs real new work beyond the other two: populating
 into the new `TextNotes` list. `dotnet build`/`dotnet test` clean, 289
 Core tests passing.
 
-**Next: the interactive checking workflow tying all of this together -
-designed 2026-08-26, not yet built.** Full plan at
-`~/.claude/plans/an-idea-of-how-floating-peacock.md` (also summarized in
-PLANNING.md §16/CLAUDE.md) - combines the two triage buttons into one,
-adds a checklist window listing views needing investigation, and marks
-each view resolved/flagged as the relevant investigation button gets run
-against it while it's open, ending in a reconciled BCF export. Needs
+**The interactive checking workflow tying all of this together - designed
+2026-08-26, Stage 1 built 2026-08-28, Stage 2 built the same day.** Full
+plan at `~/.claude/plans/an-idea-of-how-floating-peacock.md` (also
+summarized in PLANNING.md §16/CLAUDE.md) - combines the two triage buttons
+into one, adds a checklist window listing views needing investigation, and
+marks each view resolved/flagged as the relevant investigation button gets
+run against it while it's open, ending in a reconciled BCF export. Needs
 cross-command session state, a custom (code-behind-only, no XAML/SDK
 change) WPF window, and the `ExternalEvent` pattern - none of which exist
-anywhere in this codebase yet. Stage 1 (pure Core - `CheckingSession`,
-`CheckingSessionSerializer`, and a real correctness fix,
-`InvestigationReconciliation.ExpandByElementIdList`, needed before
-`PileChainBearingConsistencyCheck`'s pile-keyed issues can safely feed
-`Reconcile` at all) is testable off-Revit today; Stage 2 builds the two
-pile checks' first real Addin commands, needed regardless of the rest of
-this feature.
+anywhere in this codebase yet (still Stage 3's job).
+
+- **Stage 1 (pure Core) built and tested 2026-08-28**:
+  `InvestigationReconciliation.ExpandByElementIdList` (the real correctness
+  fix needed before `PileChainBearingConsistencyCheck`'s pile-keyed issues
+  can safely feed `Reconcile` at all), `Core/Reporting/CheckingSession.cs`,
+  `Core/Reporting/CheckingSessionSerializer.cs`. 313 Core tests passing.
+  See PLANNING.md §16 for a handful of interpretation calls the plan's
+  prose left open, resolved during implementation.
+- **Stage 2 (the two pile checks' first real Addin commands) built
+  2026-08-28, same day - not yet run on the Revit machine.**
+  `Commands/PileModelScheduleConsistencyCommand.cs`/
+  `Commands/PileChainBearingConsistencyCommand.cs`, both whole-model and
+  standalone (not yet the Stage-3 dual-mode session integration), both
+  `writeBcf: true` since their findings are already verdicts, not triage.
+  The Addin-side geometry work both checks were blocked on is now built
+  too: `RevitMetadataElementSource.Collect` gained an opt-in
+  `populateLivePosition` flag (a live `GetProjectPosition` call plus
+  `Location.Point`, per element, off by default for API cost - on only for
+  these two commands' pile-scoped sweep); `RevitDimensionSource` now
+  populates `ReferenceInfo.LocalPoint` per reference and collects
+  `TextNote`s into a new `TextNotes` list, both in the same sheeted-view
+  scope dimensions already use; a new `Adapters/RevitScheduleSource.cs`
+  reads every `ViewSchedule` in the document (headers via
+  `Definition.GetField`, body rows via `GetCellText`), skipping the real
+  two-row header artifact PLANNING.md line 695 found - not via a hardcoded
+  "skip 2," but by matching each row against its own schedule's resolved
+  headers (blank, or textually identical to them), so it generalizes to a
+  schedule with a different artifact count or none. `dotnet build` clean
+  across the whole solution including the net48 Addin - this is compile-only
+  verification, the same discipline every other Revit-API-touching change in
+  this codebase gets before a real machine run; **validate both buttons for
+  real before starting Stage 3**, matching this project's own established
+  pattern that every real correction so far has come from an actual run,
+  not from guessing ahead of one.
 
 ### Former open questions - now answered from real data
 
