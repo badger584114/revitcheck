@@ -152,7 +152,8 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             $"{schedules.Count} captured schedule(s) checked)" +
             (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
             "." +
-            ExtractionErrorSample.Format(model.ExtractionErrors);
+            ExtractionErrorSample.Format(model.ExtractionErrors) +
+            ScheduleDiagnostics(schedules, config);
 
         string? outputPath;
         try
@@ -176,5 +177,50 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             $"{summary}\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
 
         return Result.Succeeded;
+    }
+
+    /// <summary>
+    /// Added 2026-08-28 after a real run flagged all 43/43 piles as
+    /// "no matching row was found in any captured pile schedule" - a
+    /// systematic bug, not real drift (PLANNING.md §14 already confirmed
+    /// sub-millimetre agreement on 4 real piles). The per-pile issue list
+    /// alone can't say *why* the join found nothing - it needs a look at
+    /// what was actually captured. Reports, for every schedule whose
+    /// headers resolve all three of the check's own id/Easting/Northing
+    /// candidates (the identical <c>candidateSchedules</c> filter
+    /// <c>PileModelScheduleConsistencyCheck.Run</c> applies - this is not a
+    /// new judgement, just made visible): its name, how many rows were
+    /// actually captured, and the literal id-column value of its first row
+    /// - directly comparable against a real pile's own key (e.g.
+    /// "PIL232126", visible in the issue descriptions already) without
+    /// dumping every row's real Easting/Northing coordinates into a dialog.
+    /// A permanent part of the summary, not throwaway diagnostic scaffolding
+    /// - which schedule(s) actually qualified as candidates and how many
+    /// rows they carried is useful coverage information on every run, not
+    /// just this one.
+    /// </summary>
+    private static string ScheduleDiagnostics(List<ScheduleInfo> schedules, RuleConfig config)
+    {
+        var candidates = schedules.Where(s =>
+            s.ResolveHeader(config.PileScheduleIdHeaders) is not null &&
+            s.ResolveHeader(config.PileScheduleEastingHeaders) is not null &&
+            s.ResolveHeader(config.PileScheduleNorthingHeaders) is not null)
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            return "\n\nNo captured schedule's headers resolved all of id/Easting/Northing - nothing was a candidate to join against.";
+        }
+
+        var lines = candidates.Select(s =>
+        {
+            var idHeader = s.ResolveHeader(config.PileScheduleIdHeaders)!;
+            var firstRowId = s.Rows.Count > 0 && s.Rows[0].TryGetValue(idHeader, out var value)
+                ? $"'{value}'"
+                : "(no rows captured)";
+            return $"- '{s.Name}': {s.Rows.Count} row(s) captured, id header '{idHeader}', first row's id = {firstRowId}";
+        });
+
+        return "\n\nCandidate schedule(s):\n" + string.Join("\n", lines);
     }
 }

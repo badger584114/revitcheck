@@ -50,6 +50,31 @@ namespace RevitCheck.Addin.Adapters;
 /// future caller that isn't the pile check.
 /// </para>
 /// <para>
+/// <b>Body rows are read off the schedule's own backing elements, not the
+/// rendered table text - added 2026-08-28, after a real run of the
+/// header-filtered version above found every one of 43 real piles failing
+/// its schedule join with "no matching row was found."</b> The rendered
+/// table (<see cref="ScheduleField.ColumnHeading"/>/<c>GetCellText</c>) is
+/// Revit's own *display* of the data, formatted, sorted, and grouped for a
+/// human reader - matching it back to a raw parameter's own text is exactly
+/// the kind of format-fragile extraction this project's own history
+/// (ARCHIVE-pdf-dwg.md) already learned not to trust. The real fix, per the
+/// user's own suggestion: a normal schedule's rows correspond to real
+/// elements, retrievable directly via <c>FilteredElementCollector(doc,
+/// schedule.Id)</c> - a genuine, confirmed Revit API pattern (every member
+/// used here was checked against the real <c>RevitAPI.dll</c> this project
+/// builds against before writing this, not assumed). Each candidate
+/// column's real bound parameter is resolved via
+/// <see cref="ScheduleField.ParameterId"/> and read directly off each
+/// backing element - the same kind of pure parameter read
+/// <c>RevitMetadataElementSource</c> already does for piles - sidestepping
+/// rendered-text formatting, the row-skip heuristic below, and row
+/// ordering entirely. See <see cref="TryReadDataRowsFromElements"/> for the
+/// mechanics and <see cref="ReadDataRowsFromCellText"/> (kept as a
+/// fallback for a calculated/combined column, or the unfiltered mode) for
+/// what this replaces as the default path.
+/// </para>
+/// <para>
 /// <b>Skips leading header/blank "body" rows.</b> Confirmed real and
 /// necessary 2026-08-26 (PLANNING.md line 695):
 /// <c>GetCellText(SectionType.Body, ...)</c> on this project's real pile
@@ -109,16 +134,35 @@ public static class RevitScheduleSource
             try
             {
                 var headers = ReadHeaders(schedule);
-                var readBody = !filtered ||
+                var isCandidate = !filtered ||
                     (ResolvesHeader(headers, idCandidates) &&
                      ResolvesHeader(headers, eastingCandidates) &&
                      ResolvesHeader(headers, northingCandidates));
+
+                List<IReadOnlyDictionary<string, string>> rows;
+                if (!isCandidate)
+                {
+                    rows = new List<IReadOnlyDictionary<string, string>>();
+                }
+                else
+                {
+                    // Element-parameter-based read first (see class remarks:
+                    // a real 2026-08-28 bug found the rendered-table text
+                    // path producing a 100% id-join failure) - falls back to
+                    // the rendered-table read only when a column can't be
+                    // resolved to a simple parameter (a calculated/combined
+                    // field, or FilteredElementCollector coming back empty).
+                    rows = (filtered
+                        ? TryReadDataRowsFromElements(doc, schedule, headers, idCandidates!, eastingCandidates!, northingCandidates!)
+                        : null)
+                        ?? ReadDataRowsFromCellText(schedule, headers);
+                }
 
                 schedules.Add(new ScheduleInfo
                 {
                     Name = schedule.Name,
                     Headers = headers,
-                    Rows = readBody ? ReadDataRows(schedule, headers) : new List<IReadOnlyDictionary<string, string>>(),
+                    Rows = rows,
                 });
             }
             catch (Exception ex)
@@ -154,7 +198,174 @@ public static class RevitScheduleSource
         return headers;
     }
 
-    private static List<IReadOnlyDictionary<string, string>> ReadDataRows(ViewSchedule schedule, List<string> headers)
+    /// <summary>
+    /// Reads each schedule column's real, resolved value directly off the
+    /// schedule's own backing elements - <see cref="FilteredElementCollector(Document, ElementId)"/>
+    /// scoped to the schedule's own <c>ElementId</c>, a genuine, confirmed
+    /// Revit API pattern (verified against the real <c>RevitAPI.dll</c>
+    /// this project builds against, not guessed) for "which real elements
+    /// does this schedule include". Added 2026-08-28 after a real run
+    /// showed the rendered-table read (<see cref="ReadDataRowsFromCellText"/>)
+    /// producing a 100% id-join failure for reasons the check's own issue
+    /// text alone couldn't diagnose - reading each element's own parameter
+    /// directly (<see cref="Element.get_Parameter(Definition)"/>/
+    /// <see cref="Element.get_Parameter(BuiltInParameter)"/>) sidesteps
+    /// rendered-text formatting, the header-artifact-row heuristic, and row
+    /// ordering entirely - there is no "row index" here, one element is one
+    /// row.
+    /// </summary>
+    /// <remarks>
+    /// Returns null - not an empty list - when this path genuinely can't be
+    /// used (a column is calculated/combined rather than a simple
+    /// parameter, or the schedule's backing-element sweep comes back
+    /// empty), so the caller falls back to
+    /// <see cref="ReadDataRowsFromCellText"/> rather than silently reporting
+    /// "zero rows" for a schedule that may well have real data the
+    /// rendered-table path could still find.
+    /// </remarks>
+    private static List<IReadOnlyDictionary<string, string>>? TryReadDataRowsFromElements(
+        Document doc,
+        ViewSchedule schedule,
+        List<string> headers,
+        List<string> idCandidates,
+        List<string> eastingCandidates,
+        List<string> northingCandidates)
+    {
+        var idHeader = ResolveHeaderText(headers, idCandidates);
+        var eastingHeader = ResolveHeaderText(headers, eastingCandidates);
+        var northingHeader = ResolveHeaderText(headers, northingCandidates);
+        if (idHeader is null || eastingHeader is null || northingHeader is null)
+        {
+            return null;
+        }
+
+        var definition = schedule.Definition;
+        var idParam = ResolveFieldParameter(doc, definition, idHeader);
+        var eastingParam = ResolveFieldParameter(doc, definition, eastingHeader);
+        var northingParam = ResolveFieldParameter(doc, definition, northingHeader);
+        if (idParam is null || eastingParam is null || northingParam is null)
+        {
+            return null;
+        }
+
+        List<Element> elements;
+        try
+        {
+            elements = new FilteredElementCollector(doc, schedule.Id).WhereElementIsNotElementType().ToList();
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (elements.Count == 0)
+        {
+            return null;
+        }
+
+        var rows = new List<IReadOnlyDictionary<string, string>>();
+        foreach (var element in elements)
+        {
+            var idValue = ReadParameterText(element, idParam.Value);
+            if (idValue is null)
+            {
+                // No value for the id column on this element - nothing to
+                // join it against, skip rather than emit a blank key.
+                continue;
+            }
+
+            rows.Add(new Dictionary<string, string>
+            {
+                [idHeader] = idValue,
+                [eastingHeader] = ReadParameterText(element, eastingParam.Value) ?? "",
+                [northingHeader] = ReadParameterText(element, northingParam.Value) ?? "",
+            });
+        }
+
+        return rows;
+    }
+
+    private static string? ResolveHeaderText(List<string> headers, List<string> candidates) =>
+        headers.FirstOrDefault(h => candidates.Contains(h, StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Resolves the real <see cref="Definition"/>/<see cref="BuiltInParameter"/>
+    /// a schedule column is bound to, or null if it isn't a simple
+    /// parameter-bound field at all (a calculated or combined-parameter
+    /// field - <see cref="ScheduleField.IsCalculatedField"/>/
+    /// <see cref="ScheduleField.IsCombinedParameterField"/>) or its
+    /// <see cref="ScheduleField.ParameterId"/> doesn't resolve to a real
+    /// <see cref="ParameterElement"/> for a project/shared parameter.
+    /// Deliberately does not assume a fixed real-world parameter name (e.g.
+    /// this project's own <c>DIT_SiteID</c>) - resolves whatever parameter
+    /// the schedule's own column is actually bound to, so this works
+    /// regardless of naming convention and never silently reads the wrong
+    /// parameter for a differently-configured schedule.
+    /// </summary>
+    private static ResolvedScheduleParameter? ResolveFieldParameter(Document doc, ScheduleDefinition definition, string headerText)
+    {
+        var fieldCount = definition.GetFieldCount();
+        for (var i = 0; i < fieldCount; i++)
+        {
+            var field = definition.GetField(i);
+            var heading = field.ColumnHeading;
+            var name = string.IsNullOrWhiteSpace(heading) ? field.GetName() : heading;
+            if (!string.Equals(name, headerText, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (field.IsCalculatedField || field.IsCombinedParameterField || !field.HasSchedulableField)
+            {
+                return null;
+            }
+
+            var parameterId = field.ParameterId;
+            if (parameterId is null || parameterId == ElementId.InvalidElementId)
+            {
+                return null;
+            }
+
+            if (parameterId.Value < 0)
+            {
+                return new ResolvedScheduleParameter { BuiltIn = (BuiltInParameter)(int)parameterId.Value };
+            }
+
+            return doc.GetElement(parameterId) is ParameterElement paramElement
+                ? new ResolvedScheduleParameter { RealDefinition = paramElement.GetDefinition() }
+                : null;
+        }
+
+        return null;
+    }
+
+    private static string? ReadParameterText(Element element, ResolvedScheduleParameter identity)
+    {
+        var parameter = identity.RealDefinition is not null
+            ? element.get_Parameter(identity.RealDefinition)
+            : element.get_Parameter(identity.BuiltIn);
+
+        if (parameter is null || !parameter.HasValue)
+        {
+            return null;
+        }
+
+        // AsValueString - the same formatted text (units/rounding applied)
+        // a schedule cell displays for this parameter - falling back to
+        // AsString for a plain text parameter that has no display-string
+        // formatting of its own.
+        return parameter.AsValueString() ?? parameter.AsString();
+    }
+
+    /// <summary>Which of the two shapes a resolved schedule column's real parameter takes - exactly one of the two fields is set.</summary>
+    private readonly struct ResolvedScheduleParameter
+    {
+        public BuiltInParameter BuiltIn { get; init; }
+        public Definition? RealDefinition { get; init; }
+    }
+
+    /// <summary>The original, rendered-table-text read - kept as the fallback for a column <see cref="TryReadDataRowsFromElements"/> can't resolve to a simple parameter, and for the unfiltered "read every schedule unconditionally" mode.</summary>
+    private static List<IReadOnlyDictionary<string, string>> ReadDataRowsFromCellText(ViewSchedule schedule, List<string> headers)
     {
         var rows = new List<IReadOnlyDictionary<string, string>>();
         var section = schedule.GetTableData().GetSectionData(SectionType.Body);
