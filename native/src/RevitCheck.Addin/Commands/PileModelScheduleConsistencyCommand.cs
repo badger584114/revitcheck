@@ -94,7 +94,17 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
         List<ScheduleInfo> schedules;
         try
         {
-            schedules = RevitScheduleSource.Collect(doc, scheduleErrors);
+            // Header-filtered, not an unconditional full-document body read
+            // (a real bug fixed 2026-08-28 - see RevitScheduleSource's own
+            // remarks): only schedules whose headers resolve every one of
+            // PileModelScheduleConsistencyCheck's own id/Easting/Northing
+            // candidates get their body cells read at all.
+            schedules = RevitScheduleSource.Collect(
+                doc,
+                scheduleErrors,
+                config.PileScheduleIdHeaders,
+                config.PileScheduleEastingHeaders,
+                config.PileScheduleNorthingHeaders);
         }
         catch (Exception ex)
         {

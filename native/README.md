@@ -753,6 +753,23 @@ anywhere in this codebase yet (still Stage 3's job).
   error text from a re-run to diagnose for real, not another guess ahead
   of one. `dotnet build` clean, 313 Core tests unaffected. **Needs one
   more real machine run.**
+- **Same-day follow-up, before that run happened: narrowed schedule reading
+  per the user's own suggestion** - grab the piles in the view, only look
+  at schedules that could actually contain them, rather than sweeping every
+  `ViewSchedule` in the document. This maps onto a filter that already
+  exists one layer up: `PileModelScheduleConsistencyCheck` only ever uses
+  schedules whose headers resolve *all three* of an id/Easting/Northing
+  candidate. `RevitScheduleSource.Collect` now takes those same three
+  candidate lists and only attempts the expensive body-cell read for
+  schedules that pass - not a new judgement, the identical one the check
+  already makes, just made before the risky/expensive operation instead of
+  after it. Headers are still read for every schedule regardless (cheap,
+  confirmed to work across every real schedule kind by the diagnostic's own
+  unconditional field dump). `PileModelScheduleConsistencyCommand` now
+  passes `config.PileScheduleIdHeaders`/`PileScheduleEastingHeaders`/
+  `PileScheduleNorthingHeaders`. **Still not confirmed against real error
+  text** - a well-justified fix for the most likely cause, not a proven
+  diagnosis. `dotnet build` clean, 313 Core tests unaffected.
 
 ### Former open questions - now answered from real data
 

@@ -243,9 +243,14 @@ choice.
 > element is. Separately: 0 schedules with 2 real ones expected, and 62
 > extraction errors nobody could read (no error *text* was ever surfaced,
 > only a count) — new `Commands/ExtractionErrorSample.cs` fixes the
-> visibility gap, but the root cause of the 0-schedules result itself is
-> still unknown, needs the actual error text from a re-run. See PLANNING.md
-> §16 for the full detail.
+> visibility gap. **Same-day follow-up, per the user's own suggestion:**
+> `RevitScheduleSource.Collect` now only reads a schedule's expensive body
+> cells when its headers already resolve all three of
+> `PileModelScheduleConsistencyCheck`'s own id/Easting/Northing candidates
+> (the identical filter that check already applies downstream, just
+> hoisted earlier) — not a proven diagnosis of the 62 errors, but a
+> well-justified fix for the most likely cause. Still needs a real run to
+> confirm. See PLANNING.md §16 for the full detail.
 
 Two categories of check:
 
