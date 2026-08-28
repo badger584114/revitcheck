@@ -1,4 +1,6 @@
+using System.Globalization;
 using Autodesk.Revit.DB;
+using RevitCheck.Core.Checks;
 using RevitCheck.Core.Ir;
 
 namespace RevitCheck.Addin.Adapters;
@@ -339,6 +341,13 @@ public static class RevitScheduleSource
         return null;
     }
 
+    // Revit's internal length unit is always decimal feet regardless of
+    // project display settings - same invariant, same constant, as every
+    // other adapter in this codebase (RevitMetadataElementSource/
+    // RevitDimensionSource), duplicated here rather than shared per this
+    // project's established small-adapter-constant-duplication convention.
+    private const double MmPerFoot = 304.8;
+
     private static string? ReadParameterText(Element element, ResolvedScheduleParameter identity)
     {
         var parameter = identity.RealDefinition is not null
@@ -350,25 +359,85 @@ public static class RevitScheduleSource
             return null;
         }
 
-        // A plain text (String storage type) parameter - e.g. this
-        // project's own DIT_SiteID - is read via AsString(), the SAME
-        // accessor RevitMetadataElementSource uses for a pile's own key
-        // parameter (ElementMetadata.Parameters[...].RawString). A numeric
-        // parameter (Easting/Northing) prefers AsValueString() - the
-        // formatted display text (units/rounding applied) a schedule cell
-        // actually shows. Found 2026-08-28: a real run captured a schedule
-        // row with id 'PIL232126' - textually identical, by eye, to a
-        // pile's own key that still failed "no matching row" against it -
-        // via AsValueString() first. ScheduleInfo.RowsForKey's join is
-        // deliberately Ordinal (a schedule key is exported/typed data, not
-        // something to fuzz-match), so reading the id column through a
-        // different accessor than the pile's own key-reading path risked
-        // silently diverging even when both sides display identically.
-        // Using the identical accessor on both sides of the comparison
-        // removes that whole axis of risk.
-        return parameter.StorageType == StorageType.String
-            ? parameter.AsString() ?? parameter.AsValueString()
-            : parameter.AsValueString() ?? parameter.AsString();
+        switch (parameter.StorageType)
+        {
+            case StorageType.String:
+                // A plain text parameter - e.g. this project's own
+                // DIT_SiteID - is read via AsString(), the SAME accessor
+                // RevitMetadataElementSource uses for a pile's own key
+                // parameter (ElementMetadata.Parameters[...].RawString).
+                // Found 2026-08-28: a real run captured a schedule row with
+                // id 'PIL232126' - textually identical, by eye, to a
+                // pile's own key that still failed "no matching row"
+                // against it - via AsValueString() first.
+                // ScheduleInfo.RowsForKey's join is deliberately Ordinal (a
+                // schedule key is exported/typed data, not something to
+                // fuzz-match), so reading the id column through a
+                // different accessor than the pile's own key-reading path
+                // risked silently diverging even when both sides display
+                // identically. Using the identical accessor on both sides
+                // removes that whole axis of risk.
+                return parameter.AsString() ?? parameter.AsValueString();
+
+            case StorageType.Double:
+                // A second real bug, found the same day on the very next
+                // real run: AsValueString() applies the *parameter's own*
+                // display unit, confirmed on real data to be millimetres
+                // for this project's XYZ_Easting/XYZ_Northing - not the
+                // metres their schedule column's own heading ("EASTING
+                // (m)") implies. A column heading is label text a person
+                // typed, never a guarantee of what a bound parameter's
+                // real display unit actually is.
+                // PileModelScheduleConsistencyCheck.TryParseMetresToMm
+                // always multiplies a row's text by
+                // RuleConfig.ScheduleMetresToMm assuming metres - real
+                // data showed an mm-scale row value going through that
+                // same multiplication a second time, inflating every real
+                // pile's comparison distance roughly a million-fold and
+                // flagging all of them, none of it real drift.
+                //
+                // The robust fix: never trust a formatted display string
+                // for this column at all. Read the parameter's raw
+                // internal value via AsDouble() - always decimal feet for
+                // a real Length spec, this codebase's own MmPerFoot
+                // invariant, with zero display-format ambiguity - convert
+                // to real mm directly, then divide by
+                // RuleConfig.ScheduleMetresToMm before handing it back as
+                // "row text": the check's own TryParseMetresToMm always
+                // multiplies by that same constant assuming metres, so
+                // pre-dividing here is what makes its existing, unchanged
+                // Core logic recover the correct real mm value instead of
+                // scaling it twice. A parameter that isn't Length-spec
+                // typed (a plain Number) has no Revit-level unit
+                // conversion to begin with - AsDouble() there is assumed
+                // to already be real-world mm, since this project's own
+                // XYZ_Easting/XYZ_Northing are confirmed real, directly
+                // comparable coordinates (PLANNING.md §14), not an
+                // arbitrary unitless figure.
+                var mm = IsLengthParameter(parameter.Definition) ? parameter.AsDouble() * MmPerFoot : parameter.AsDouble();
+                return (mm / RuleConfig.ScheduleMetresToMm).ToString("G17", CultureInfo.InvariantCulture);
+
+            default:
+                return parameter.AsValueString() ?? parameter.AsString();
+        }
+    }
+
+    /// <summary>Mirrors RevitMetadataElementSource's own IsLengthParameter exactly - see its remarks for why a definition that can't answer GetDataType() is treated as "not a length" rather than thrown over.</summary>
+    private static bool IsLengthParameter(Definition? definition)
+    {
+        if (definition is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return definition.GetDataType() == SpecTypeId.Length;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>Which of the two shapes a resolved schedule column's real parameter takes - exactly one of the two fields is set.</summary>

@@ -831,6 +831,23 @@ anywhere in this codebase yet (still Stage 3's job).
   failure from a real mismatch on the next run. `dotnet build` clean.
   **Needs one more real run** - also asked the user for a couple of real
   issue descriptions from this run's own output, no rebuild needed.
+- **Real CSV, 2026-08-28 (same day): the CSV alone found the exact bug -
+  no machine run needed.** Every one of 43 issues showed the same
+  signature - the schedule's parsed Easting/Northing was exactly 1000×
+  the live value. `ReadParameterText`'s numeric branch read via
+  `AsValueString()`, which applies the *parameter's own* display unit -
+  confirmed millimetres for this project's `XYZ_Easting`/`XYZ_Northing`,
+  not the metres the schedule column's heading implies (a heading is label
+  text, never a guarantee of a parameter's real display unit). Fixed:
+  never trust formatted display text for this column - read the raw
+  internal value via `AsDouble()` (always decimal feet for a real Length
+  spec, this codebase's own `MmPerFoot` invariant), convert to real mm
+  directly, then divide by `RuleConfig.ScheduleMetresToMm` before handing
+  it back as row text, so the check's existing, unchanged
+  `TryParseMetresToMm` recovers the correct value instead of scaling it
+  twice. `dotnet build` clean, no Core changes. **Needs one more real run
+  to confirm** - the fourth real bug found and fixed in this one check's
+  schedule-reading path in a single day.
 - **Real re-run, 2026-08-28 (later the same day): the transaction fix
   worked, but every pile (43/43) now fails to match its schedule row.**
   Real issue descriptions confirmed it's a flat zero-match join for every
