@@ -770,6 +770,24 @@ anywhere in this codebase yet (still Stage 3's job).
   `PileScheduleNorthingHeaders`. **Still not confirmed against real error
   text** - a well-justified fix for the most likely cause, not a proven
   diagnosis. `dotnet build` clean, 313 Core tests unaffected.
+- **Real machine re-run, 2026-08-28: Pile Chain Bearing is fully validated;
+  Pile Model/Schedule's real root cause is diagnosed and fixed.** Pile
+  Chain Bearing: 43 piles, 46 dimensions, 31 text notes in the pile layout
+  view, 0 issues - 46 dimensions is the exact figure this document already
+  recorded from the manual diagnostic re-run on this same view. **This
+  button is done.** Pile Model/Schedule: the header filter worked exactly
+  as designed (62 errors down to 2, both on the two real named schedules,
+  everything else correctly skipped) - and the real error text finally
+  answered the root-cause question the previous entry could only guess at:
+  `Illegal attempt to modify document. Reason: Changes are disabled for
+  the active document!`, not a schedule-kind mismatch. `ViewSchedule
+  .GetTableData()`/`GetCellText` can internally require document-modify
+  permission (to regenerate cached table data) even though it's
+  conceptually a read, and the command's `TransactionMode.ReadOnly` blocked
+  that. Fixed: `TransactionMode.Manual`, with the schedule read wrapped in
+  its own `Transaction` that's always `RollBack()`'d, never committed -
+  satisfies the API without persisting anything. Not yet confirmed - needs
+  one more real run.
 
 ### Former open questions - now answered from real data
 

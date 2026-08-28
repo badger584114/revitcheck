@@ -45,7 +45,7 @@ namespace RevitCheck.Addin.Commands;
 /// exist.
 /// </para>
 /// </remarks>
-[Transaction(TransactionMode.ReadOnly)]
+[Transaction(TransactionMode.Manual)]
 public class PileModelScheduleConsistencyCommand : IExternalCommand
 {
     private const int MaxListedErrors = 5;
@@ -99,12 +99,38 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             // remarks): only schedules whose headers resolve every one of
             // PileModelScheduleConsistencyCheck's own id/Easting/Northing
             // candidates get their body cells read at all.
-            schedules = RevitScheduleSource.Collect(
-                doc,
-                scheduleErrors,
-                config.PileScheduleIdHeaders,
-                config.PileScheduleEastingHeaders,
-                config.PileScheduleNorthingHeaders);
+            //
+            // Wrapped in a transaction that is always rolled back, never
+            // committed - a real, confirmed 2026-08-28 Revit API gotcha:
+            // ViewSchedule.GetTableData()/GetCellText threw "Illegal
+            // attempt to modify document. Reason: Changes are disabled for
+            // the active document!" under this command's original
+            // TransactionMode.ReadOnly, on both of this model's two real
+            // pile schedules. Reading a schedule's cell text can trigger
+            // Revit to internally regenerate/compute cached table data,
+            // which - despite this being conceptually a read - needs an
+            // open transaction to satisfy the API's own modifiability
+            // check. RollBack (not Commit) guarantees nothing this command
+            // does is ever actually persisted to the document, keeping the
+            // "a check that silently edited the model while reporting on
+            // it is exactly the kind of black box CLAUDE.md rules out"
+            // guarantee RevitDimensionSource's own remarks already state -
+            // this is a mechanical API-satisfaction step, not a real edit.
+            using var scheduleReadTransaction = new Transaction(doc, "RevitCheck - read pile schedules (rolled back)");
+            scheduleReadTransaction.Start();
+            try
+            {
+                schedules = RevitScheduleSource.Collect(
+                    doc,
+                    scheduleErrors,
+                    config.PileScheduleIdHeaders,
+                    config.PileScheduleEastingHeaders,
+                    config.PileScheduleNorthingHeaders);
+            }
+            finally
+            {
+                scheduleReadTransaction.RollBack();
+            }
         }
         catch (Exception ex)
         {
