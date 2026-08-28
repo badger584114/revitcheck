@@ -277,8 +277,19 @@ choice.
 > filter, made visible): each candidate schedule's name, real row count,
 > and its first row's literal id value — enough to tell "row-skip heuristic
 > ate every row" from "ids don't textually match" without dumping real
-> coordinates. Needs one more real run. See PLANNING.md §16 for the full
-> detail.
+> coordinates. Needs one more real run.
+>
+> **PLANNING.md §16 update (2026-08-28, later still): schedule rows are now
+> read off the schedule's own backing elements, not rendered table text.**
+> The user asked whether a schedule keeps a link back to its real elements —
+> yes, via `FilteredElementCollector(doc, schedule.Id)`, a genuine Revit API
+> pattern. Real fix, not another patch: resolve each candidate column's
+> real bound parameter (`ScheduleField.ParameterId`) and read it directly
+> off each backing element, sidestepping `GetCellText`'s format-fragile
+> rendered text entirely. Every Revit API member used was verified against
+> the real `RevitAPI.dll` (via `System.Reflection.MetadataLoadContext`, no
+> Revit machine needed) before writing any code. `dotnet build` clean.
+> Needs one more real run. See PLANNING.md §16 for the full detail.
 
 Two categories of check:
 

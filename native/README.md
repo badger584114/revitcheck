@@ -788,6 +788,21 @@ anywhere in this codebase yet (still Stage 3's job).
   its own `Transaction` that's always `RollBack()`'d, never committed -
   satisfies the API without persisting anything. Not yet confirmed - needs
   one more real run.
+- **Same-day follow-up: reads schedule rows off the schedule's own backing
+  elements, not rendered table text.** The user asked whether a schedule
+  keeps a link back to its real elements - yes, via `FilteredElementCollector
+  (doc, schedule.Id)`, and that pointed at the real fix rather than another
+  patch: stop reading `GetCellText`'s formatted display text at all (format-
+  fragile, the same class of bug ARCHIVE-pdf-dwg.md already warns against)
+  and resolve each candidate column's real bound parameter
+  (`ScheduleField.ParameterId`) to read directly off each backing element -
+  the same pure parameter read already used for piles. Every Revit API
+  member used was verified against the real `RevitAPI.dll` via
+  `System.Reflection.MetadataLoadContext` before writing any code, not
+  guessed. `RevitScheduleSource.TryReadDataRowsFromElements` is now the
+  primary path; the original `GetCellText` read is kept as
+  `ReadDataRowsFromCellText`, a fallback for calculated/combined columns.
+  `dotnet build` clean. **Needs one more real run to confirm.**
 - **Real re-run, 2026-08-28 (later the same day): the transaction fix
   worked, but every pile (43/43) now fails to match its schedule row.**
   Real issue descriptions confirmed it's a flat zero-match join for every
