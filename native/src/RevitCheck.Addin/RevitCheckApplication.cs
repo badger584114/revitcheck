@@ -99,9 +99,10 @@ public class RevitCheckApplication : IExternalApplication
             assemblyPath,
             typeof(PileModelScheduleConsistencyCommand).FullName)
         {
-            ToolTip = "For each pile, compares its own live position (a fresh GetProjectPosition " +
-                      "call) against the pile schedule's row for it - catches a pile moved in the " +
-                      "model without the schedule's Dynamo script being rerun.",
+            ToolTip = "For each pile visible in the active view, compares its own live position " +
+                      "(a fresh GetProjectPosition call) against the pile schedule's row for it - " +
+                      "catches a pile moved in the model without the schedule's Dynamo script being " +
+                      "rerun. Open the pile layout view before running this.",
         };
 
         SetIcons(pileModelScheduleButton, "PileModelSchedule");
@@ -115,8 +116,9 @@ public class RevitCheckApplication : IExternalApplication
             typeof(PileChainBearingConsistencyCommand).FullName)
         {
             ToolTip = "Reconstructs each real pile chain's own bearing from live model geometry " +
-                      "(tag-to-pile proximity matching) and compares it against the drafted bearing " +
-                      "call nearest to it.",
+                      "in the active view (tag-to-pile proximity matching) and compares it against " +
+                      "the drafted bearing call nearest to it. Open the pile layout view before " +
+                      "running this.",
         };
 
         SetIcons(pileChainBearingButton, "PileChainBearing");

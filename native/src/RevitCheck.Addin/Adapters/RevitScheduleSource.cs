@@ -20,18 +20,34 @@ namespace RevitCheck.Addin.Adapters;
 /// sweep is correct here.
 /// </para>
 /// <para>
-/// <b>Deliberately reads every schedule's full body text, not just ones
-/// whose name looks pile-related.</b> <c>InspectPileSetout.pushbutton</c>'s
-/// diagnostic only read full cell data for name-filtered candidates
-/// (PLANNING.md §14) - reasonable for a one-off report a human reads, but
-/// filtering by name is exactly the kind of classification/judgement the
-/// adapter-boundary rule reserves for <c>Checks/</c>
-/// (<c>PileModelScheduleConsistencyCheck</c> already does its own filtering,
-/// by which schedules actually resolve the expected id/Easting/Northing
-/// headers - not by name). The real cost tradeoff is honest: on a schedule-heavy
-/// document this reads more cell text than strictly needed. No real case has
-/// shown this to matter yet; worth revisiting with real timing data before
-/// adding an adapter-level name filter back in as an opt-in, not a default.
+/// <b>Body-row reading is narrowed to header-plausible schedules only -
+/// added 2026-08-28, after a real run found 0 captured schedules where 2
+/// real ones exist, alongside 62 extraction errors with no visible text
+/// (PLANNING.md §16).</b> The first version of this class read every
+/// schedule's full body text unconditionally, on the theory that filtering
+/// by name (the way <c>InspectPileSetout.pushbutton</c>'s diagnostic did)
+/// is exactly the kind of classification/judgement the adapter-boundary
+/// rule reserves for <c>Checks/</c>. That theory was right about naming,
+/// but missed a real cost/robustness problem: <c>GetTableData()</c>/
+/// <c>GetCellText</c> is attempted against every <see cref="ViewSchedule"/>
+/// in the document - revision schedules, sheet lists, quantity takeoffs,
+/// key schedules, ~60 of them on the real model this project develops
+/// against - when <c>PileModelScheduleConsistencyCheck</c> only ever uses
+/// the handful whose headers resolve <em>all three</em> of an id/Easting/
+/// Northing candidate (its own <c>candidateSchedules</c> filter). The
+/// caller now passes that exact same header-candidate check in here via
+/// <paramref name="idHeaderCandidates"/>/<paramref name="eastingHeaderCandidates"/>/
+/// <paramref name="northingHeaderCandidates"/> - not a new judgement, the
+/// identical one the check already makes, just made before the expensive
+/// per-cell read instead of after it, so a schedule this join could never
+/// use anyway never pays (or risks failing) that cost. Headers are still
+/// read for every schedule regardless (cheap, and confirmed to work across
+/// every real schedule kind by the diagnostic's own unconditional field
+/// dump) - a schedule that doesn't match still appears in the result with
+/// its real headers and an empty <see cref="ScheduleInfo.Rows"/>, a fact
+/// worth keeping, not a reason to drop it. Passing no candidates at all
+/// (the default) preserves the original unconditional behaviour, for any
+/// future caller that isn't the pile check.
 /// </para>
 /// <para>
 /// <b>Skips leading header/blank "body" rows.</b> Confirmed real and
@@ -50,10 +66,32 @@ namespace RevitCheck.Addin.Adapters;
 /// </remarks>
 public static class RevitScheduleSource
 {
-    /// <summary>Every ViewSchedule in <paramref name="doc"/>, headers plus real data rows. Per-schedule extraction failures are isolated - see <paramref name="errors"/>.</summary>
-    public static List<ScheduleInfo> Collect(Document doc, List<string> errors)
+    /// <summary>
+    /// Every ViewSchedule in <paramref name="doc"/>, headers always
+    /// included, body rows only for schedules whose headers resolve every
+    /// one of <paramref name="idHeaderCandidates"/>/
+    /// <paramref name="eastingHeaderCandidates"/>/<paramref name="northingHeaderCandidates"/>
+    /// - see the class remarks on why. Leave all three null/empty to read
+    /// body rows for every schedule unconditionally (the original,
+    /// name-filter-free behaviour). Per-schedule extraction failures are
+    /// isolated - see <paramref name="errors"/>.
+    /// </summary>
+    public static List<ScheduleInfo> Collect(
+        Document doc,
+        List<string> errors,
+        IEnumerable<string>? idHeaderCandidates = null,
+        IEnumerable<string>? eastingHeaderCandidates = null,
+        IEnumerable<string>? northingHeaderCandidates = null)
     {
         var schedules = new List<ScheduleInfo>();
+        var idCandidates = idHeaderCandidates?.ToList();
+        var eastingCandidates = eastingHeaderCandidates?.ToList();
+        var northingCandidates = northingHeaderCandidates?.ToList();
+        // Null means "no filter was given" (read every schedule's body
+        // unconditionally) - an empty list is a real, if odd, "match
+        // nothing" filter, kept distinct rather than folded into the same
+        // meaning as null.
+        var filtered = idCandidates is not null || eastingCandidates is not null || northingCandidates is not null;
 
         FilteredElementCollector collector;
         try
@@ -70,7 +108,18 @@ public static class RevitScheduleSource
         {
             try
             {
-                schedules.Add(ReadSchedule(schedule));
+                var headers = ReadHeaders(schedule);
+                var readBody = !filtered ||
+                    (ResolvesHeader(headers, idCandidates) &&
+                     ResolvesHeader(headers, eastingCandidates) &&
+                     ResolvesHeader(headers, northingCandidates));
+
+                schedules.Add(new ScheduleInfo
+                {
+                    Name = schedule.Name,
+                    Headers = headers,
+                    Rows = readBody ? ReadDataRows(schedule, headers) : new List<IReadOnlyDictionary<string, string>>(),
+                });
             }
             catch (Exception ex)
             {
@@ -81,18 +130,9 @@ public static class RevitScheduleSource
         return schedules;
     }
 
-    private static ScheduleInfo ReadSchedule(ViewSchedule schedule)
-    {
-        var headers = ReadHeaders(schedule);
-        var rows = ReadDataRows(schedule, headers);
-
-        return new ScheduleInfo
-        {
-            Name = schedule.Name,
-            Headers = headers,
-            Rows = rows,
-        };
-    }
+    /// <summary>True if <paramref name="candidates"/> is null (no requirement given for this column) or at least one candidate matches a header.</summary>
+    private static bool ResolvesHeader(List<string> headers, List<string>? candidates) =>
+        candidates is null || candidates.Any(c => headers.Contains(c, StringComparer.OrdinalIgnoreCase));
 
     private static List<string> ReadHeaders(ViewSchedule schedule)
     {

@@ -13,25 +13,47 @@ namespace RevitCheck.Addin.Commands;
 /// Revit document - the second real ribbon button for either pile check
 /// (PLANNING.md §16 Stage 2; the Core-side check itself, including the
 /// end-to-end real-data validation against a real pile-layout view, was
-/// built and tested 2026-08-26, PLANNING.md §14). Whole-model, standalone -
-/// see <see cref="PileModelScheduleConsistencyCommand"/>'s own remarks on
-/// what that means and what Stage 3 will later add.
+/// built and tested 2026-08-26, PLANNING.md §14). Standalone - see
+/// <see cref="PileModelScheduleConsistencyCommand"/>'s own remarks on what
+/// that means and what Stage 3 will later add.
 /// </summary>
 /// <remarks>
+/// <para>
 /// <c>writeBcf: true</c> - same reasoning as
 /// <see cref="PileModelScheduleConsistencyCommand"/>: reconstructing a
 /// chain's real bearing from live geometry and comparing it to the drafted
 /// call is already a verdict, not a triage candidate.
+/// </para>
+/// <para>
+/// <b>Scoped to the active view, not the whole document - a real bug fixed
+/// 2026-08-28, the day after this command was first built.</b> The first
+/// version swept every pile, every sheeted view's dimensions, and every
+/// sheeted view's text notes document-wide - 281 piles, 1297 dimensions,
+/// 3790 text notes on the real model this project develops against. This
+/// check's whole design is "verify the chain in the view someone has open,"
+/// not "process the entire drawing set at once" - see
+/// <see cref="PileModelScheduleConsistencyCommand"/>'s own remarks for the
+/// pile half of this (the same 281-vs-~47 over-collection
+/// <c>InspectDimensionGeometry.pushbutton</c> already found once).
+/// </para>
 /// </remarks>
 [Transaction(TransactionMode.ReadOnly)]
 public class PileChainBearingConsistencyCommand : IExternalCommand
 {
     public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
     {
-        var doc = commandData.Application.ActiveUIDocument?.Document;
+        var uiDoc = commandData.Application.ActiveUIDocument;
+        var doc = uiDoc?.Document;
         if (doc is null)
         {
             message = "No active document.";
+            return Result.Failed;
+        }
+
+        var activeView = uiDoc!.ActiveView;
+        if (activeView is null)
+        {
+            message = "No active view - open the pile layout view to check before running this.";
             return Result.Failed;
         }
 
@@ -40,12 +62,14 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
         MetadataCollectionResult piles;
         try
         {
-            // Same category-scoped, live-position collection as
-            // PileModelScheduleConsistencyCommand - see its own remarks.
+            // Same active-view-scoped, category-scoped, live-position
+            // collection as PileModelScheduleConsistencyCommand - see its
+            // own remarks.
             piles = RevitMetadataElementSource.Collect(
                 doc,
                 categories: new[] { BuiltInCategory.OST_StructuralFoundation },
-                populateLivePosition: true);
+                populateLivePosition: true,
+                scopeView: activeView);
         }
         catch (Exception ex)
         {
@@ -56,11 +80,13 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
         DimensionCollectionResult dims;
         try
         {
-            // Reuses the dimension/text-note adapter wholesale - chain
-            // reconstruction needs the same tag-to-tag dimensions the
-            // dimension checks already collect, plus the TextNotes it now
-            // also collects (see RevitDimensionSource.CollectTextNotes).
-            dims = RevitDimensionSource.Collect(doc);
+            // Reuses the dimension/text-note adapter wholesale, scoped to
+            // the same active view - chain reconstruction needs the same
+            // tag-to-tag dimensions the dimension checks already collect,
+            // plus the TextNotes it now also collects (see
+            // RevitDimensionSource.CollectTextNotes), but only ever within
+            // the one view actually being checked (see class remarks).
+            dims = RevitDimensionSource.Collect(doc, scopeView: activeView);
         }
         catch (Exception ex)
         {
@@ -83,9 +109,10 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
         var issues = PileChainBearingConsistencyCheck.Run(model, config);
 
         var summary = $"{issues.Count} issue(s) found ({piles.Elements.Count} pile(s), {dims.Dimensions.Count} dimension(s), " +
-            $"{dims.TextNotes.Count} text note(s) checked)" +
+            $"{dims.TextNotes.Count} text note(s) in view '{activeView.Name}' checked)" +
             (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
-            ".";
+            "." +
+            ExtractionErrorSample.Format(model.ExtractionErrors);
 
         string? outputPath;
         try

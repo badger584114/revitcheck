@@ -73,15 +73,39 @@ public static class RevitDimensionSource
     /// - nothing populates this yet. Sheets and views are never filtered by
     /// workset (see <see cref="CollectSheetsAndViews"/>'s remarks).
     /// </param>
+    /// <param name="scopeView">
+    /// When set, dimensions and text notes are collected from this exact
+    /// <see cref="View"/> alone, not every sheeted view in the document -
+    /// added 2026-08-28 for <c>PileChainBearingConsistencyCommand</c>,
+    /// which only ever needs the one pile-layout view actually being
+    /// checked, not the whole drawing set's ~1300 dimensions and ~3800 text
+    /// notes (real numbers from the first, unscoped version of that
+    /// command). <see cref="Sheets"/>/<see cref="Views"/> are still
+    /// returned document-wide either way - cheap index/container reads, not
+    /// the volume this parameter exists to cut (same reasoning
+    /// <see cref="CollectSheetsAndViews"/>'s own remarks already give for
+    /// never filtering those two by workset). <c>DimensionProvenanceCommand</c>/
+    /// <c>DimensionOverrideConsistencyCommand</c> never pass this - surveying
+    /// the whole drawing set for triage is the entire point of those two.
+    /// </param>
     public static DimensionCollectionResult Collect(
         Document doc,
         bool sheetedViewsOnly = true,
-        ISet<string>? includeWorksets = null)
+        ISet<string>? includeWorksets = null,
+        View? scopeView = null)
     {
         var errors = new List<string>();
         var (sheets, views) = CollectSheetsAndViews(doc, errors);
-        var dimensions = CollectDimensions(doc, errors, views, includeWorksets, sheetedViewsOnly);
-        var textNotes = CollectTextNotes(doc, errors, views, sheetedViewsOnly);
+        var scannedViews = scopeView is null ? views : views.Where(v => v.ElementId == scopeView.Id.Value).ToList();
+        // sheetedViewsOnly exists to cheaply skip thousands of premade,
+        // never-placed template views on a document-wide sweep - that
+        // concern doesn't apply once a caller has already named the one
+        // exact view it wants (scopeView), which must be scanned regardless
+        // of whether it happens to be placed on a sheet, or the caller's
+        // explicit choice would silently come back empty.
+        var effectiveSheetedViewsOnly = scopeView is null && sheetedViewsOnly;
+        var dimensions = CollectDimensions(doc, errors, scannedViews, includeWorksets, effectiveSheetedViewsOnly);
+        var textNotes = CollectTextNotes(doc, errors, scannedViews, effectiveSheetedViewsOnly);
 
         var excludedWorksets = new List<string>();
         if (includeWorksets is not null)

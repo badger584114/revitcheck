@@ -89,11 +89,31 @@ public static class RevitMetadataElementSource
     /// entry, since the rest of that element's metadata is still genuinely
     /// useful on its own.
     /// </param>
+    /// <param name="scopeView">
+    /// When set, scopes the sweep to elements visible in this exact
+    /// <see cref="View"/> instead of the whole document - takes precedence
+    /// over <paramref name="viewName"/> if both are somehow given. Added
+    /// 2026-08-28 for the two pile commands, correcting a real bug: a
+    /// whole-document sweep by category alone picks up piles/foundations
+    /// from unrelated structures elsewhere in a large or federated model -
+    /// exactly the same 281-vs-~47 over-collection
+    /// <c>InspectDimensionGeometry.pushbutton</c> already found and fixed
+    /// this same way (CLAUDE.md's "Notes worth not rediscovering"), which
+    /// the first version of these two commands re-introduced by not
+    /// carrying that lesson forward. Unlike <paramref name="viewName"/>,
+    /// which re-resolves a view by name (needed for
+    /// <see cref="ParameterMapping.ScopeViewName"/>, a config value with no
+    /// live <see cref="View"/> to hand), a command that already has the
+    /// active view in hand should pass it directly rather than round-trip
+    /// through a name lookup that could - in principle, if the document
+    /// somehow has a same-named view elsewhere - resolve to the wrong one.
+    /// </param>
     public static MetadataCollectionResult Collect(
         Document doc,
         string? viewName = null,
         IEnumerable<BuiltInCategory>? categories = null,
-        bool populateLivePosition = false)
+        bool populateLivePosition = false,
+        View? scopeView = null)
     {
         var scope = categories?.ToList() ?? DefaultCategories.ToList();
         var elements = new List<ElementMetadata>();
@@ -101,20 +121,14 @@ public static class RevitMetadataElementSource
         var seen = new HashSet<long>();
 
         var categoryFilter = new ElementMulticategoryFilter(scope);
-        FilteredElementCollector collector;
-        if (string.IsNullOrWhiteSpace(viewName))
-        {
-            collector = new FilteredElementCollector(doc)
+        var view = scopeView ?? (string.IsNullOrWhiteSpace(viewName) ? null : ResolveView(doc, viewName!));
+        var collector = view is null
+            ? new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType()
+                .WherePasses(categoryFilter)
+            : new FilteredElementCollector(doc, view.Id)
                 .WhereElementIsNotElementType()
                 .WherePasses(categoryFilter);
-        }
-        else
-        {
-            var view = ResolveView(doc, viewName!);
-            collector = new FilteredElementCollector(doc, view.Id)
-                .WhereElementIsNotElementType()
-                .WherePasses(categoryFilter);
-        }
 
         var queue = new Queue<(Element Element, long? HostId)>();
         foreach (var element in collector)
