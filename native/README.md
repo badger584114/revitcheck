@@ -818,6 +818,19 @@ anywhere in this codebase yet (still Stage 3's job).
   code points for one matched pair) was added alongside the fix, not
   instead of it, so a wrong hypothesis would still show exactly why on the
   next run. `dotnet build` clean. **Needs one more real run.**
+- **Real re-run, 2026-08-28 (screenshot): the id-join fix worked -
+  `CharacterCheck` confirms an exact byte-for-byte match - but the issue
+  count is still exactly 43.** Since the join is now provably correct, the
+  43 issues can't be the same "no matching row" bug - something else is
+  producing the same count. `CharacterCheck` never verified the numeric
+  Easting/Northing side. Added `PositionCheck` for the same matched pair:
+  the row's raw captured Easting/Northing text, whether it parses as a
+  bare number (`ReadParameterText`'s `AsValueString()` may apply the
+  project's own display unit/suffix, which `TryParseMetresToMm` doesn't
+  expect), and the pile's own live position - enough to tell a parse
+  failure from a real mismatch on the next run. `dotnet build` clean.
+  **Needs one more real run** - also asked the user for a couple of real
+  issue descriptions from this run's own output, no rebuild needed.
 - **Real re-run, 2026-08-28 (later the same day): the transaction fix
   worked, but every pile (43/43) now fails to match its schedule row.**
   Real issue descriptions confirmed it's a flat zero-match join for every

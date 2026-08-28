@@ -1,3 +1,4 @@
+using System.Globalization;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -263,11 +264,56 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             var exact = string.Equals(pileKey, scheduleId, StringComparison.Ordinal);
 
             return $"\n\nCharacter check: pile key '{pileKey}' ({pileKey.Length} char(s): {CodePoints(pileKey)}) vs. " +
-                $"schedule id '{scheduleId}' ({scheduleId.Length} char(s): {CodePoints(scheduleId)}) - exact match: {exact}.";
+                $"schedule id '{scheduleId}' ({scheduleId.Length} char(s): {CodePoints(scheduleId)}) - exact match: {exact}." +
+                PositionCheck(matchingPile, schedule, config);
         }
 
         return "";
     }
 
     private static string CodePoints(string value) => string.Join(" ", value.Select(c => ((int)c).ToString("X4")));
+
+    /// <summary>
+    /// Added 2026-08-28 alongside <see cref="CharacterCheck"/> - the id
+    /// join is now confirmed exact-matching for real data, but the issue
+    /// count on that same real run didn't drop, meaning something in the
+    /// Easting/Northing side is now the live failure point instead
+    /// (a genuine mismatch, or - the leading suspect - a units/formatting
+    /// mismatch: <c>ReadParameterText</c> reads a numeric column via
+    /// <c>AsValueString()</c>, which applies the *project's own display
+    /// unit* and may include a unit suffix, while
+    /// <c>PileModelScheduleConsistencyCheck.TryParseMetresToMm</c> expects
+    /// a bare metres number and silently fails to parse anything else).
+    /// Reports, for the same matched pile/schedule-row pair
+    /// <see cref="CharacterCheck"/> already found: the row's raw captured
+    /// Easting/Northing text, whether it parses as a bare number, and the
+    /// pile's own live <c>GetProjectPosition</c> value - enough to tell a
+    /// parse failure from a genuine (or spurious) position mismatch
+    /// without a fourth diagnostic round.
+    /// </summary>
+    private static string PositionCheck(ElementMetadata pile, ScheduleInfo schedule, RuleConfig config)
+    {
+        var eastingHeader = schedule.ResolveHeader(config.PileScheduleEastingHeaders);
+        var northingHeader = schedule.ResolveHeader(config.PileScheduleNorthingHeaders);
+        var row = schedule.Rows.FirstOrDefault(r =>
+            eastingHeader is not null && r.TryGetValue(eastingHeader, out _) &&
+            northingHeader is not null && r.TryGetValue(northingHeader, out _));
+
+        if (eastingHeader is null || northingHeader is null || row is null)
+        {
+            return "\n\nPosition check: could not find the matched pile's own row again to inspect Easting/Northing.";
+        }
+
+        row.TryGetValue(eastingHeader, out var rawEasting);
+        row.TryGetValue(northingHeader, out var rawNorthing);
+        var eastingParses = double.TryParse((rawEasting ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var eastingMetres);
+        var northingParses = double.TryParse((rawNorthing ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var northingMetres);
+
+        return $"\n\nPosition check: schedule row raw Easting = '{rawEasting}' (parses as a bare number: {eastingParses}" +
+            (eastingParses ? $" -> {(eastingMetres * RuleConfig.ScheduleMetresToMm):0.###}mm" : "") +
+            $"), raw Northing = '{rawNorthing}' (parses: {northingParses}" +
+            (northingParses ? $" -> {(northingMetres * RuleConfig.ScheduleMetresToMm):0.###}mm" : "") +
+            $"). Pile's own live position: Easting = {pile.ProjectPositionEastingMm?.ToString("0.###") ?? "(null)"}mm, " +
+            $"Northing = {pile.ProjectPositionNorthingMm?.ToString("0.###") ?? "(null)"}mm.";
+    }
 }
