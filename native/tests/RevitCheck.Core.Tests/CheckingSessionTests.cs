@@ -1,0 +1,318 @@
+using RevitCheck.Core.Checks;
+using RevitCheck.Core.Issues;
+using RevitCheck.Core.Reporting;
+using Xunit;
+
+namespace RevitCheck.Core.Tests;
+
+public class CheckingSessionTests
+{
+    private static Issue PerDimensionTriage(long elementId, long viewId, string viewName = "PLAN - PILE LAYOUT", string sheetNo = "2873041") => new()
+    {
+        RuleId = DimensionProvenanceCheck.RuleId,
+        Category = "geometry",
+        Severity = "high",
+        ElementId = elementId,
+        ViewId = viewId,
+        ViewName = viewName,
+        SheetNo = sheetNo,
+        Description = $"Dimension {elementId} is drafted.",
+        SuggestedFix = new Dictionary<string, object?> { ["provenance"] = "drafted", ["scope"] = "dimension" },
+    };
+
+    private static Issue ModelWideCoverageNote() => new()
+    {
+        RuleId = DimensionProvenanceCheck.RuleId,
+        Category = "coverage",
+        Severity = "low",
+        Description = "3 dimension(s) could not be classified.",
+    };
+
+    private static Issue InvestigationProblem(long dimensionElementId) => new()
+    {
+        RuleId = "revitcheck.pile_chain_bearing_consistency",
+        Category = "geometry",
+        Severity = "high",
+        ElementId = dimensionElementId,
+        Description = $"Dimension {dimensionElementId} disagrees with the reconstructed bearing.",
+    };
+
+    private static Issue InvestigationManualReview(long dimensionElementId) => new()
+    {
+        RuleId = "revitcheck.pile_chain_bearing_consistency",
+        Category = InvestigationReconciliation.ManualReviewCategory,
+        Severity = "medium",
+        ElementId = dimensionElementId,
+        Description = $"Dimension {dimensionElementId}: ambiguous nearest pile.",
+    };
+
+    private static Issue PileScheduleFinding(long pileElementId) => new()
+    {
+        RuleId = "revitcheck.pile_model_schedule_consistency",
+        Category = "geometry",
+        Severity = "high",
+        ElementId = pileElementId,
+        Description = $"Pile {pileElementId} drifted from its schedule row.",
+    };
+
+    // ----- Start -----
+
+    [Fact]
+    public void Start_groups_triage_by_view_id_and_routes_view_less_issues_to_model_wide_notes()
+    {
+        var triage = new Issue[]
+        {
+            PerDimensionTriage(10, viewId: 100),
+            PerDimensionTriage(11, viewId: 100),
+            PerDimensionTriage(20, viewId: 200, viewName: "PLAN - ABUTMENT A1", sheetNo: "2871008"),
+            ModelWideCoverageNote(),
+        };
+
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        Assert.Equal(2, session.Views.Count);
+        var view100 = session.FindView(100)!;
+        Assert.Equal("PLAN - PILE LAYOUT", view100.ViewName);
+        Assert.Equal("2873041", view100.SheetNo);
+        Assert.Equal(2, view100.TriageIssues.Count);
+        var view200 = session.FindView(200)!;
+        Assert.Equal("PLAN - ABUTMENT A1", view200.ViewName);
+
+        var note = Assert.Single(session.ModelWideNotes);
+        Assert.Equal("coverage", note.Category);
+    }
+
+    [Fact]
+    public void Start_gives_every_view_a_status_before_any_investigation_runs()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        Assert.Equal(ViewInvestigationStatus.Pending, session.FindView(100)!.Status);
+    }
+
+    [Fact]
+    public void Start_keeps_the_config_it_was_given_for_later_investigation_commands_to_reuse()
+    {
+        var config = new RuleConfig { PileCategoryName = "Piling" };
+
+        var session = CheckingSession.Start(Array.Empty<Issue>(), config);
+
+        Assert.Same(config, session.Config);
+    }
+
+    // ----- RecordInvestigation, dimension-linked -----
+
+    [Fact]
+    public void RecordInvestigation_confirmed_problem_flags_the_view()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: new[] { InvestigationProblem(10) });
+
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.Flagged, view.Status);
+        Assert.Single(session.ExportableConfirmedProblems());
+    }
+
+    [Fact]
+    public void RecordInvestigation_clean_result_resolves_the_view()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: Array.Empty<Issue>());
+
+        Assert.Equal(ViewInvestigationStatus.Resolved, session.FindView(100)!.Status);
+        Assert.Empty(session.ExportableConfirmedProblems());
+        Assert.Empty(session.ExportableStillOpenTriage().Where(i => i.ElementId == 10));
+    }
+
+    [Fact]
+    public void RecordInvestigation_manual_review_result_marks_the_view_needing_manual_review()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: new[] { InvestigationManualReview(10) });
+
+        Assert.Equal(ViewInvestigationStatus.NeedsManualReview, session.FindView(100)!.Status);
+        Assert.Empty(session.ExportableConfirmedProblems());
+        Assert.Single(session.ExportableManualReview());
+    }
+
+    [Fact]
+    public void RecordInvestigation_accumulates_across_multiple_calls_for_the_same_view()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100), PerDimensionTriage(11, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: Array.Empty<Issue>());
+        // Dimension 10 already investigated once - still Pending because 11 hasn't been examined yet.
+        Assert.Equal(ViewInvestigationStatus.Pending, session.FindView(100)!.Status);
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 11 }, investigationIssues: new[] { InvestigationProblem(11) });
+
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.Flagged, view.Status);
+        Assert.Equal(new long[] { 10, 11 }, view.InvestigatedElementIds);
+    }
+
+    [Fact]
+    public void RecordInvestigation_for_a_view_with_no_checklist_row_is_a_harmless_no_op()
+    {
+        var session = CheckingSession.Start(Array.Empty<Issue>(), new RuleConfig());
+
+        session.RecordInvestigation(999, investigatedElementIds: new long[] { 1 }, investigationIssues: new[] { InvestigationProblem(1) });
+
+        Assert.Empty(session.Views);
+        Assert.Empty(session.ExportableConfirmedProblems());
+    }
+
+    // ----- RecordInvestigation, non-dimension-linked (otherFindingsRuleId) -----
+
+    [Fact]
+    public void RecordInvestigation_with_other_findings_rule_id_flags_the_view_without_reconciling_triage()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(
+            100, investigatedElementIds: new long[] { 700 }, investigationIssues: new[] { PileScheduleFinding(700) },
+            otherFindingsRuleId: "revitcheck.pile_model_schedule_consistency");
+
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.Flagged, view.Status);
+        // Dimension 10's own triage is untouched by a check with no dimension linkage - still open.
+        Assert.Contains(session.ExportableStillOpenTriage(), i => i.ElementId == 10);
+        Assert.Contains(session.ExportableConfirmedProblems(), i => i.ElementId == 700);
+    }
+
+    [Fact]
+    public void RecordInvestigation_with_other_findings_rule_id_replaces_a_prior_runs_findings_for_that_rule_not_accumulates()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+        const string ruleId = "revitcheck.pile_model_schedule_consistency";
+
+        session.RecordInvestigation(100, new long[] { 700 }, new[] { PileScheduleFinding(700) }, otherFindingsRuleId: ruleId);
+        // Re-run after the pile was fixed - no findings this time.
+        session.RecordInvestigation(100, new long[] { 700 }, Array.Empty<Issue>(), otherFindingsRuleId: ruleId);
+
+        Assert.Empty(session.FindView(100)!.OtherInvestigationFindings);
+        Assert.Equal(ViewInvestigationStatus.Pending, session.FindView(100)!.Status);
+    }
+
+    // ----- ResolveManually -----
+
+    [Fact]
+    public void ResolveManually_on_a_pending_view_marks_it_resolved_manually_and_removes_it_from_still_open_triage()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.ResolveManually(new long[] { 100 }, "Diagrammatic - construction sequence, never live setout.");
+
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.ResolvedManually, view.Status);
+        Assert.Equal("Diagrammatic - construction sequence, never live setout.", view.ManualResolutionReason);
+        var record = Assert.Single(session.ExportableManualResolutions());
+        Assert.Equal(100, record.ViewId);
+        Assert.Equal("Diagrammatic - construction sequence, never live setout.", record.Reason);
+        Assert.DoesNotContain(session.ExportableStillOpenTriage(), i => i.ElementId == 10);
+    }
+
+    [Fact]
+    public void ResolveManually_bulk_resolves_every_view_id_given_in_one_call()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100), PerDimensionTriage(20, viewId: 200) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.ResolveManually(new long[] { 100, 200 }, "Whole sheet is diagrammatic.");
+
+        Assert.Equal(ViewInvestigationStatus.ResolvedManually, session.FindView(100)!.Status);
+        Assert.Equal(ViewInvestigationStatus.ResolvedManually, session.FindView(200)!.Status);
+        Assert.Equal(2, session.ExportableManualResolutions().Count);
+    }
+
+    [Fact]
+    public void ResolveManually_on_a_view_with_no_checklist_row_is_a_harmless_no_op()
+    {
+        var session = CheckingSession.Start(Array.Empty<Issue>(), new RuleConfig());
+
+        session.ResolveManually(new long[] { 999 }, "doesn't exist");
+
+        Assert.Empty(session.ExportableManualResolutions());
+    }
+
+    // ----- The safety rule: ResolvedManually must never bury a real confirmed problem -----
+
+    [Fact]
+    public void ResolveManually_cannot_bury_a_view_that_already_carries_a_confirmed_problem()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+        session.RecordInvestigation(100, new long[] { 10 }, new[] { InvestigationProblem(10) });
+        Assert.Equal(ViewInvestigationStatus.Flagged, session.FindView(100)!.Status);
+
+        session.ResolveManually(new long[] { 100 }, "Thought this was diagrammatic.");
+
+        // Status stays Flagged, not ResolvedManually - the confirmed problem
+        // is never allowed to quietly stand aside for a blanket dismissal.
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.Flagged, view.Status);
+        // The reason is still recorded - a human did attempt to dismiss it,
+        // and that's worth keeping visible even though it didn't take effect.
+        Assert.Equal("Thought this was diagrammatic.", view.ManualResolutionReason);
+        // And the confirmed problem itself still exports for real, exactly as before.
+        Assert.Single(session.ExportableConfirmedProblems());
+    }
+
+    [Fact]
+    public void ResolveManually_cannot_bury_a_view_flagged_only_via_other_investigation_findings()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+        session.RecordInvestigation(
+            100, new long[] { 700 }, new[] { PileScheduleFinding(700) },
+            otherFindingsRuleId: "revitcheck.pile_model_schedule_consistency");
+        Assert.Equal(ViewInvestigationStatus.Flagged, session.FindView(100)!.Status);
+
+        session.ResolveManually(new long[] { 100 }, "Thought this was diagrammatic.");
+
+        Assert.Equal(ViewInvestigationStatus.Flagged, session.FindView(100)!.Status);
+        Assert.Single(session.ExportableConfirmedProblems());
+    }
+
+    // ----- The full regression: a flagged pile chain, expanded, recorded, and reconciled through CheckingSession -----
+
+    [Fact]
+    public void ExpandByElementIdList_into_RecordInvestigation_flags_every_dimension_in_a_flagged_chain_not_just_the_pile()
+    {
+        var chainIssue = new Issue
+        {
+            RuleId = "revitcheck.pile_chain_bearing_consistency",
+            Category = "geometry",
+            Severity = "high",
+            ElementId = 500, // the pile - not either dimension
+            UniqueId = "pile-guid-500",
+            Description = "Reconstructed bearing disagrees with the drafted call.",
+            SuggestedFix = new Dictionary<string, object?> { ["dimension_element_ids"] = new List<long> { 10, 20 } },
+        };
+        var triage = new[] { PerDimensionTriage(10, viewId: 100), PerDimensionTriage(20, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        var expanded = InvestigationReconciliation.ExpandByElementIdList(new[] { chainIssue }, "dimension_element_ids");
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10, 20 }, investigationIssues: expanded);
+
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.Flagged, view.Status);
+        Assert.Equal(2, view.LastReconciliation.ConfirmedProblems.Count);
+        Assert.Empty(view.LastReconciliation.StillOpenTriage);
+        Assert.Equal(
+            new long?[] { 10, 20 },
+            session.ExportableConfirmedProblems().Select(i => i.ElementId).OrderBy(id => id));
+    }
+}
