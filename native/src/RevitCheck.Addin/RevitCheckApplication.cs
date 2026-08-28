@@ -12,7 +12,10 @@ namespace RevitCheck.Addin;
 /// pyRevit. Started narrow (Metadata Reconciliation plus its Capture Model
 /// dev-loop companion, proving the wiring itself on the simplest case
 /// first); the two dimension-check buttons were added once the dimension
-/// adapter existed to back them (PLANNING.md §14).
+/// adapter existed to back them (PLANNING.md §14); the two pile-check
+/// buttons were added once their own adapter work (live project position,
+/// per-reference LocalPoint, TextNotes, schedule reading) was built
+/// (PLANNING.md §16 Stage 2).
 /// </summary>
 public class RevitCheckApplication : IExternalApplication
 {
@@ -39,7 +42,11 @@ public class RevitCheckApplication : IExternalApplication
         // Left-to-right order matches the order someone actually runs
         // things in, confirmed with the user 2026-08-24: capture first
         // (the dev-loop snapshot), then the dimension checks, then
-        // metadata/data reconciliation last.
+        // metadata/data reconciliation last. The two pile checks (added
+        // PLANNING.md §16 Stage 2) sit between the dimension checks and
+        // metadata reconciliation - matching the final ribbon order Stage 3
+        // is planned to leave in place once Dimension Provenance/Overrides
+        // are replaced by one combined Dimension Triage button.
         var captureButton = new PushButtonData(
             "RevitCheck.CaptureModel",
             "Capture\nModel",
@@ -85,6 +92,36 @@ public class RevitCheckApplication : IExternalApplication
         SetIcons(dimensionOverridesButton, "DimensionOverrides");
 
         panel.AddItem(dimensionOverridesButton);
+
+        var pileModelScheduleButton = new PushButtonData(
+            "RevitCheck.PileModelScheduleConsistency",
+            "Pile Model/\nSchedule",
+            assemblyPath,
+            typeof(PileModelScheduleConsistencyCommand).FullName)
+        {
+            ToolTip = "For each pile, compares its own live position (a fresh GetProjectPosition " +
+                      "call) against the pile schedule's row for it - catches a pile moved in the " +
+                      "model without the schedule's Dynamo script being rerun.",
+        };
+
+        SetIcons(pileModelScheduleButton, "PileModelSchedule");
+
+        panel.AddItem(pileModelScheduleButton);
+
+        var pileChainBearingButton = new PushButtonData(
+            "RevitCheck.PileChainBearingConsistency",
+            "Pile Chain\nBearing",
+            assemblyPath,
+            typeof(PileChainBearingConsistencyCommand).FullName)
+        {
+            ToolTip = "Reconstructs each real pile chain's own bearing from live model geometry " +
+                      "(tag-to-pile proximity matching) and compares it against the drafted bearing " +
+                      "call nearest to it.",
+        };
+
+        SetIcons(pileChainBearingButton, "PileChainBearing");
+
+        panel.AddItem(pileChainBearingButton);
 
         var metadataButton = new PushButtonData(
             "RevitCheck.MetadataReconciliation",

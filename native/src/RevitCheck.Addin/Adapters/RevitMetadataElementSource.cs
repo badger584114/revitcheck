@@ -69,7 +69,31 @@ public static class RevitMetadataElementSource
     /// sweep, which is exactly the too-broad behaviour this parameter exists
     /// to avoid.
     /// </param>
-    public static MetadataCollectionResult Collect(Document doc, string? viewName = null, IEnumerable<BuiltInCategory>? categories = null)
+    /// <param name="populateLivePosition">
+    /// When true, also computes each collected element's own
+    /// <see cref="ElementMetadata.LocalPoint"/> (its <c>Location.Point</c>,
+    /// mm, no survey transform) and <see cref="ElementMetadata.ProjectPositionEastingMm"/>/
+    /// <see cref="ElementMetadata.ProjectPositionNorthingMm"/>/
+    /// <see cref="ElementMetadata.ProjectPositionElevationMm"/> (a live
+    /// <c>ProjectLocation.GetProjectPosition</c> call per element). Off by
+    /// default - this is real per-element API cost
+    /// (<c>InspectPileSetout.pushbutton</c>'s diagnostic confirmed the call
+    /// itself works and gives real coordinates, PLANNING.md §14, but every
+    /// existing caller of this method today is metadata reconciliation,
+    /// which never needs a position at all) - on for the two pile commands
+    /// (<c>PileModelScheduleConsistencyCommand</c>/
+    /// <c>PileChainBearingConsistencyCommand</c>), the only callers that do.
+    /// A failure computing either value for one element is soft - left null,
+    /// same local try/catch discipline <see cref="ReadValue"/> already uses
+    /// for a parameter that won't read - not an <see cref="MetadataCollectionResult.ExtractionErrors"/>
+    /// entry, since the rest of that element's metadata is still genuinely
+    /// useful on its own.
+    /// </param>
+    public static MetadataCollectionResult Collect(
+        Document doc,
+        string? viewName = null,
+        IEnumerable<BuiltInCategory>? categories = null,
+        bool populateLivePosition = false)
     {
         var scope = categories?.ToList() ?? DefaultCategories.ToList();
         var elements = new List<ElementMetadata>();
@@ -112,7 +136,7 @@ public static class RevitMetadataElementSource
             // loop uses (see RevitModel.ExtractionErrors / CaptureCoverageCheck).
             try
             {
-                elements.Add(Describe(doc, element, hostId));
+                elements.Add(Describe(doc, element, hostId, populateLivePosition));
             }
             catch (Exception ex)
             {
@@ -147,7 +171,7 @@ public static class RevitMetadataElementSource
         return new MetadataCollectionResult { Elements = elements, ExtractionErrors = errors };
     }
 
-    private static ElementMetadata Describe(Document doc, Element element, long? hostId)
+    private static ElementMetadata Describe(Document doc, Element element, long? hostId, bool populateLivePosition)
     {
         string? category = null;
         long? builtInCategory = null;
@@ -189,6 +213,34 @@ public static class RevitMetadataElementSource
             }
         }
 
+        Point3D? localPoint = null;
+        double? eastingMm = null;
+        double? northingMm = null;
+        double? elevationMm = null;
+        if (populateLivePosition && element.Location is LocationPoint locationPoint)
+        {
+            var rawPoint = locationPoint.Point;
+            localPoint = PointOf(rawPoint);
+
+            // A live GetProjectPosition call per element - real API cost,
+            // only paid when a caller actually asked for it (see Collect's
+            // own remarks on populateLivePosition). Soft-fail like the
+            // parameter reads above: this element's other facts are still
+            // worth keeping even if its survey-adjusted position can't be
+            // computed (e.g. no configured Survey Point).
+            try
+            {
+                var position = doc.ActiveProjectLocation.GetProjectPosition(rawPoint);
+                eastingMm = position.EastWest * MmPerFoot;
+                northingMm = position.NorthSouth * MmPerFoot;
+                elevationMm = position.Elevation * MmPerFoot;
+            }
+            catch
+            {
+                // Left null - see the param doc on Collect.
+            }
+        }
+
         return new ElementMetadata
         {
             ElementId = ElementIdValue(element.Id),
@@ -199,8 +251,15 @@ public static class RevitMetadataElementSource
             TypeName = typeName,
             HostElementId = hostId,
             Parameters = parameters,
+            LocalPoint = localPoint,
+            ProjectPositionEastingMm = eastingMm,
+            ProjectPositionNorthingMm = northingMm,
+            ProjectPositionElevationMm = elevationMm,
         };
     }
+
+    private static Point3D PointOf(XYZ xyz) =>
+        new() { X = xyz.X * MmPerFoot, Y = xyz.Y * MmPerFoot, Z = xyz.Z * MmPerFoot };
 
     private static Dictionary<string, ParameterValue> ReadParameters(ParameterSet parameterSet)
     {
