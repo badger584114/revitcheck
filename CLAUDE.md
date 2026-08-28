@@ -303,8 +303,34 @@ choice.
 > first for `String` (matching piles exactly), `AsValueString()` first for
 > numeric. A `CharacterCheck` diagnostic (hex code points for one matched
 > pair) was added alongside the fix so a wrong hypothesis would still show
-> why. `dotnet build` clean. Needs one more real run. See PLANNING.md §16
-> for the full detail.
+> why. `dotnet build` clean. Needs one more real run.
+>
+> **PLANNING.md §16 update (2026-08-28, later still): the id-join fix
+> worked — `CharacterCheck` confirms an exact byte-for-byte match — but the
+> issue count is still exactly 43.** Since the join is now provably
+> correct, this can't be the same "no matching row" bug. `CharacterCheck`
+> never verified Easting/Northing. Added `PositionCheck` for the same
+> matched pair: raw captured Easting/Northing text, whether it parses as a
+> bare number (`AsValueString()` may apply the project's display unit/
+> suffix, which `TryParseMetresToMm` doesn't expect), and the pile's own
+> live position. `dotnet build` clean. Needs one more real run — also
+> asked the user for real issue descriptions from this run's own output,
+> no rebuild needed.
+>
+> **PLANNING.md §16 update (2026-08-28, later still): the CSV alone found
+> the exact bug — no machine run needed.** Every one of 43 issues showed
+> the schedule's parsed Easting/Northing at exactly 1000× the live value.
+> `AsValueString()` applies the *parameter's own* display unit — confirmed
+> millimetres for this project's `XYZ_Easting`/`XYZ_Northing`, not the
+> metres the schedule column's heading implies. Fixed: read the raw
+> internal value via `AsDouble()` instead (always decimal feet for a real
+> Length spec), convert to mm directly, divide by
+> `RuleConfig.ScheduleMetresToMm` before handing it back as row text, so
+> the check's existing, unchanged `TryParseMetresToMm` recovers the
+> correct value instead of scaling it twice. `dotnet build` clean, no Core
+> changes. Needs one more real run — the fourth real bug found and fixed
+> in this one check's schedule-reading path in a single day. See
+> PLANNING.md §16 for the full detail.
 
 Two categories of check:
 
