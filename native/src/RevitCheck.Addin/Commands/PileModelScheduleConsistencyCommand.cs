@@ -153,7 +153,7 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
             "." +
             ExtractionErrorSample.Format(model.ExtractionErrors) +
-            ScheduleDiagnostics(schedules, config);
+            ScheduleDiagnostics(piles.Elements, schedules, config);
 
         string? outputPath;
         try
@@ -199,7 +199,7 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
     /// rows they carried is useful coverage information on every run, not
     /// just this one.
     /// </summary>
-    private static string ScheduleDiagnostics(List<ScheduleInfo> schedules, RuleConfig config)
+    private static string ScheduleDiagnostics(List<ElementMetadata> piles, List<ScheduleInfo> schedules, RuleConfig config)
     {
         var candidates = schedules.Where(s =>
             s.ResolveHeader(config.PileScheduleIdHeaders) is not null &&
@@ -221,6 +221,53 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             return $"- '{s.Name}': {s.Rows.Count} row(s) captured, id header '{idHeader}', first row's id = {firstRowId}";
         });
 
-        return "\n\nCandidate schedule(s):\n" + string.Join("\n", lines);
+        return "\n\nCandidate schedule(s):\n" + string.Join("\n", lines) + CharacterCheck(piles, candidates, config);
     }
+
+    /// <summary>
+    /// Added 2026-08-28, a safety net alongside the AsString()-vs-
+    /// AsValueString() fix (see RevitScheduleSource.ReadParameterText's own
+    /// remarks): a real run showed a schedule row with an id textually
+    /// identical, by eye, to a failing pile's own key - visible text alone
+    /// can't rule out a hidden-character/normalization mismatch a person
+    /// reading a dialog or a JSON file would never spot. Finds one pile
+    /// whose key loosely (case-insensitive) matches one candidate
+    /// schedule's first row id, then reports both strings' exact length
+    /// and per-character hex code points side by side - if the AsString()
+    /// fix above is what was actually wrong, this should now show an exact
+    /// match; if it still doesn't, the code points say exactly why.
+    /// </summary>
+    private static string CharacterCheck(List<ElementMetadata> piles, List<ScheduleInfo> candidates, RuleConfig config)
+    {
+        foreach (var schedule in candidates.Where(s => s.Rows.Count > 0))
+        {
+            var idHeader = schedule.ResolveHeader(config.PileScheduleIdHeaders);
+            if (idHeader is null || !schedule.Rows[0].TryGetValue(idHeader, out var rowId))
+            {
+                continue;
+            }
+
+            var matchingPile = piles.FirstOrDefault(p =>
+                p.Parameters.TryGetValue(config.PileKeyParameterName, out var v) &&
+                string.Equals((v.RawString ?? v.DisplayString)?.Trim(), rowId.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (matchingPile is null)
+            {
+                return $"\n\nCharacter check: no pile's own key even loosely (case-insensitive) matches " +
+                    $"'{rowId}' from '{schedule.Name}' - the join may be comparing the wrong scope, not just a formatting difference.";
+            }
+
+            var pileValue = matchingPile.Parameters[config.PileKeyParameterName];
+            var pileKey = (pileValue.RawString ?? pileValue.DisplayString)!.Trim();
+            var scheduleId = rowId.Trim();
+            var exact = string.Equals(pileKey, scheduleId, StringComparison.Ordinal);
+
+            return $"\n\nCharacter check: pile key '{pileKey}' ({pileKey.Length} char(s): {CodePoints(pileKey)}) vs. " +
+                $"schedule id '{scheduleId}' ({scheduleId.Length} char(s): {CodePoints(scheduleId)}) - exact match: {exact}.";
+        }
+
+        return "";
+    }
+
+    private static string CodePoints(string value) => string.Join(" ", value.Select(c => ((int)c).ToString("X4")));
 }

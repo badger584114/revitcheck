@@ -803,6 +803,21 @@ anywhere in this codebase yet (still Stage 3's job).
   primary path; the original `GetCellText` read is kept as
   `ReadDataRowsFromCellText`, a fallback for calculated/combined columns.
   `dotnet build` clean. **Needs one more real run to confirm.**
+- **Real re-run, 2026-08-28 (screenshot): the element-based read worked,
+  but the join still failed 43/43 - real diagnostics found a concrete
+  accessor mismatch.** Rows were now genuinely captured correctly (19+24=43,
+  matching pile count, with a correctly-formatted first-row id
+  `PIL232126` - the exact same string as an already-failing pile's own
+  key). Direct code comparison found it: piles read their key via
+  `AsString()`; the new schedule reader read every column, id included,
+  via `AsValueString()` first. `ScheduleInfo.RowsForKey`'s join is
+  deliberately `Ordinal`, so any divergence there silently breaks every
+  match. Fixed: `ReadParameterText` now branches on `Parameter.StorageType`
+  - `AsString()` first for `String` (matching piles exactly),
+  `AsValueString()` first for numeric. A `CharacterCheck` diagnostic (hex
+  code points for one matched pair) was added alongside the fix, not
+  instead of it, so a wrong hypothesis would still show exactly why on the
+  next run. `dotnet build` clean. **Needs one more real run.**
 - **Real re-run, 2026-08-28 (later the same day): the transaction fix
   worked, but every pile (43/43) now fails to match its schedule row.**
   Real issue descriptions confirmed it's a flat zero-match join for every

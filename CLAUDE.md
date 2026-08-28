@@ -289,7 +289,22 @@ choice.
 > rendered text entirely. Every Revit API member used was verified against
 > the real `RevitAPI.dll` (via `System.Reflection.MetadataLoadContext`, no
 > Revit machine needed) before writing any code. `dotnet build` clean.
-> Needs one more real run. See PLANNING.md §16 for the full detail.
+> Needs one more real run.
+>
+> **PLANNING.md §16 update (2026-08-28, later still): the element-based
+> read worked, but the join still failed 43/43 - real diagnostics found
+> the exact cause.** Rows were genuinely captured correctly this time
+> (19+24=43, matching pile count, a correctly-formatted first-row id
+> `PIL232126` identical to an already-failing pile's own key). Piles read
+> their key via `AsString()`; the schedule reader read every column,
+> including id, via `AsValueString()` first — `ScheduleInfo.RowsForKey`'s
+> `Ordinal` join silently breaks on any divergence there. Fixed:
+> `ReadParameterText` now branches on `Parameter.StorageType` — `AsString()`
+> first for `String` (matching piles exactly), `AsValueString()` first for
+> numeric. A `CharacterCheck` diagnostic (hex code points for one matched
+> pair) was added alongside the fix so a wrong hypothesis would still show
+> why. `dotnet build` clean. Needs one more real run. See PLANNING.md §16
+> for the full detail.
 
 Two categories of check:
 

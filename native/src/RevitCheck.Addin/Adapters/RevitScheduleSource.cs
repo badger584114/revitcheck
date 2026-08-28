@@ -350,11 +350,25 @@ public static class RevitScheduleSource
             return null;
         }
 
-        // AsValueString - the same formatted text (units/rounding applied)
-        // a schedule cell displays for this parameter - falling back to
-        // AsString for a plain text parameter that has no display-string
-        // formatting of its own.
-        return parameter.AsValueString() ?? parameter.AsString();
+        // A plain text (String storage type) parameter - e.g. this
+        // project's own DIT_SiteID - is read via AsString(), the SAME
+        // accessor RevitMetadataElementSource uses for a pile's own key
+        // parameter (ElementMetadata.Parameters[...].RawString). A numeric
+        // parameter (Easting/Northing) prefers AsValueString() - the
+        // formatted display text (units/rounding applied) a schedule cell
+        // actually shows. Found 2026-08-28: a real run captured a schedule
+        // row with id 'PIL232126' - textually identical, by eye, to a
+        // pile's own key that still failed "no matching row" against it -
+        // via AsValueString() first. ScheduleInfo.RowsForKey's join is
+        // deliberately Ordinal (a schedule key is exported/typed data, not
+        // something to fuzz-match), so reading the id column through a
+        // different accessor than the pile's own key-reading path risked
+        // silently diverging even when both sides display identically.
+        // Using the identical accessor on both sides of the comparison
+        // removes that whole axis of risk.
+        return parameter.StorageType == StorageType.String
+            ? parameter.AsString() ?? parameter.AsValueString()
+            : parameter.AsValueString() ?? parameter.AsString();
     }
 
     /// <summary>Which of the two shapes a resolved schedule column's real parameter takes - exactly one of the two fields is set.</summary>
