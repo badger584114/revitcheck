@@ -1,10 +1,8 @@
 using System.Diagnostics;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Interop;
-using System.Windows.Media;
 using RevitCheck.Addin.Commands;
 using RevitCheck.Core.Issues;
 using RevitCheck.Core.Reporting;
@@ -15,8 +13,11 @@ namespace RevitCheck.Addin.UI;
 /// The interactive checking workflow's checklist window (PLANNING.md §16
 /// Stage 3). Shows <see cref="CheckingSessionHost.Session"/>'s rows,
 /// grouped by sheet; lets a reviewer open a flagged view, bulk-dismiss a
-/// whole sheet by human judgement, and export the reconciled BCF once done
-/// cycling through every view.
+/// whole sheet by human judgement, record a manual verdict on one specific
+/// dimension while checking it against the drawing (<see cref="OnMarkDetailVerdictClick"/>,
+/// added 2026-08-31 - real user feedback that there was no way to do this
+/// at all, only a whole-view dismissal), and export the reconciled BCF
+/// once done cycling through every view.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -74,13 +75,13 @@ internal sealed class ChecklistWindow : Window
     private readonly ListView _listView;
     private readonly TextBlock _summary;
     private readonly CheckBox _showResolved;
-    private readonly TextBox _details;
+    private readonly ListView _detailsListView;
 
     public ChecklistWindow()
     {
         Title = "RevitCheck - Dimension Triage Checklist";
-        Width = 820;
-        Height = 700;
+        Width = 900;
+        Height = 760;
 
         // Owned by Revit's own main window via its process handle - the
         // simplest way to parent a modeless WPF window from a Revit add-in
@@ -104,6 +105,7 @@ internal sealed class ChecklistWindow : Window
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -137,35 +139,37 @@ internal sealed class ChecklistWindow : Window
         // ("needs manual review, triage 2, manual review 4") gives no way
         // to know what those actually are or how to act on them. This pane
         // shows the selected row's real issue descriptions - what to go
-        // check, not just how many.
+        // check, not just how many - and is itself selectable so a
+        // specific dimension can be marked resolved/confirmed (see
+        // DetailsToolbar below and UpdateDetails' own remarks) - a second
+        // real gap, also from real use: there was no way at all to weigh
+        // in on one specific dimension while manually checking it, only a
+        // whole view via Mark Selected Resolved.
         var detailsPanel = new DockPanel { Margin = new Thickness(8, 4, 8, 8) };
         var detailsLabel = new TextBlock
         {
-            Text = "Details for the selected view:",
+            Text = "Details for the selected view - select one or more issues below to act on them individually:",
             FontWeight = FontWeights.Bold,
             Margin = new Thickness(0, 0, 0, 4),
+            TextWrapping = TextWrapping.Wrap,
         };
         DockPanel.SetDock(detailsLabel, Dock.Top);
         detailsPanel.Children.Add(detailsLabel);
-        _details = new TextBox
-        {
-            IsReadOnly = true,
-            TextWrapping = TextWrapping.Wrap,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            FontFamily = new FontFamily("Consolas"),
-            Background = Brushes.WhiteSmoke,
-        };
-        detailsPanel.Children.Add(_details);
+        _detailsListView = BuildDetailsListView();
+        detailsPanel.Children.Add(_detailsListView);
         Grid.SetRow(detailsPanel, 3);
         root.Children.Add(detailsPanel);
 
+        var detailsToolbar = BuildDetailsToolbar();
+        Grid.SetRow(detailsToolbar, 4);
+        root.Children.Add(detailsToolbar);
+
         var toolbar = BuildToolbar();
-        Grid.SetRow(toolbar, 4);
+        Grid.SetRow(toolbar, 5);
         root.Children.Add(toolbar);
 
         var exportBar = BuildExportBar();
-        Grid.SetRow(exportBar, 5);
+        Grid.SetRow(exportBar, 6);
         root.Children.Add(exportBar);
 
         Content = root;
@@ -200,6 +204,56 @@ internal sealed class ChecklistWindow : Window
             Width = width,
             DisplayMemberBinding = new Binding(bindingPath),
         };
+
+    private static ListView BuildDetailsListView()
+    {
+        var gridView = new GridView();
+        gridView.Columns.Add(Column("Section", nameof(DetailRow.Section), 130));
+        gridView.Columns.Add(Column("Rule", nameof(DetailRow.RuleId), 220));
+        gridView.Columns.Add(Column("Severity", nameof(DetailRow.Severity), 70));
+        gridView.Columns.Add(Column("Element", nameof(DetailRow.ElementIdText), 80));
+        gridView.Columns.Add(Column("Description", nameof(DetailRow.Description), 340));
+
+        return new ListView
+        {
+            SelectionMode = SelectionMode.Extended,
+            View = gridView,
+        };
+    }
+
+    /// <summary>
+    /// "Mark Selected Issue(s) Resolved/Confirmed Problem" - real user
+    /// feedback, 2026-08-31: manually checking a pile dimension against
+    /// the drawing had no way to record the verdict on that specific
+    /// dimension, only a whole view. Both act on <see cref="_detailsListView"/>'s
+    /// selection, a different list from <see cref="_listView"/>'s own
+    /// toolbar (<see cref="BuildToolbar"/>) - kept as a visually separate
+    /// row so "act on this view" and "act on this specific issue" don't
+    /// read as the same action.
+    /// </summary>
+    private StackPanel BuildDetailsToolbar()
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 0, 8, 8) };
+
+        var resolve = new Button
+        {
+            Content = "Mark Selected Issue(s) Resolved",
+            Padding = new Thickness(8, 4, 8, 4),
+            Margin = new Thickness(0, 0, 8, 0),
+        };
+        resolve.Click += (_, _) => OnMarkDetailVerdictClick(isConfirmedProblem: false);
+        panel.Children.Add(resolve);
+
+        var confirm = new Button
+        {
+            Content = "Mark Selected Issue(s) Confirmed Problem",
+            Padding = new Thickness(8, 4, 8, 4),
+        };
+        confirm.Click += (_, _) => OnMarkDetailVerdictClick(isConfirmedProblem: true);
+        panel.Children.Add(confirm);
+
+        return panel;
+    }
 
     private StackPanel BuildToolbar()
     {
@@ -324,56 +378,148 @@ internal sealed class ChecklistWindow : Window
     /// "needs manual review, still open 2, manual review 4" gives no way
     /// to know what those actually are or how to act on them without this.
     /// </summary>
+    /// <remarks>
+    /// <b>Still-open triage is expanded before display</b>
+    /// (<see cref="InvestigationReconciliation.ExpandByElementIdList"/>,
+    /// same mechanism <see cref="PileChainBearingConsistencyCommand"/>
+    /// uses) - a "wholly-drafted view" rollup issue's <c>ElementId</c> is
+    /// the *view's own* id, not any one dimension's, so selecting it
+    /// directly and marking it resolved would be a silent no-op (its id
+    /// never appears in any rollup's <c>drafted_dimension_ids</c> list -
+    /// see <c>InvestigationReconciliation.AllDraftedDimensionsResolved</c>).
+    /// A non-rollup triage issue passes through this call unchanged (see
+    /// that method's own remarks), so this is safe to apply unconditionally
+    /// rather than branching on whether a rollup is actually present.
+    /// </remarks>
     private void UpdateDetails()
     {
         var selected = _listView.SelectedItems.Cast<ChecklistRow>().ToList();
         if (selected.Count == 0)
         {
-            _details.Text = "Select a row above to see its issues.";
+            _detailsListView.ItemsSource = null;
             return;
         }
 
         if (selected.Count > 1)
         {
-            _details.Text = $"{selected.Count} rows selected - select just one to see its issues.";
+            _detailsListView.ItemsSource = null;
             return;
         }
 
         var entry = CheckingSessionHost.Session?.FindView(selected[0].ViewId);
         if (entry is null)
         {
-            _details.Text = "(no session data for this row)";
+            _detailsListView.ItemsSource = null;
             return;
         }
 
-        var sb = new StringBuilder();
-        AppendSection(sb, "CONFIRMED PROBLEMS - exports to BCF", entry.LastReconciliation.ConfirmedProblems);
-        AppendSection(sb, "OTHER INVESTIGATION FINDINGS (e.g. pile schedule) - exports to BCF", entry.OtherInvestigationFindings);
-        AppendSection(sb, "NEEDS MANUAL REVIEW - check the drawing (this view), then leave for export or dismiss", entry.LastReconciliation.NeedsManualReview);
-        AppendSection(sb, "STILL OPEN TRIAGE - not yet investigated by any check", entry.LastReconciliation.StillOpenTriage);
+        var rows = new List<DetailRow>();
+        AppendSection(rows, "Confirmed Problem", entry.LastReconciliation.ConfirmedProblems);
+        AppendSection(rows, "Other Finding", entry.OtherInvestigationFindings);
+        AppendSection(rows, "Needs Manual Review", entry.LastReconciliation.NeedsManualReview);
+        AppendSection(rows, "Still Open Triage",
+            InvestigationReconciliation.ExpandByElementIdList(entry.LastReconciliation.StillOpenTriage, "drafted_dimension_ids"));
 
         if (entry.ManualResolutionReason is not null)
         {
-            sb.AppendLine($"MANUALLY DISMISSED - reason: {(entry.ManualResolutionReason.Length == 0 ? "(none given)" : entry.ManualResolutionReason)}");
+            rows.Add(new DetailRow
+            {
+                Section = "Manually Dismissed",
+                RuleId = "",
+                Severity = "",
+                ElementId = null,
+                Description = entry.ManualResolutionReason.Length == 0 ? "(no reason given)" : entry.ManualResolutionReason,
+            });
         }
 
-        _details.Text = sb.Length == 0 ? "(nothing outstanding for this row)" : sb.ToString();
+        _detailsListView.ItemsSource = rows;
     }
 
-    private static void AppendSection(StringBuilder sb, string heading, IReadOnlyList<Issue> issues)
+    private static void AppendSection(List<DetailRow> rows, string section, IReadOnlyList<Issue> issues)
     {
-        if (issues.Count == 0)
+        foreach (var issue in issues)
         {
+            rows.Add(new DetailRow
+            {
+                Section = section,
+                RuleId = issue.RuleId,
+                Severity = issue.Severity,
+                ElementId = issue.ElementId,
+                Description = issue.Description,
+            });
+        }
+    }
+
+    /// <summary>
+    /// A human's own per-dimension verdict, given while manually checking
+    /// one of <see cref="_detailsListView"/>'s selected issues against the
+    /// drawing - real user feedback, 2026-08-31: there was no way at all to
+    /// do this, only a whole-view dismissal
+    /// (<see cref="OnMarkSelectedResolvedClick"/>).
+    /// </summary>
+    /// <remarks>
+    /// Reuses <see cref="CheckingSession.RecordInvestigation"/> unchanged -
+    /// a person's verdict on one dimension is, functionally, just another
+    /// investigation source (see <see cref="InvestigationReconciliation.ManualVerdictRuleId"/>'s
+    /// own remarks), so it goes through the exact same accumulate-then-
+    /// reconcile path an automated check uses rather than a parallel
+    /// mechanism. "Resolved" records the id as investigated with no issue
+    /// (clean, same as an automated check finding nothing wrong);
+    /// "Confirmed Problem" additionally emits a real Issue so it flows
+    /// into <c>ConfirmedProblems</c> and the BCF export - no note is
+    /// prompted for beyond the original finding's own description, kept
+    /// deliberately fast for going through several dimensions in a row;
+    /// a full reason prompt is what <c>ReasonPromptWindow</c> is for.
+    /// </remarks>
+    private void OnMarkDetailVerdictClick(bool isConfirmedProblem)
+    {
+        var session = CheckingSessionHost.Session;
+        var selectedView = _listView.SelectedItems.Cast<ChecklistRow>().ToList();
+        if (session is null || selectedView.Count != 1)
+        {
+            MessageBox.Show(this, "Select exactly one view above first, then select one or more issues below.",
+                "RevitCheck", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        sb.AppendLine($"-- {heading} ({issues.Count}) --");
-        foreach (var issue in issues)
+        var selectedDetails = _detailsListView.SelectedItems.Cast<DetailRow>().Where(r => r.ElementId is not null).ToList();
+        if (selectedDetails.Count == 0)
         {
-            sb.AppendLine($"[{issue.RuleId}] {issue.Description}" + (issue.ElementId is { } id ? $" (element {id})" : ""));
+            MessageBox.Show(this, "Select one or more issues below to record a verdict on.", "RevitCheck",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
         }
 
-        sb.AppendLine();
+        var viewId = selectedView[0].ViewId;
+        var elementIds = selectedDetails.Select(r => r.ElementId!.Value).ToList();
+        var verdictIssues = isConfirmedProblem
+            ? selectedDetails.Select(r => new Issue
+            {
+                RuleId = InvestigationReconciliation.ManualVerdictRuleId,
+                Category = "geometry",
+                Severity = "high",
+                ElementId = r.ElementId!.Value,
+                ViewId = viewId,
+                ViewName = selectedView[0].ViewName,
+                SheetNo = selectedView[0].SheetNo,
+                Description = $"Manually confirmed as a real problem by a reviewer, checking against the " +
+                    $"drawing. Original finding: {r.Description}",
+            }).ToList()
+            : new List<Issue>();
+
+        session.RecordInvestigation(viewId, elementIds, verdictIssues);
+
+        try
+        {
+            CheckingSessionHost.Autosave();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Recorded, but the session could not be saved to disk:\n\n{ExceptionMessage.Full(ex)}",
+                "RevitCheck", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        Refresh();
     }
 
     private void OnOpenViewClick(object sender, RoutedEventArgs e)
@@ -470,5 +616,16 @@ internal sealed class ChecklistWindow : Window
         public int StillOpenCount { get; init; }
         public int ConfirmedCount { get; init; }
         public int ManualReviewCount { get; init; }
+    }
+
+    /// <summary>One row in <see cref="_detailsListView"/> - a single, real, individually-actionable finding (never an opaque rollup - see <see cref="UpdateDetails"/>'s own remarks).</summary>
+    private sealed class DetailRow
+    {
+        public string Section { get; init; } = "";
+        public string RuleId { get; init; } = "";
+        public string Severity { get; init; } = "";
+        public long? ElementId { get; init; }
+        public string ElementIdText => ElementId?.ToString() ?? "";
+        public string Description { get; init; } = "";
     }
 }
