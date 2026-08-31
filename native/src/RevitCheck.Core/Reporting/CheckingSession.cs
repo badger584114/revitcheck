@@ -208,6 +208,24 @@ public sealed class CheckingSession
     /// flag there) is a no-op, not an error - there is nothing to
     /// investigate results into.
     /// </remarks>
+    /// <remarks>
+    /// <b>Dimension-linked calls supersede, not just accumulate, for the
+    /// exact ids in <paramref name="investigatedElementIds"/></b> - a real
+    /// bug found on the Revit machine, 2026-08-31. Before this,
+    /// <see cref="ViewChecklistEntry.InvestigationIssues"/> only ever grew,
+    /// so a stale <c>manual_review</c> Issue an automated check recorded
+    /// for one dimension would keep showing in
+    /// <see cref="ReconciliationResult.NeedsManualReview"/> forever, even
+    /// after a human selected that exact dimension and marked it Resolved
+    /// (which correctly calls this method with an empty
+    /// <paramref name="investigationIssues"/> for that id - "clean" has
+    /// nothing to overwrite the old entry with, since nothing ever removed
+    /// it). Any existing entry whose <see cref="Issue.ElementId"/> is in
+    /// this call's <paramref name="investigatedElementIds"/> is removed
+    /// before <paramref name="investigationIssues"/> is added - the latest
+    /// verdict for a given dimension always wins, whether that verdict came
+    /// from an automated check re-run or a human's own manual click.
+    /// </remarks>
     public void RecordInvestigation(
         long viewId,
         IReadOnlyCollection<long> investigatedElementIds,
@@ -237,6 +255,8 @@ public sealed class CheckingSession
             }
         }
 
+        var investigatedNow = new HashSet<long>(investigatedElementIds);
+        entry.InvestigationIssues.RemoveAll(i => i.ElementId is { } id && investigatedNow.Contains(id));
         entry.InvestigationIssues.AddRange(issuesList);
         entry.LastReconciliation = InvestigationReconciliation.Reconcile(
             entry.TriageIssues, entry.InvestigatedElementIds, entry.InvestigationIssues);

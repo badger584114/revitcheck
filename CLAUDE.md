@@ -428,9 +428,26 @@ choice.
 > **Confirmed directly by the user: the row disappeared the moment the
 > dialog closed.** The earlier fix was correct all along — the report was
 > from a test pass that predated it reaching a rebuilt, redeployed binary.
-> **The interactive checking workflow is now fully confirmed working on
-> real data, including the per-dimension manual-verdict path — nothing
-> outstanding from Stage 4 remains open.**
+>
+> **PLANNING.md §16 correction (2026-08-31, later the same day): a real,
+> distinct bug, continuing the same real testing session.** "Needs Manual
+> Review items are still not cleared after marking them resolved" — a
+> Core-level bug this time, not a display one.
+> `CheckingSession.RecordInvestigation`'s dimension-linked path only ever
+> *appended* to `InvestigationIssues`, never removed a stale entry — so an
+> automated check's old `manual_review` flag for a dimension kept showing
+> forever, even after a human selected it and clicked Mark Resolved
+> (correctly calling `RecordInvestigation` with an empty issue list for
+> that id — "clean" had nothing to overwrite the stale entry with, since
+> nothing ever removed it). Fixed: recording a verdict for an id now
+> removes any existing entry for that same id first — the latest call
+> always wins. Two new regression tests, 326 Core tests passing (324 + 2
+> new). The third real bug found in the manual-verdict feature across
+> three consecutive real-machine runs the same day — CLAUDE.md's own
+> "assume nothing is trustworthy" applies most literally here: an
+> accumulate-only list looks correct by inspection every time, because
+> "clean" reads as an obviously-safe no-op unless you specifically ask
+> what happens to whatever was already recorded for that same id.
 
 Two categories of check:
 

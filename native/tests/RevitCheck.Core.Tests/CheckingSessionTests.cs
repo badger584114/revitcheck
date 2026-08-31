@@ -179,6 +179,54 @@ public class CheckingSessionTests
     }
 
     [Fact]
+    public void RecordInvestigation_supersedes_a_stale_verdict_for_the_same_element_instead_of_accumulating_it()
+    {
+        // Real bug found on the Revit machine, 2026-08-31: an automated
+        // check (e.g. PileChainBearingConsistencyCheck's near-miss
+        // detection) flags dimension 10 manual_review; a human then
+        // selects it and clicks Mark Resolved, which correctly calls
+        // RecordInvestigation with an empty investigationIssues for that
+        // same id - "clean" had nothing to overwrite the stale
+        // manual_review Issue with, since nothing ever removed it, so it
+        // kept showing in NeedsManualReview forever. The fix: recording a
+        // NEW verdict for an id removes any OLD verdict issue for that
+        // same id first - the latest call always wins, whichever source
+        // (automated re-run or a human's own click) made it.
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: new[] { InvestigationManualReview(10) });
+        Assert.Equal(ViewInvestigationStatus.NeedsManualReview, session.FindView(100)!.Status);
+
+        // A human checks it against the drawing and marks it resolved.
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: Array.Empty<Issue>());
+
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.Resolved, view.Status);
+        Assert.Empty(view.LastReconciliation.NeedsManualReview);
+        Assert.Empty(session.ExportableManualReview());
+    }
+
+    [Fact]
+    public void RecordInvestigation_supersession_only_affects_the_ids_being_reinvestigated_now()
+    {
+        var triage = new[] { PerDimensionTriage(10, viewId: 100), PerDimensionTriage(11, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10, 11 },
+            investigationIssues: new[] { InvestigationManualReview(10), InvestigationProblem(11) });
+
+        // Re-investigate only dimension 10 (resolved) - dimension 11's
+        // confirmed problem must survive untouched.
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: Array.Empty<Issue>());
+
+        var view = session.FindView(100)!;
+        Assert.Empty(view.LastReconciliation.NeedsManualReview);
+        var confirmed = Assert.Single(view.LastReconciliation.ConfirmedProblems);
+        Assert.Equal(11, confirmed.ElementId);
+    }
+
+    [Fact]
     public void RecordInvestigation_for_a_view_with_no_checklist_row_is_a_harmless_no_op()
     {
         var session = CheckingSession.Start(Array.Empty<Issue>(), new RuleConfig());
