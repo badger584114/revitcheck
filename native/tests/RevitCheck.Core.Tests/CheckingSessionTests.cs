@@ -225,6 +225,25 @@ public class CheckingSessionTests
     }
 
     [Fact]
+    public void ResolveManually_with_a_null_reason_still_marks_the_view_resolved()
+    {
+        // Real bug found on the Revit machine, 2026-08-31: the checklist
+        // window's reason prompt returns null for a confirmed-but-blank
+        // box, and Status used to read ManualResolutionReason's nullness
+        // as the sole "was this dismissed at all" signal - so dismissing
+        // with an empty reason silently did nothing.
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.ResolveManually(new long[] { 100 }, reason: null);
+
+        var view = session.FindView(100)!;
+        Assert.Equal(ViewInvestigationStatus.ResolvedManually, view.Status);
+        Assert.Equal("", view.ManualResolutionReason);
+        Assert.Single(session.ExportableManualResolutions());
+    }
+
+    [Fact]
     public void ResolveManually_bulk_resolves_every_view_id_given_in_one_call()
     {
         var triage = new[] { PerDimensionTriage(10, viewId: 100), PerDimensionTriage(20, viewId: 200) };

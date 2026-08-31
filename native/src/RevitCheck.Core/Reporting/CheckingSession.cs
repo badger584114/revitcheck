@@ -251,14 +251,28 @@ public sealed class CheckingSession
     /// from <see cref="ViewInvestigationStatus.Flagged"/> - see
     /// <see cref="ViewChecklistEntry.Status"/>'s own remarks.
     /// </summary>
+    /// <remarks>
+    /// <paramref name="reason"/> is coerced to <c>""</c> if null - a real
+    /// bug found on the Revit machine, 2026-08-31: <c>Status</c> uses
+    /// <c>ManualResolutionReason is not null</c> as the sole signal that a
+    /// view was dismissed at all, so calling this method with
+    /// <paramref name="reason"/> null (the checklist window's own reason
+    /// prompt returned exactly that for a confirmed-but-blank box) silently
+    /// did nothing - indistinguishable from "never dismissed". Calling this
+    /// method at all means "resolve these views"; the reason is
+    /// supplementary detail, never the signal that resolution happened, so
+    /// this coercion happens here rather than trusting every future caller
+    /// to remember it.
+    /// </remarks>
     public void ResolveManually(IEnumerable<long> viewIds, string? reason)
     {
+        var storedReason = reason ?? "";
         foreach (var viewId in viewIds)
         {
             var entry = FindView(viewId);
             if (entry is not null)
             {
-                entry.ManualResolutionReason = reason;
+                entry.ManualResolutionReason = storedReason;
             }
         }
     }
