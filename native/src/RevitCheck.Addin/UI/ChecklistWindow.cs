@@ -70,6 +70,7 @@ internal sealed class ChecklistWindow : Window
 {
     private readonly ListView _listView;
     private readonly TextBlock _summary;
+    private readonly CheckBox _showResolved;
 
     public ChecklistWindow()
     {
@@ -96,6 +97,7 @@ internal sealed class ChecklistWindow : Window
 
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -104,16 +106,33 @@ internal sealed class ChecklistWindow : Window
         Grid.SetRow(_summary, 0);
         root.Children.Add(_summary);
 
+        // Real user feedback, 2026-08-31 Stage 4: a real drawing set has
+        // hundreds of views, and mixing already-resolved rows in with the
+        // ones still needing attention makes the list unworkable. Hidden
+        // by default so the working list is only what's left to do; the
+        // full picture (including resolved rows) is one checkbox away, not
+        // a separate window/tab - the simplest change that actually
+        // addresses "hard to go through hundreds of issues".
+        _showResolved = new CheckBox
+        {
+            Content = "Show resolved rows too",
+            Margin = new Thickness(8, 0, 8, 8),
+        };
+        _showResolved.Checked += (_, _) => Refresh();
+        _showResolved.Unchecked += (_, _) => Refresh();
+        Grid.SetRow(_showResolved, 1);
+        root.Children.Add(_showResolved);
+
         _listView = BuildListView();
-        Grid.SetRow(_listView, 1);
+        Grid.SetRow(_listView, 2);
         root.Children.Add(_listView);
 
         var toolbar = BuildToolbar();
-        Grid.SetRow(toolbar, 2);
+        Grid.SetRow(toolbar, 3);
         root.Children.Add(toolbar);
 
         var exportBar = BuildExportBar();
-        Grid.SetRow(exportBar, 3);
+        Grid.SetRow(exportBar, 4);
         root.Children.Add(exportBar);
 
         Content = root;
@@ -200,7 +219,7 @@ internal sealed class ChecklistWindow : Window
             return;
         }
 
-        var rows = session.Views
+        var allRows = session.Views
             .OrderBy(v => v.SheetNo ?? "", StringComparer.Ordinal)
             .ThenBy(v => v.ViewName ?? "", StringComparer.Ordinal)
             .Select(v => new ChecklistRow
@@ -215,17 +234,28 @@ internal sealed class ChecklistWindow : Window
             })
             .ToList();
 
-        _listView.ItemsSource = rows;
+        var pending = allRows.Count(r => r.Status == ViewInvestigationStatus.Pending);
+        var flagged = allRows.Count(r => r.Status == ViewInvestigationStatus.Flagged);
+        var manualReview = allRows.Count(r => r.Status == ViewInvestigationStatus.NeedsManualReview);
+        var resolvedManually = allRows.Count(r => r.Status == ViewInvestigationStatus.ResolvedManually);
+        var resolved = allRows.Count(r => r.Status == ViewInvestigationStatus.Resolved);
 
-        var pending = rows.Count(r => r.Status == ViewInvestigationStatus.Pending);
-        var flagged = rows.Count(r => r.Status == ViewInvestigationStatus.Flagged);
-        var manualReview = rows.Count(r => r.Status == ViewInvestigationStatus.NeedsManualReview);
-        var resolvedManually = rows.Count(r => r.Status == ViewInvestigationStatus.ResolvedManually);
-        var resolved = rows.Count(r => r.Status == ViewInvestigationStatus.Resolved);
+        // Resolved rows (Resolved and ResolvedManually) are hidden from the
+        // list itself by default - see the _showResolved checkbox's own
+        // remarks. Counts in the summary line always cover every row
+        // regardless, so the true picture is never hidden, just the
+        // clutter in the working list.
+        var isDone = new Func<ChecklistRow, bool>(r =>
+            r.Status is ViewInvestigationStatus.Resolved or ViewInvestigationStatus.ResolvedManually);
+        var shownRows = _showResolved.IsChecked == true ? allRows : allRows.Where(r => !isDone(r)).ToList();
+        var hiddenCount = allRows.Count - shownRows.Count;
+
+        _listView.ItemsSource = shownRows;
 
         _summary.Text =
-            $"{rows.Count} view(s): {pending} pending, {flagged} flagged, {manualReview} need manual review, " +
+            $"{allRows.Count} view(s): {pending} pending, {flagged} flagged, {manualReview} need manual review, " +
             $"{resolvedManually} manually dismissed, {resolved} resolved." +
+            (hiddenCount > 0 ? $" ({hiddenCount} resolved row(s) hidden - tick the box below to show them.)" : "") +
             (session.ModelWideNotes.Count > 0
                 ? $" ({session.ModelWideNotes.Count} model-wide note(s) not shown here - see the export.)"
                 : "");

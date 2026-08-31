@@ -1,3 +1,4 @@
+using System.Text.Json;
 using RevitCheck.Core.Issues;
 
 namespace RevitCheck.Core.Reporting;
@@ -208,7 +209,23 @@ public static class InvestigationReconciliation
         issue.RuleId == "revit.dimension_provenance" &&
         issue.SuggestedFix is { } fix &&
         fix.TryGetValue("scope", out var scope) &&
-        (scope as string) == "view";
+        StringValue(scope) == "view";
+
+    /// <summary>
+    /// Same real shape problem as <see cref="ElementIdList"/> (see its own
+    /// remarks), for a string value instead of a list one - a round-tripped
+    /// session's <c>"scope"</c> comes back as a <see cref="JsonElement"/>,
+    /// not a <see cref="string"/>, so <c>scope as string</c> silently
+    /// returned null and every resumed session's rollup issue read as an
+    /// ordinary per-element issue instead - found by the same real Stage 4
+    /// run, alongside the <see cref="ElementIdList"/> fix.
+    /// </summary>
+    private static string? StringValue(object? value) => value switch
+    {
+        string s => s,
+        JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+        _ => null,
+    };
 
     private static bool AllDraftedDimensionsResolved(Issue rollupIssue, ISet<long> investigatedSet)
     {
@@ -223,14 +240,29 @@ public static class InvestigationReconciliation
     /// Reads a list of element ids out of an <see cref="Issue.SuggestedFix"/>
     /// entry - shared by <see cref="AllDraftedDimensionsResolved"/> (key
     /// <c>"drafted_dimension_ids"</c>) and <see cref="ExpandByElementIdList"/>
-    /// (a caller-chosen key, e.g. <c>"dimension_element_ids"</c>). Same shape
-    /// problem both callers have: the value comes straight off a check's own
-    /// <c>List&lt;long&gt;</c> when reconciling in-process, but comes back as
-    /// a <c>List&lt;object&gt;</c> of boxed numeric JSON values when
-    /// reconciling against a capture/session round-tripped through
-    /// System.Text.Json - both handled rather than assumed to be one shape
-    /// or the other.
+    /// (a caller-chosen key, e.g. <c>"dimension_element_ids"</c>). Three
+    /// shapes handled, not assumed to be just one:
     /// </summary>
+    /// <remarks>
+    /// <b>The real, verified shape (fixed 2026-08-31, found on the real
+    /// Revit machine during Stage 4):</b> a <c>Dictionary&lt;string, object?&gt;</c>
+    /// deserialized by <c>System.Text.Json</c> (via <c>CheckingSessionSerializer.Load</c>,
+    /// resuming a saved session) does NOT come back as boxed <c>long</c>/
+    /// <c>List&lt;object&gt;</c> values the way this method originally
+    /// assumed - .NET's default <c>object</c>-typed deserialization gives
+    /// a boxed <see cref="JsonElement"/> instead, confirmed directly (a
+    /// throwaway round-trip check, not guessed): <c>JsonElement</c> does
+    /// NOT implement <see cref="System.Collections.IEnumerable"/> either,
+    /// so the generic <c>IEnumerable</c> case below never matched it -
+    /// every triage rollup's <c>drafted_dimension_ids</c> silently read as
+    /// empty after a resume, meaning <see cref="AllDraftedDimensionsResolved"/>
+    /// could never clear a rolled-up view's status again once its session
+    /// had been saved and reloaded even once. The
+    /// <c>List&lt;object&gt;</c> case below is kept anyway (harmless, and
+    /// was already tested) in case some other in-process boxing path
+    /// produces that shape, but it is not what a real round trip actually
+    /// produces - <see cref="JsonElement"/> is.
+    /// </remarks>
     private static List<long> ElementIdList(Dictionary<string, object?>? fix, string key)
     {
         if (fix is null || !fix.TryGetValue(key, out var raw))
@@ -242,25 +274,39 @@ public static class InvestigationReconciliation
         {
             case List<long> longs:
                 return longs;
-            case System.Collections.IEnumerable enumerable:
+            case JsonElement { ValueKind: JsonValueKind.Array } element:
+            {
                 var result = new List<long>();
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Number && item.TryGetInt64(out var value))
+                    {
+                        result.Add(value);
+                    }
+                }
+
+                return result;
+            }
+
+            case System.Collections.IEnumerable enumerable:
+                var listResult = new List<long>();
                 foreach (var item in enumerable)
                 {
                     switch (item)
                     {
                         case long l:
-                            result.Add(l);
+                            listResult.Add(l);
                             break;
                         case int i:
-                            result.Add(i);
+                            listResult.Add(i);
                             break;
                         case double d:
-                            result.Add((long)d);
+                            listResult.Add((long)d);
                             break;
                     }
                 }
 
-                return result;
+                return listResult;
             default:
                 return new List<long>();
         }

@@ -127,10 +127,19 @@ public class DimensionTriageCommand : IExternalCommand
                 "and investigation results already recorded) - it is not re-validated against the model as it " +
                 "stands right now. Starting fresh discards it and builds a new session from this run's triage.",
             CommonButtons = TaskDialogCommonButtons.Cancel,
-            DefaultButton = TaskDialogResult.CommandLink1,
         };
         dialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Resume the saved session");
         dialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "Start fresh (discard the saved session)");
+        // DefaultButton has to be set AFTER the command links exist, not in
+        // the object initializer above - a real bug found on the Revit
+        // machine, 2026-08-31: TaskDialog validates DefaultButton against
+        // whatever buttons the dialog already has at the moment it's
+        // assigned, and an object initializer runs every member in
+        // declaration order before any AddCommandLink call below it can
+        // run, so DefaultButton = CommandLink1 there always throws
+        // ("Corresponding button not found. Parameter name: defaultButton") -
+        // there is no button yet when that assignment happens.
+        dialog.DefaultButton = TaskDialogResult.CommandLink1;
 
         var result = dialog.Show();
         if (result != TaskDialogResult.CommandLink1)

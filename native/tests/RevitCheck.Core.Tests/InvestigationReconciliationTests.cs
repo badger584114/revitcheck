@@ -196,11 +196,13 @@ public class InvestigationReconciliationTests
     }
 
     [Fact]
-    public void Boxed_object_list_shape_from_a_round_tripped_capture_is_handled()
+    public void Boxed_object_list_shape_is_handled()
     {
-        // A List<long> serialized through System.Text.Json and deserialized
-        // generically comes back as a List<object> of boxed longs/doubles,
-        // not the original List<long> - both shapes must resolve the same.
+        // Kept as a defensive case even though it's not what a real
+        // System.Text.Json round trip actually produces (see the real
+        // JsonElement-shaped test below, and ElementIdList's own remarks) -
+        // some other in-process boxing path could still hand this shape in,
+        // and there is no cost to handling it too.
         var rollup = new Issue
         {
             RuleId = DimensionProvenanceCheck.RuleId,
@@ -216,6 +218,41 @@ public class InvestigationReconciliationTests
 
         var result = InvestigationReconciliation.Reconcile(
             new[] { rollup }, investigatedElementIds: new long[] { 1, 2 }, investigationIssues: Array.Empty<Issue>());
+
+        Assert.Empty(result.StillOpenTriage);
+    }
+
+    [Fact]
+    public void JsonElement_shape_from_a_real_round_tripped_session_is_handled()
+    {
+        // The real shape a resumed session's SuggestedFix actually comes
+        // back as - found on the real Revit machine, 2026-08-31 (Stage 4):
+        // System.Text.Json's default object-typed deserialization gives a
+        // boxed JsonElement, not List<object>, and JsonElement doesn't
+        // implement IEnumerable either - the case above alone silently
+        // failed to resolve any rollup issue in a resumed session. This
+        // test round-trips through the real serializer (not a hand-built
+        // JsonElement) so it fails the same way the real bug did if the
+        // fix regresses.
+        var rollup = new Issue
+        {
+            RuleId = DimensionProvenanceCheck.RuleId,
+            Category = "geometry",
+            ElementId = 100,
+            Description = "rollup",
+            SuggestedFix = new Dictionary<string, object?>
+            {
+                ["scope"] = "view",
+                ["drafted_dimension_ids"] = new List<long> { 1, 2 },
+            },
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(rollup);
+        var roundTripped = System.Text.Json.JsonSerializer.Deserialize<Issue>(json)!;
+        Assert.IsType<System.Text.Json.JsonElement>(roundTripped.SuggestedFix!["drafted_dimension_ids"]);
+
+        var result = InvestigationReconciliation.Reconcile(
+            new[] { roundTripped }, investigatedElementIds: new long[] { 1, 2 }, investigationIssues: Array.Empty<Issue>());
 
         Assert.Empty(result.StillOpenTriage);
     }

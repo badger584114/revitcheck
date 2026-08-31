@@ -103,6 +103,48 @@ public class CheckingSessionSerializerTests
     }
 
     [Fact]
+    public void ResumedSession_can_still_be_investigated_further_and_a_rollup_still_clears()
+    {
+        // The real Stage 4 scenario RoundTrip_PreservesEveryRowShapeAndStatus
+        // above does NOT cover: that test's LastReconciliation was computed
+        // BEFORE serialization, so it never exercises Reconcile reading a
+        // round-tripped Issue's own SuggestedFix. Resuming, then continuing
+        // to investigate, does exactly that - and found a real bug on the
+        // Revit machine, 2026-08-31: a resumed session's rollup issue could
+        // never clear again, because its drafted_dimension_ids came back as
+        // a JsonElement, not a List<long>/List<object> (see
+        // InvestigationReconciliation.ElementIdList's own remarks).
+        var config = new RuleConfig();
+        var rollup = new Issue
+        {
+            RuleId = DimensionProvenanceCheck.RuleId,
+            Category = "geometry",
+            Severity = "high",
+            ElementId = 900,
+            ViewId = 900,
+            ViewName = "PLAN - PILE LAYOUT",
+            SheetNo = "2873041",
+            Description = "Every dimension in this view is drafted.",
+            SuggestedFix = new Dictionary<string, object?>
+            {
+                ["scope"] = "view",
+                ["drafted_dimension_ids"] = new List<long> { 10, 20 },
+            },
+        };
+        var session = CheckingSession.Start(new[] { rollup }, config);
+
+        var resumed = CheckingSessionSerializer.Loads(CheckingSessionSerializer.Dumps(session));
+
+        // Investigate the resumed session's view for real - both
+        // dimensions come back clean, so the rollup should clear.
+        resumed.RecordInvestigation(900, investigatedElementIds: new long[] { 10, 20 }, investigationIssues: Array.Empty<Issue>());
+
+        var view = resumed.FindView(900)!;
+        Assert.Equal(ViewInvestigationStatus.Resolved, view.Status);
+        Assert.Empty(view.LastReconciliation.StillOpenTriage);
+    }
+
+    [Fact]
     public void SchemaVersion_IsWrittenOnEveryDump()
     {
         var json = CheckingSessionSerializer.Dumps(CheckingSession.Start(Array.Empty<Issue>(), new RuleConfig()));

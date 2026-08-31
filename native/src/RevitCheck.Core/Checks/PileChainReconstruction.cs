@@ -65,6 +65,54 @@ public static class PileChainReconstruction
         return (pileA, pileB);
     }
 
+    /// <summary>
+    /// True for a dimension that plausibly should be a pile-to-pile
+    /// measurement but doesn't confidently resolve into a real chain edge -
+    /// exactly one of its two references matches a pile within tolerance
+    /// and the other doesn't, or both references match the <em>same</em>
+    /// pile. Deliberately does NOT include a dimension where neither
+    /// reference is anywhere near a pile - most dimensions in a pile-layout
+    /// view have nothing to do with piles at all, and flagging every one of
+    /// those would bury the real signal.
+    /// </summary>
+    /// <remarks>
+    /// Found on the real Revit machine, 2026-08-31 (Stage 4): every
+    /// dimension this method now catches was previously silently dropped
+    /// by <see cref="ResolvePileMatch"/> returning null, with no Issue of
+    /// any kind - not a confirmed problem, not a triage flag staying open,
+    /// not a manual-review item, nothing at all. That's a real gap, not
+    /// just a naming one: PLANNING.md §14 already confirmed the exact real
+    /// shape this catches (a tag 0.0mm from one real pile, 1274.5mm from
+    /// its nearest other candidate, turned out to be dimensioned to a
+    /// setout-point marker rather than a pile - not a drafting bug, but
+    /// something only a human reading the actual drawing can tell, not
+    /// this check on its own). This is what
+    /// <see cref="PileChainBearingConsistencyCheck.RunWithScope"/> uses to
+    /// emit a real <c>manual_review</c> finding for it instead of silence.
+    /// </remarks>
+    public static bool IsNearMissPileMatch(DimensionInfo dimension, IReadOnlyList<ElementMetadata> piles, RuleConfig config)
+    {
+        if (dimension.References.Count != 2)
+        {
+            return false;
+        }
+
+        var pileA = NearestPile(dimension.References[0].LocalPoint, piles, config.PileTagMatchToleranceMm);
+        var pileB = NearestPile(dimension.References[1].LocalPoint, piles, config.PileTagMatchToleranceMm);
+
+        if (pileA is null && pileB is null)
+        {
+            return false;
+        }
+
+        if (pileA is not null && pileB is not null && pileA.ElementId != pileB.ElementId)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     private static ElementMetadata? NearestPile(Point3D? point, IReadOnlyList<ElementMetadata> piles, double toleranceMm)
     {
         if (point is null)

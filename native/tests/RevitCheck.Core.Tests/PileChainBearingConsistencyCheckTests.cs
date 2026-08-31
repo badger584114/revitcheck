@@ -223,6 +223,96 @@ public class PileChainBearingConsistencyCheckTests
     }
 
     [Fact]
+    public void A_dimension_matching_one_pile_and_missing_the_other_is_flagged_for_manual_review_not_silently_dropped()
+    {
+        // The real confirmed case (PLANNING.md §14): one reference matches
+        // a real pile at ~0mm, the other misses every pile by a real
+        // margin (1274.5mm in the real case) - turned out to be dimensioned
+        // to a setout-point marker, not a pile. Before this fix,
+        // ResolvePileMatch returning null for this dimension meant it
+        // produced no Issue of any kind, anywhere - not a problem, not
+        // triage staying open, not manual review, nothing.
+        var pile = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var dim = RevitCheckTestBuilders.PileChainDimension(
+            100, 1,
+            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)), // 0mm from the real pile
+            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(5000, 5000))); // nowhere near any pile
+
+        var model = RevitCheckTestBuilders.Model(elements: new[] { pile }, dimensions: new[] { dim });
+
+        var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(RevitCheck.Core.Reporting.InvestigationReconciliation.ManualReviewCategory, issue.Category);
+        Assert.Equal(100, issue.ElementId);
+        // Manual review still counts as examined - the whole point is that
+        // a human judgement is an examination too, so a view-rollup finding
+        // covering this dimension can still clear once every dimension has
+        // some verdict, clean/problem/manual-review alike.
+        Assert.Equal(new[] { 100L }, investigated);
+    }
+
+    [Fact]
+    public void A_dimension_matching_the_same_pile_at_both_ends_is_flagged_for_manual_review()
+    {
+        var pile = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var dim = RevitCheckTestBuilders.PileChainDimension(
+            100, 1,
+            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
+            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(2, 2))); // same real pile, not a real pair
+
+        var model = RevitCheckTestBuilders.Model(elements: new[] { pile }, dimensions: new[] { dim });
+
+        var (issues, _) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(RevitCheck.Core.Reporting.InvestigationReconciliation.ManualReviewCategory, issue.Category);
+    }
+
+    [Fact]
+    public void A_dimension_nowhere_near_any_pile_is_left_alone_not_flagged_for_manual_review()
+    {
+        // Most dimensions in a pile-layout view have nothing to do with
+        // piles at all (bearing notes, scale bars, unrelated linework) -
+        // flagging every one of those for manual review would bury the
+        // real signal, exactly the failure mode this check's design
+        // already avoids elsewhere ("skip rather than guess").
+        var pile = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var dim = RevitCheckTestBuilders.PileChainDimension(
+            100, 1,
+            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(50_000, 50_000)),
+            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(50_000, 51_000)));
+
+        var model = RevitCheckTestBuilders.Model(elements: new[] { pile }, dimensions: new[] { dim });
+
+        var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        Assert.Empty(issues);
+        Assert.Empty(investigated);
+    }
+
+    [Fact]
+    public void A_dimension_already_part_of_a_real_evaluated_chain_is_not_also_flagged_for_manual_review()
+    {
+        var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var dim = RevitCheckTestBuilders.PileChainDimension(
+            100, 1,
+            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
+            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        var note = RevitCheckTestBuilders.TextNote(300, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(50, 500));
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pileA, pileB }, dimensions: new[] { dim }, textNotes: new[] { note });
+
+        var (issues, _) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        // Clean chain - no issue of any kind, and definitely not a
+        // duplicate manual-review flag for the same dimension.
+        Assert.Empty(issues);
+    }
+
+    [Fact]
     public void RunWithScope_excludes_an_ambiguous_branched_components_dimensions_from_the_investigated_scope()
     {
         var hub = RevitCheckTestBuilders.Pile(1, "HUB", 0, 0);
