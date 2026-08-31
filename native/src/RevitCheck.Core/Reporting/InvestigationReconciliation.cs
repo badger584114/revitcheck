@@ -118,6 +118,24 @@ public static class InvestigationReconciliation
     public const string ManualReviewCategory = "manual_review";
 
     /// <summary>
+    /// The <see cref="Issue.RuleId"/> a human's own per-dimension verdict
+    /// carries, distinct from any automated check's rule id - added
+    /// 2026-08-31, real user feedback: there was no way at all to mark one
+    /// specific dimension resolved or confirmed while manually checking it
+    /// against the drawing, only a whole view via
+    /// <see cref="CheckingSession.ResolveManually"/>. A person's verdict on
+    /// one dimension is, functionally, just another investigation source -
+    /// it goes through the exact same <see cref="CheckingSession.RecordInvestigation"/>
+    /// path an automated check uses (accumulate into
+    /// <see cref="ViewChecklistEntry.InvestigatedElementIds"/>, reconcile
+    /// against triage), no separate mechanism needed. This constant exists
+    /// so the audit trail is honest that a finding came from a person, not
+    /// automation - CLAUDE.md's "a rule must say how it reached its
+    /// conclusion" applies to a human's own judgement too.
+    /// </summary>
+    public const string ManualVerdictRuleId = "revitcheck.manual_verdict";
+
+    /// <summary>
     /// Reconciles <paramref name="triageIssues"/> against one investigation
     /// check's results. <paramref name="investigatedElementIds"/> is every
     /// dimension ElementId that investigation check actually examined,

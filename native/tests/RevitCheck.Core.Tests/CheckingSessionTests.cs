@@ -20,6 +20,24 @@ public class CheckingSessionTests
         SuggestedFix = new Dictionary<string, object?> { ["provenance"] = "drafted", ["scope"] = "dimension" },
     };
 
+    private static Issue RollupTriage(long viewId, IEnumerable<long> draftedDimensionIds, string viewName = "PLAN - PILE LAYOUT", string sheetNo = "2873041") => new()
+    {
+        RuleId = DimensionProvenanceCheck.RuleId,
+        Category = "geometry",
+        Severity = "high",
+        ElementId = viewId,
+        ViewId = viewId,
+        ViewName = viewName,
+        SheetNo = sheetNo,
+        Description = $"Every dimension in view {viewId} is drafted.",
+        SuggestedFix = new Dictionary<string, object?>
+        {
+            ["provenance"] = "drafted",
+            ["scope"] = "view",
+            ["drafted_dimension_ids"] = draftedDimensionIds.ToList(),
+        },
+    };
+
     private static Issue ModelWideCoverageNote() => new()
     {
         RuleId = DimensionProvenanceCheck.RuleId,
@@ -203,6 +221,57 @@ public class CheckingSessionTests
 
         Assert.Empty(session.FindView(100)!.OtherInvestigationFindings);
         Assert.Equal(ViewInvestigationStatus.Pending, session.FindView(100)!.Status);
+    }
+
+    // ----- Manual per-dimension verdicts (RecordInvestigation reused directly by the checklist window) -----
+
+    [Fact]
+    public void A_humans_own_verdict_on_one_dimension_within_a_rollup_is_recorded_the_same_way_an_automated_check_would_be()
+    {
+        // Real user feedback, 2026-08-31: there was no way to weigh in on
+        // one specific dimension while manually checking it against the
+        // drawing, only a whole view via ResolveManually. The fix reuses
+        // RecordInvestigation directly - a human's own verdict is just
+        // another investigation source. This test proves the real mixed
+        // scenario: one dimension resolved by an automated check, one
+        // resolved by a human with no issue (clean), one confirmed a real
+        // problem by a human - the rollup should only clear once all three
+        // are accounted for, and the confirmed one should be the human's,
+        // correctly attributed via ManualVerdictRuleId.
+        var rollup = RollupTriage(100, draftedDimensionIds: new long[] { 10, 20, 30 });
+        var session = CheckingSession.Start(new[] { rollup }, new RuleConfig());
+
+        // An automated pile check investigates dimension 10 and finds it clean.
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: Array.Empty<Issue>());
+        Assert.Equal(ViewInvestigationStatus.Pending, session.FindView(100)!.Status);
+
+        // A human manually resolves dimension 30 (checked it, it's fine) -
+        // recorded exactly the same way as the automated check above.
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 30 }, investigationIssues: Array.Empty<Issue>());
+        Assert.Equal(ViewInvestigationStatus.Pending, session.FindView(100)!.Status);
+
+        // A human manually confirms dimension 20 as a real problem.
+        var manualProblem = new Issue
+        {
+            RuleId = InvestigationReconciliation.ManualVerdictRuleId,
+            Category = "geometry",
+            Severity = "high",
+            ElementId = 20,
+            ViewId = 100,
+            Description = "Manually confirmed as a real problem by a reviewer.",
+        };
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 20 }, investigationIssues: new[] { manualProblem });
+
+        var view = session.FindView(100)!;
+        // All three dimensions now accounted for - the rollup is fully
+        // superseded, replaced by the one real confirmed problem.
+        Assert.Equal(ViewInvestigationStatus.Flagged, view.Status);
+        var confirmed = Assert.Single(view.LastReconciliation.ConfirmedProblems);
+        Assert.Equal(InvestigationReconciliation.ManualVerdictRuleId, confirmed.RuleId);
+        Assert.Equal(20, confirmed.ElementId);
+        Assert.Empty(view.LastReconciliation.StillOpenTriage);
+        var exported = Assert.Single(session.ExportableConfirmedProblems());
+        Assert.Equal(20, exported.ElementId);
     }
 
     // ----- ResolveManually -----
