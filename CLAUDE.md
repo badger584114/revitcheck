@@ -365,6 +365,25 @@ choice.
 > clean across the whole solution, 316 Core tests passing (313 + 3 new).
 > **Not yet run on the Revit machine** — Stage 4 is next, see PLANNING.md
 > §16 for the full validation list.
+>
+> **PLANNING.md §16 update (2026-08-31, Stage 4's first two real runs):**
+> six real bugs found and fixed the same day, all from actual use, not
+> guessed ahead of it. First run: a `TaskDialog.DefaultButton` crash on
+> restart (set before its command links existed), a `System.Text.Json`
+> `JsonElement`-vs-CLR-type bug that silently broke resuming a session and
+> investigating further, and Pile Chain Bearing silently dropping (not
+> flagging) dimensions that should have been manual-review candidates —
+> also the likely real cause of a view's status never changing, since up
+> to 14 of 46 real dimensions were never accounted for at all. Second run:
+> dismissing with a blank reason silently did nothing (`Status` used
+> `ManualResolutionReason is not null` as its only "was this dismissed"
+> signal — fixed in `CheckingSession.ResolveManually` itself), a confusing
+> "Dismiss" button renamed to "OK", and — the real usability gap — a bare
+> status/count row gave no way to know what a finding actually was or how
+> to act on it, fixed with a details pane in the checklist window that
+> shows the real issue text for whichever row is selected. 323 Core tests
+> passing. See PRs #51 and the one that follows it, and PLANNING.md §16
+> for the full account.
 
 Two categories of check:
 

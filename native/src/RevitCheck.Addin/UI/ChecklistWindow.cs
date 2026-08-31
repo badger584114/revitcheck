@@ -1,9 +1,12 @@
 using System.Diagnostics;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Interop;
+using System.Windows.Media;
 using RevitCheck.Addin.Commands;
+using RevitCheck.Core.Issues;
 using RevitCheck.Core.Reporting;
 
 namespace RevitCheck.Addin.UI;
@@ -71,12 +74,13 @@ internal sealed class ChecklistWindow : Window
     private readonly ListView _listView;
     private readonly TextBlock _summary;
     private readonly CheckBox _showResolved;
+    private readonly TextBox _details;
 
     public ChecklistWindow()
     {
         Title = "RevitCheck - Dimension Triage Checklist";
         Width = 820;
-        Height = 540;
+        Height = 700;
 
         // Owned by Revit's own main window via its process handle - the
         // simplest way to parent a modeless WPF window from a Revit add-in
@@ -98,6 +102,7 @@ internal sealed class ChecklistWindow : Window
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -124,15 +129,43 @@ internal sealed class ChecklistWindow : Window
         root.Children.Add(_showResolved);
 
         _listView = BuildListView();
+        _listView.SelectionChanged += (_, _) => UpdateDetails();
         Grid.SetRow(_listView, 2);
         root.Children.Add(_listView);
 
+        // Real user feedback, 2026-08-31 Stage 4: a bare status/count row
+        // ("needs manual review, triage 2, manual review 4") gives no way
+        // to know what those actually are or how to act on them. This pane
+        // shows the selected row's real issue descriptions - what to go
+        // check, not just how many.
+        var detailsPanel = new DockPanel { Margin = new Thickness(8, 4, 8, 8) };
+        var detailsLabel = new TextBlock
+        {
+            Text = "Details for the selected view:",
+            FontWeight = FontWeights.Bold,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        DockPanel.SetDock(detailsLabel, Dock.Top);
+        detailsPanel.Children.Add(detailsLabel);
+        _details = new TextBox
+        {
+            IsReadOnly = true,
+            TextWrapping = TextWrapping.Wrap,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            FontFamily = new FontFamily("Consolas"),
+            Background = Brushes.WhiteSmoke,
+        };
+        detailsPanel.Children.Add(_details);
+        Grid.SetRow(detailsPanel, 3);
+        root.Children.Add(detailsPanel);
+
         var toolbar = BuildToolbar();
-        Grid.SetRow(toolbar, 3);
+        Grid.SetRow(toolbar, 4);
         root.Children.Add(toolbar);
 
         var exportBar = BuildExportBar();
-        Grid.SetRow(exportBar, 4);
+        Grid.SetRow(exportBar, 5);
         root.Children.Add(exportBar);
 
         Content = root;
@@ -148,7 +181,7 @@ internal sealed class ChecklistWindow : Window
         gridView.Columns.Add(Column("Sheet No", nameof(ChecklistRow.SheetNo), 90));
         gridView.Columns.Add(Column("View Name", nameof(ChecklistRow.ViewName), 280));
         gridView.Columns.Add(Column("Status", nameof(ChecklistRow.StatusText), 110));
-        gridView.Columns.Add(Column("Triage", nameof(ChecklistRow.TriageCount), 60));
+        gridView.Columns.Add(Column("Still Open", nameof(ChecklistRow.StillOpenCount), 75));
         gridView.Columns.Add(Column("Confirmed", nameof(ChecklistRow.ConfirmedCount), 80));
         gridView.Columns.Add(Column("Manual Review", nameof(ChecklistRow.ManualReviewCount), 100));
 
@@ -216,8 +249,19 @@ internal sealed class ChecklistWindow : Window
         {
             _listView.ItemsSource = null;
             _summary.Text = "No active checking session.";
+            UpdateDetails();
             return;
         }
+
+        // Reassigning ItemsSource below (see class remarks - wholesale
+        // rebuild, no data-binding) loses WPF's own selection every time,
+        // which fights the exact workflow this window exists for: run a
+        // pile check against the view you already have selected, and see
+        // its row update in place. Re-select by ViewId after rebuilding
+        // instead of leaving the reviewer's spot in the list to reset on
+        // every investigation run.
+        var previouslySelectedViewIds = new HashSet<long>(
+            _listView.SelectedItems.Cast<ChecklistRow>().Select(r => r.ViewId));
 
         var allRows = session.Views
             .OrderBy(v => v.SheetNo ?? "", StringComparer.Ordinal)
@@ -228,7 +272,14 @@ internal sealed class ChecklistWindow : Window
                 SheetNo = v.SheetNo ?? "(no sheet)",
                 ViewName = v.ViewName ?? "",
                 Status = v.Status,
-                TriageCount = v.TriageIssues.Count,
+                // The current, still-outstanding count - not the original
+                // triage count from before any investigation. Real user
+                // feedback, 2026-08-31: showing the frozen original count
+                // here (unlike the Confirmed/Manual Review columns, which
+                // already read the live reconciled state) made a row look
+                // unchanged after real investigation work had actually
+                // resolved most of it.
+                StillOpenCount = v.LastReconciliation.StillOpenTriage.Count,
                 ConfirmedCount = v.LastReconciliation.ConfirmedProblems.Count + v.OtherInvestigationFindings.Count,
                 ManualReviewCount = v.LastReconciliation.NeedsManualReview.Count,
             })
@@ -251,6 +302,10 @@ internal sealed class ChecklistWindow : Window
         var hiddenCount = allRows.Count - shownRows.Count;
 
         _listView.ItemsSource = shownRows;
+        foreach (var row in shownRows.Where(r => previouslySelectedViewIds.Contains(r.ViewId)))
+        {
+            _listView.SelectedItems.Add(row);
+        }
 
         _summary.Text =
             $"{allRows.Count} view(s): {pending} pending, {flagged} flagged, {manualReview} need manual review, " +
@@ -259,6 +314,66 @@ internal sealed class ChecklistWindow : Window
             (session.ModelWideNotes.Count > 0
                 ? $" ({session.ModelWideNotes.Count} model-wide note(s) not shown here - see the export.)"
                 : "");
+
+        UpdateDetails();
+    }
+
+    /// <summary>
+    /// Shows the real issue descriptions behind the selected row's status
+    /// and counts - added 2026-08-31, real user feedback: a row reading
+    /// "needs manual review, still open 2, manual review 4" gives no way
+    /// to know what those actually are or how to act on them without this.
+    /// </summary>
+    private void UpdateDetails()
+    {
+        var selected = _listView.SelectedItems.Cast<ChecklistRow>().ToList();
+        if (selected.Count == 0)
+        {
+            _details.Text = "Select a row above to see its issues.";
+            return;
+        }
+
+        if (selected.Count > 1)
+        {
+            _details.Text = $"{selected.Count} rows selected - select just one to see its issues.";
+            return;
+        }
+
+        var entry = CheckingSessionHost.Session?.FindView(selected[0].ViewId);
+        if (entry is null)
+        {
+            _details.Text = "(no session data for this row)";
+            return;
+        }
+
+        var sb = new StringBuilder();
+        AppendSection(sb, "CONFIRMED PROBLEMS - exports to BCF", entry.LastReconciliation.ConfirmedProblems);
+        AppendSection(sb, "OTHER INVESTIGATION FINDINGS (e.g. pile schedule) - exports to BCF", entry.OtherInvestigationFindings);
+        AppendSection(sb, "NEEDS MANUAL REVIEW - check the drawing (this view), then leave for export or dismiss", entry.LastReconciliation.NeedsManualReview);
+        AppendSection(sb, "STILL OPEN TRIAGE - not yet investigated by any check", entry.LastReconciliation.StillOpenTriage);
+
+        if (entry.ManualResolutionReason is not null)
+        {
+            sb.AppendLine($"MANUALLY DISMISSED - reason: {(entry.ManualResolutionReason.Length == 0 ? "(none given)" : entry.ManualResolutionReason)}");
+        }
+
+        _details.Text = sb.Length == 0 ? "(nothing outstanding for this row)" : sb.ToString();
+    }
+
+    private static void AppendSection(StringBuilder sb, string heading, IReadOnlyList<Issue> issues)
+    {
+        if (issues.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine($"-- {heading} ({issues.Count}) --");
+        foreach (var issue in issues)
+        {
+            sb.AppendLine($"[{issue.RuleId}] {issue.Description}" + (issue.ElementId is { } id ? $" (element {id})" : ""));
+        }
+
+        sb.AppendLine();
     }
 
     private void OnOpenViewClick(object sender, RoutedEventArgs e)
@@ -352,7 +467,7 @@ internal sealed class ChecklistWindow : Window
         public string ViewName { get; init; } = "";
         public ViewInvestigationStatus Status { get; init; }
         public string StatusText => Status.ToString();
-        public int TriageCount { get; init; }
+        public int StillOpenCount { get; init; }
         public int ConfirmedCount { get; init; }
         public int ManualReviewCount { get; init; }
     }

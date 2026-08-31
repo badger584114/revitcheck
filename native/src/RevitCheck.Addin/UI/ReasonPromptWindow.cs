@@ -65,7 +65,12 @@ internal sealed class ReasonPromptWindow : Window
         };
         var ok = new Button
         {
-            Content = "Dismiss",
+            // "Dismiss" read as confusing at the real Revit machine,
+            // 2026-08-31 - "OK" is the plain, unambiguous confirm action;
+            // the dismissal itself already happened by getting to this
+            // dialog, this button just confirms/cancels providing a reason
+            // for it.
+            Content = "OK",
             Padding = new Thickness(10, 4, 10, 4),
             Margin = new Thickness(0, 0, 8, 0),
             IsDefault = true,
