@@ -417,6 +417,37 @@ choice.
 > whole time — this was purely an Addin-side display bug, which is why it
 > slipped past 324 passing Core tests and only surfaced on the real
 > machine.
+>
+> **PLANNING.md §16 update (2026-08-31, same day): confirmed fixed, via a
+> real diagnostic rather than a fourth guess.** A re-test reported "Mark
+> Resolved still doesn't work" even after the fix above. A temporary
+> diagnostic (removed the same day) showed the real session state right
+> after a click — dimension 6019961 (the confirmed real outlier from §14,
+> a setout-point-marker dimension) was correctly recorded, and the raw
+> `StillOpenTriage` list held only 2 issues, neither of them 6019961.
+> **Confirmed directly by the user: the row disappeared the moment the
+> dialog closed.** The earlier fix was correct all along — the report was
+> from a test pass that predated it reaching a rebuilt, redeployed binary.
+>
+> **PLANNING.md §16 correction (2026-08-31, later the same day): a real,
+> distinct bug, continuing the same real testing session.** "Needs Manual
+> Review items are still not cleared after marking them resolved" — a
+> Core-level bug this time, not a display one.
+> `CheckingSession.RecordInvestigation`'s dimension-linked path only ever
+> *appended* to `InvestigationIssues`, never removed a stale entry — so an
+> automated check's old `manual_review` flag for a dimension kept showing
+> forever, even after a human selected it and clicked Mark Resolved
+> (correctly calling `RecordInvestigation` with an empty issue list for
+> that id — "clean" had nothing to overwrite the stale entry with, since
+> nothing ever removed it). Fixed: recording a verdict for an id now
+> removes any existing entry for that same id first — the latest call
+> always wins. Two new regression tests, 326 Core tests passing (324 + 2
+> new). The third real bug found in the manual-verdict feature across
+> three consecutive real-machine runs the same day — CLAUDE.md's own
+> "assume nothing is trustworthy" applies most literally here: an
+> accumulate-only list looks correct by inspection every time, because
+> "clean" reads as an obviously-safe no-op unless you specifically ask
+> what happens to whatever was already recorded for that same id.
 
 Two categories of check:
 
