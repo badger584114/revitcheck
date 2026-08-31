@@ -331,6 +331,26 @@ choice.
 > changes. Needs one more real run — the fourth real bug found and fixed
 > in this one check's schedule-reading path in a single day. See
 > PLANNING.md §16 for the full detail.
+>
+> **PLANNING.md §16 update (2026-08-31): confirmed clean — Pile
+> Model/Schedule is done, Stage 2 is complete.** Real re-run: 0 issues,
+> 43 piles in view, 62 schedules checked, both real candidate schedules
+> matched (19+24=43 rows). `PositionCheck` now shows the schedule's
+> parsed Easting/Northing landing exactly on the pile's own live
+> `GetProjectPosition` value (278198410.59mm/6130233357.011mm, both
+> sides) — the `AsDouble()` units fix holds on real data, no more 1000×
+> scaling. Both real magnitudes also land in the ~278,000mE/6,129,000mN
+> neighbourhood §5/§14 already established for this client's Survey
+> Point convention. **Both pile commands are now real, validated ribbon
+> buttons — the fourth-and-final bug in this check's schedule-reading
+> path is closed, and PLANNING.md §16's Stage-3 gate ("validate both on
+> the real Revit machine before starting Stage 3") is satisfied.** Per
+> the user's own framing (2026-08-31): piles are the first, easiest
+> element type this tool checks, not the whole scope — the same
+> per-element-type pattern (its own investigation check, its own ribbon
+> button, folded into the same checklist/session workflow) is expected
+> to repeat for deck/abutments and, later, retaining walls, once a real
+> sample exists for either (see "Next" below).
 
 Two categories of check:
 
@@ -514,7 +534,7 @@ this file is the one still worth keeping.
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. Always reports how much was checkable. |
 | `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
 | `revitcheck.metadata_reconciliation` | Native add-in only (no Python equivalent) — joins captured model elements to an external reference CSV via a per-run-chosen mapping file, flags missing/mismatched fields. Built, wired to a real ribbon button, deployed, and calibrated against two real reference tables on a real model — see PLANNING.md §13. |
-| `revitcheck.pile_model_schedule_consistency` | Native add-in, Core-side built and tested 2026-08-26; ribbon button (`PileModelScheduleConsistencyCommand`) built 2026-08-28, view-scoped and schedule-read-narrowed the same day; a real re-run diagnosed the remaining error as a `TransactionMode.ReadOnly` conflict with `ViewSchedule.GetCellText` (fixed via `TransactionMode.Manual` + a rolled-back `Transaction`) — not yet confirmed clean on a re-run. Compares each pile's own LIVE position (`ElementMetadata.ProjectPositionEastingMm`/`NorthingMm`, populated by a `GetProjectPosition` call — `RevitMetadataElementSource`'s opt-in `populateLivePosition` flag) against its live pile schedule row (joined via `DIT_SiteID`, read by the new `Adapters/RevitScheduleSource.cs`) — the "model-vs-schedule" half of the two pile checks named in PLANNING.md §14, catching a pile moved in the model without the schedule's Dynamo script being rerun. Deliberately does NOT compare against `XYZ_Easting`/`XYZ_Northing` — those are Dynamo-written from the same insertion point the schedule reads, so they're the value being audited, not an independent check on it (a real design bug caught and fixed same-day, see PLANNING.md §14). See PLANNING.md §16 and native/README.md. |
+| `revitcheck.pile_model_schedule_consistency` | Native add-in, Core-side built and tested 2026-08-26; ribbon button (`PileModelScheduleConsistencyCommand`) built 2026-08-28, view-scoped and schedule-read-narrowed the same day. **Fully validated on a real machine run, 2026-08-31**: 43 piles, 62 schedules checked, 2 real candidate schedules matched, 0 issues — the schedule's parsed Easting/Northing lands exactly on the pile's own live `GetProjectPosition` value, confirming the `AsDouble()` units fix (the fourth and last of four real bugs found in this check's schedule-reading path) holds on real data. Compares each pile's own LIVE position (`ElementMetadata.ProjectPositionEastingMm`/`NorthingMm`, populated by a `GetProjectPosition` call — `RevitMetadataElementSource`'s opt-in `populateLivePosition` flag) against its live pile schedule row (joined via `DIT_SiteID`, read by the new `Adapters/RevitScheduleSource.cs`) — the "model-vs-schedule" half of the two pile checks named in PLANNING.md §14, catching a pile moved in the model without the schedule's Dynamo script being rerun. Deliberately does NOT compare against `XYZ_Easting`/`XYZ_Northing` — those are Dynamo-written from the same insertion point the schedule reads, so they're the value being audited, not an independent check on it (a real design bug caught and fixed same-day, see PLANNING.md §14). See PLANNING.md §16 and native/README.md. |
 | `revitcheck.pile_chain_bearing_consistency` | Native add-in, Core-side built and tested 2026-08-26; ribbon button (`PileChainBearingConsistencyCommand`) built 2026-08-28, view-scoped the same day. **Fully validated on a real machine run, 2026-08-28**: 43 piles, 46 dimensions (the exact figure already on record from a manual diagnostic run on this same view), 31 text notes, 0 issues. Reconstructs each real pile chain's own bearing from live model geometry (`Checks/PileChainReconstruction.cs`, tag-to-pile proximity matching) and compares it against the drafted bearing call nearest to it — validated end-to-end against real data: all 4 real chains reconstructed from a real pile-layout view matched their real printed bearing call to within a third of an arcsecond. A simpler, stronger mechanism than the originally-planned drawing-vs-schedule §5b DXF-chain-walk port — no dimension-chain traversal or witness-point matching needed. See PLANNING.md §16 and native/README.md. |
 
 **Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
@@ -595,7 +615,7 @@ Notes worth not rediscovering:
 
 ## Next
 
-**The actual current frontier: the interactive checking workflow tying triage → investigation → reconciliation → BCF export together, designed 2026-08-26, not yet built.** Full plan at `~/.claude/plans/an-idea-of-how-floating-peacock.md` — read it before starting, don't re-derive it; §16 above has the headline points. Start with Stage 1 (pure Core, testable off-Revit today) and Stage 2 (the two pile checks' first real Addin commands — they don't exist as buttons yet, and are worth building regardless of the rest of this feature).
+**The actual current frontier: the interactive checking workflow tying triage → investigation → reconciliation → BCF export together, designed 2026-08-26, not yet built.** Full plan at `~/.claude/plans/an-idea-of-how-floating-peacock.md` — read it before starting, don't re-derive it; §16 above has the headline points. **Stage 1 (pure Core) and Stage 2 (the two pile checks' first real Addin commands) are both done and validated on the real Revit machine as of 2026-08-31** — Stage 3 (the checklist window, session persistence, combined `DimensionTriageCommand`) is next. Piles are this tool's first, easiest element type, not its whole scope — the same per-element-type pattern (own investigation check, own ribbon button, same checklist/session workflow) is expected to repeat for deck/abutments and retaining walls once a real sample exists for either — see "Also open" below.
 
 **The native add-in's metadata-reconciliation path is done, deployed,
 and calibrated against real data (2026-08-24, PLANNING.md §13) — this is
