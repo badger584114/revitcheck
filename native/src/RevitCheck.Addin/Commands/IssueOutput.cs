@@ -1,7 +1,9 @@
 using System.IO;
+using System.Text.Json;
 using Autodesk.Revit.DB;
 using Microsoft.Win32;
 using RevitCheck.Core.Issues;
+using RevitCheck.Core.Json;
 using RevitCheck.Core.Reporting;
 
 namespace RevitCheck.Addin.Commands;
@@ -105,6 +107,57 @@ internal static class IssueOutput
         }
 
         return written;
+    }
+
+    private static readonly JsonSerializerOptions ManualResolutionOptions = new()
+    {
+        PropertyNamingPolicy = SnakeCaseLowerNamingPolicy.Instance,
+        WriteIndented = true,
+    };
+
+    /// <summary>
+    /// Writes JSON+CSV for a second issue list alongside whatever
+    /// <see cref="WriteNextToModel"/>'s dialog already wrote for the
+    /// primary list - added for the checklist window's Export Reconciled
+    /// BCF button (PLANNING.md §16 Stage 3), which needs to write
+    /// confirmed problems (BCF+JSON+CSV, via <see cref="WriteNextToModel"/>)
+    /// plus manual-review and still-open-triage items (JSON+CSV only, per
+    /// this class's own <c>writeBcf</c> remarks) without a second/third
+    /// save dialog interrupting the export. Names the sibling
+    /// <c>{stem}.{kind}.json</c>/<c>.csv</c>, same convention
+    /// <see cref="WriteNextToModel"/> already uses for its own BCF
+    /// siblings.
+    /// </summary>
+    public static void WriteSibling(string primaryJsonPath, List<Issue> issues, string kind)
+    {
+        var directory = Path.GetDirectoryName(primaryJsonPath) ?? Path.GetTempPath();
+        var stem = Path.GetFileNameWithoutExtension(primaryJsonPath);
+        IssueJsonWriter.Write(issues, Path.Combine(directory, $"{stem}.{kind}.json"));
+        IssueCsvWriter.Write(issues, Path.Combine(directory, $"{stem}.{kind}.csv"));
+    }
+
+    /// <summary>
+    /// The manual-dismissal audit trail (<c>CheckingSession.ExportableManualResolutions</c>)
+    /// alongside the primary export - CLAUDE.md's "a rule must say how it
+    /// reached its conclusion" applies just as much to a human's own
+    /// dismissal as to an automated check's finding. Never BCF (nothing
+    /// was found, a human judged the view out of scope) and not an
+    /// <see cref="Issue"/> list, so this writes its own small JSON rather
+    /// than reusing <see cref="WriteSibling"/>. A no-op if there's nothing
+    /// to write - an empty audit file next to a real export would read as
+    /// "checked, found nothing" rather than "nobody used this feature".
+    /// </summary>
+    public static void WriteManualResolutionsSibling(string primaryJsonPath, List<ManualResolutionRecord> records)
+    {
+        if (records.Count == 0)
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(primaryJsonPath) ?? Path.GetTempPath();
+        var stem = Path.GetFileNameWithoutExtension(primaryJsonPath);
+        var json = JsonSerializer.Serialize(new { count = records.Count, resolutions = records }, ManualResolutionOptions);
+        File.WriteAllText(Path.Combine(directory, $"{stem}.manual_resolutions.json"), json);
     }
 
     private static string? TryReadTitle(Document doc)

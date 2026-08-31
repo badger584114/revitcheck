@@ -41,9 +41,33 @@ public static class PileChainBearingConsistencyCheck
 {
     public const string RuleId = "revitcheck.pile_chain_bearing_consistency";
 
-    public static List<Issue> Run(RevitModel model, RuleConfig config)
+    public static List<Issue> Run(RevitModel model, RuleConfig config) => RunWithScope(model, config).Issues;
+
+    /// <summary>
+    /// Same as <see cref="Run"/>, but also returns every dimension
+    /// ElementId this check actually reached a bearing verdict for - a
+    /// chain long enough to evaluate (<see cref="RuleConfig.PileChainMinimumPiles"/>),
+    /// whether it turned out clean or flagged. A chain too short to
+    /// evaluate, or an ambiguous/branching component, is deliberately NOT
+    /// included - this check never reached a real verdict on those
+    /// dimensions, so marking them "investigated" would be a false claim
+    /// of coverage, not an honest one.
+    /// </summary>
+    /// <remarks>
+    /// Added for the interactive checking session (PLANNING.md §16 Stage
+    /// 3): <c>InvestigationReconciliation.Reconcile</c> needs an
+    /// investigation check's examined-dimension scope kept separate from
+    /// its issues (see that class's own remarks on why "not in the issue
+    /// list" can never mean "confirmed clean" on its own) - before this,
+    /// nothing in this check exposed that scope at all, only its findings.
+    /// <see cref="Run"/> itself is unchanged and stays the right entry
+    /// point for the standalone ribbon button, which doesn't need the
+    /// scope.
+    /// </remarks>
+    public static (List<Issue> Issues, List<long> InvestigatedDimensionElementIds) RunWithScope(RevitModel model, RuleConfig config)
     {
         var issues = new List<Issue>();
+        var investigated = new List<long>();
 
         var piles = model.Elements
             .Where(e => string.Equals(e.Category, config.PileCategoryName, StringComparison.OrdinalIgnoreCase))
@@ -59,7 +83,7 @@ public static class PileChainBearingConsistencyCheck
                 Description =
                     $"No captured elements have category '{config.PileCategoryName}' - no pile chains could be reconstructed.",
             });
-            return issues;
+            return (issues, investigated);
         }
 
         var notes = model.TextNotes
@@ -92,10 +116,11 @@ public static class PileChainBearingConsistencyCheck
                 continue;
             }
 
+            investigated.AddRange(chain.DimensionElementIds);
             EvaluateChain(chain, notes, config, issues);
         }
 
-        return issues;
+        return (issues, investigated);
     }
 
     private static void EvaluateChain(
