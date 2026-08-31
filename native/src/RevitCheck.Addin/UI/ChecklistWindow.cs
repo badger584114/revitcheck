@@ -535,6 +535,25 @@ internal sealed class ChecklistWindow : Window
                 "RevitCheck", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
+        // Temporary diagnostic, 2026-08-31 - real user report: "Mark
+        // Resolved" doesn't work on Still Open Triage entries even after
+        // the display-filter fix, and re-reading the code found no further
+        // bug. Same discipline as InspectPileSetout/ScheduleDiagnostics
+        // elsewhere in this codebase: show the real data rather than guess
+        // a third time. Remove once the real cause is found.
+        var diagEntry = session.FindView(viewId);
+        if (diagEntry is not null)
+        {
+            var stillOpenDump = string.Join("\n", diagEntry.LastReconciliation.StillOpenTriage.Select(i =>
+                $"  - element={i.ElementId?.ToString() ?? "(null)"} rule={i.RuleId} scope={(i.SuggestedFix is { } f && f.TryGetValue("scope", out var s) ? s : "(none)")}"));
+            MessageBox.Show(this,
+                $"DIAGNOSTIC\nSubmitted id(s): {string.Join(", ", elementIds)}\n" +
+                $"InvestigatedElementIds now has {diagEntry.InvestigatedElementIds.Count} entries, contains submitted: " +
+                $"{elementIds.All(diagEntry.InvestigatedElementIds.Contains)}\n" +
+                $"StillOpenTriage now has {diagEntry.LastReconciliation.StillOpenTriage.Count} raw issue(s):\n{stillOpenDump}",
+                "RevitCheck - diagnostic (temporary)", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         Refresh();
     }
 
