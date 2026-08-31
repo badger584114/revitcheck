@@ -178,4 +178,76 @@ public class PileChainBearingConsistencyCheckTests
 
         Assert.Empty(issues);
     }
+
+    [Fact]
+    public void RunWithScope_reports_an_evaluated_chains_dimension_as_investigated_whether_clean_or_flagged()
+    {
+        var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000); // due north, 0deg
+        var dim = RevitCheckTestBuilders.PileChainDimension(
+            100, 1,
+            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
+            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        // Printed 90deg - a real disagreement, so this chain gets flagged,
+        // not clean. RunWithScope should still count its dimension as
+        // investigated - a verdict was reached, whether or not it passed.
+        var note = RevitCheckTestBuilders.TextNote(300, 1, "90° 00' 00\"", RevitCheckTestBuilders.Pt(50, 500));
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pileA, pileB }, dimensions: new[] { dim }, textNotes: new[] { note });
+
+        var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        Assert.Single(issues);
+        Assert.Equal(new[] { 100L }, investigated);
+    }
+
+    [Fact]
+    public void RunWithScope_excludes_a_chain_too_short_to_evaluate_from_the_investigated_scope()
+    {
+        var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var dim = RevitCheckTestBuilders.PileChainDimension(
+            100, 1,
+            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
+            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        var model = RevitCheckTestBuilders.Model(elements: new[] { pileA, pileB }, dimensions: new[] { dim });
+
+        var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig { PileChainMinimumPiles = 3 });
+
+        Assert.Empty(issues);
+        // This check never reached a verdict on dimension 100 - it must
+        // not be claimed as investigated, or a real triage finding on it
+        // would silently reconcile as clean.
+        Assert.Empty(investigated);
+    }
+
+    [Fact]
+    public void RunWithScope_excludes_an_ambiguous_branched_components_dimensions_from_the_investigated_scope()
+    {
+        var hub = RevitCheckTestBuilders.Pile(1, "HUB", 0, 0);
+        var a = RevitCheckTestBuilders.Pile(2, "A", 0, 1000);
+        var b = RevitCheckTestBuilders.Pile(3, "B", 1000, 0);
+        var c = RevitCheckTestBuilders.Pile(4, "C", 0, -1000);
+
+        var dims = new[]
+        {
+            RevitCheckTestBuilders.PileChainDimension(101, 1,
+                RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 0)),
+                RevitCheckTestBuilders.TagRef(202, RevitCheckTestBuilders.Pt(0, 1000))),
+            RevitCheckTestBuilders.PileChainDimension(102, 1,
+                RevitCheckTestBuilders.TagRef(203, RevitCheckTestBuilders.Pt(0, 0)),
+                RevitCheckTestBuilders.TagRef(204, RevitCheckTestBuilders.Pt(1000, 0))),
+            RevitCheckTestBuilders.PileChainDimension(103, 1,
+                RevitCheckTestBuilders.TagRef(205, RevitCheckTestBuilders.Pt(0, 0)),
+                RevitCheckTestBuilders.TagRef(206, RevitCheckTestBuilders.Pt(0, -1000))),
+        };
+
+        var model = RevitCheckTestBuilders.Model(elements: new[] { hub, a, b, c }, dimensions: dims);
+
+        var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        Assert.Single(issues);
+        Assert.Empty(investigated);
+    }
 }

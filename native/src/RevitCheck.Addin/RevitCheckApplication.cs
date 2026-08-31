@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Windows.Media.Imaging;
 using Autodesk.Revit.UI;
 using RevitCheck.Addin.Commands;
+using RevitCheck.Addin.UI;
 
 namespace RevitCheck.Addin;
 
@@ -15,7 +16,9 @@ namespace RevitCheck.Addin;
 /// adapter existed to back them (PLANNING.md §14); the two pile-check
 /// buttons were added once their own adapter work (live project position,
 /// per-reference LocalPoint, TextNotes, schedule reading) was built
-/// (PLANNING.md §16 Stage 2).
+/// (PLANNING.md §16 Stage 2). The two dimension buttons were replaced by
+/// one combined Dimension Triage button, and the pile buttons gained
+/// dual-mode session integration, in PLANNING.md §16 Stage 3.
 /// </summary>
 public class RevitCheckApplication : IExternalApplication
 {
@@ -24,6 +27,11 @@ public class RevitCheckApplication : IExternalApplication
 
     public Result OnStartup(UIControlledApplication application)
     {
+        // Constructs the checklist window's two ExternalEvent/handler
+        // pairs once, here - a valid API context, and the only place they
+        // need to be created (see RevitCheckExternalEvents' own remarks).
+        RevitCheckExternalEvents.Initialize();
+
         try
         {
             application.CreateRibbonTab(TabName);
@@ -41,12 +49,10 @@ public class RevitCheckApplication : IExternalApplication
 
         // Left-to-right order matches the order someone actually runs
         // things in, confirmed with the user 2026-08-24: capture first
-        // (the dev-loop snapshot), then the dimension checks, then
-        // metadata/data reconciliation last. The two pile checks (added
-        // PLANNING.md §16 Stage 2) sit between the dimension checks and
-        // metadata reconciliation - matching the final ribbon order Stage 3
-        // is planned to leave in place once Dimension Provenance/Overrides
-        // are replaced by one combined Dimension Triage button.
+        // (the dev-loop snapshot), then triage, then the two pile
+        // investigation checks, then metadata/data reconciliation last -
+        // the final order PLANNING.md §16 Stage 3 named, now that Dimension
+        // Provenance/Overrides are one combined Dimension Triage button.
         var captureButton = new PushButtonData(
             "RevitCheck.CaptureModel",
             "Capture\nModel",
@@ -64,34 +70,24 @@ public class RevitCheckApplication : IExternalApplication
 
         panel.AddItem(captureButton);
 
-        var dimensionProvenanceButton = new PushButtonData(
-            "RevitCheck.DimensionProvenance",
-            "Dimension\nProvenance",
+        var dimensionTriageButton = new PushButtonData(
+            "RevitCheck.DimensionTriage",
+            "Dimension\nTriage",
             assemblyPath,
-            typeof(DimensionProvenanceCommand).FullName)
+            typeof(DimensionTriageCommand).FullName)
         {
-            ToolTip = "For each dimension, do its references resolve to model geometry, a datum, " +
-                      "or view-specific linework? Reports triage, not verdicts - which dimensions " +
-                      "can't be trusted to track the model, not whether any specific one is wrong.",
+            ToolTip = "Runs Dimension Provenance and Dimension Overrides together and opens a " +
+                      "checklist you cycle through view by view: open a flagged view, run the " +
+                      "relevant pile check while it's active, and its dimensions get marked " +
+                      "resolved/flagged automatically. Reports triage, not verdicts, until an " +
+                      "investigation check has actually looked at a given dimension.",
         };
 
-        SetIcons(dimensionProvenanceButton, "DimensionProvenance");
+        // Reuses the existing DimensionProvenance icon - no dedicated
+        // DimensionTriage icon exists yet (cosmetic, not blocking).
+        SetIcons(dimensionTriageButton, "DimensionProvenance");
 
-        panel.AddItem(dimensionProvenanceButton);
-
-        var dimensionOverridesButton = new PushButtonData(
-            "RevitCheck.DimensionOverrideConsistency",
-            "Dimension\nOverrides",
-            assemblyPath,
-            typeof(DimensionOverrideConsistencyCommand).FullName)
-        {
-            ToolTip = "Where a drafter typed over the measured value, is the difference explainable " +
-                      "as rounding to a sensible grid? Always reports how much was checkable.",
-        };
-
-        SetIcons(dimensionOverridesButton, "DimensionOverrides");
-
-        panel.AddItem(dimensionOverridesButton);
+        panel.AddItem(dimensionTriageButton);
 
         var pileModelScheduleButton = new PushButtonData(
             "RevitCheck.PileModelScheduleConsistency",

@@ -4,6 +4,7 @@ using Autodesk.Revit.UI;
 using RevitCheck.Addin.Adapters;
 using RevitCheck.Core.Checks;
 using RevitCheck.Core.Ir;
+using RevitCheck.Core.Issues;
 using RevitCheck.Core.Reporting;
 
 namespace RevitCheck.Addin.Commands;
@@ -13,16 +14,22 @@ namespace RevitCheck.Addin.Commands;
 /// Revit document - the second real ribbon button for either pile check
 /// (PLANNING.md §16 Stage 2; the Core-side check itself, including the
 /// end-to-end real-data validation against a real pile-layout view, was
-/// built and tested 2026-08-26, PLANNING.md §14). Standalone - see
-/// <see cref="PileModelScheduleConsistencyCommand"/>'s own remarks on what
-/// that means and what Stage 3 will later add.
+/// built and tested 2026-08-26, PLANNING.md §14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>writeBcf: true</c> - same reasoning as
-/// <see cref="PileModelScheduleConsistencyCommand"/>: reconstructing a
-/// chain's real bearing from live geometry and comparing it to the drafted
-/// call is already a verdict, not a triage candidate.
+/// <b>Dual-mode, added PLANNING.md §16 Stage 3.</b> If
+/// <see cref="CheckingSessionHost.Session"/> is null, this command writes
+/// results directly - the original, standalone behaviour, same shape as
+/// <see cref="MetadataReconciliationCommand"/>, <c>writeBcf: true</c>
+/// (this check's findings are already verdicts, not triage - a pile
+/// chain's reconstructed bearing either agrees with the drafted call or it
+/// doesn't). If a session is active, results are routed into it instead
+/// via <see cref="CheckingSession.RecordInvestigation"/> - see that
+/// method's own remarks for the dimension-linked shape this check uses,
+/// and <see cref="InvestigationReconciliation.ExpandByElementIdList"/>'s
+/// remarks for why expansion has to happen first (a real correctness bug
+/// found and designed around before any code was written).
 /// </para>
 /// <para>
 /// <b>Scoped to the active view, not the whole document - a real bug fixed
@@ -106,13 +113,54 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
             ExcludedWorksets = dims.ExcludedWorksets,
         };
 
-        var issues = PileChainBearingConsistencyCheck.Run(model, config);
+        var (issues, investigatedDimensionIds) = PileChainBearingConsistencyCheck.RunWithScope(model, config);
 
         var summary = $"{issues.Count} issue(s) found ({piles.Elements.Count} pile(s), {dims.Dimensions.Count} dimension(s), " +
             $"{dims.TextNotes.Count} text note(s) in view '{activeView.Name}' checked)" +
             (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
             "." +
             ExtractionErrorSample.Format(model.ExtractionErrors);
+
+        if (CheckingSessionHost.Session is { } session)
+        {
+            var viewId = activeView.Id.Value;
+            var viewInfo = dims.Views.FirstOrDefault(v => v.ElementId == viewId);
+            // Expand each chain-keyed issue into one copy per dimension id
+            // first - the whole reason ExpandByElementIdList exists (see
+            // its own remarks): a flagged chain's issue carries
+            // ElementId = <a pile>, not a dimension, so feeding it to
+            // RecordInvestigation unexpanded would silently reconcile the
+            // affected dimensions as clean. Each expanded copy's
+            // ViewId/ViewName/SheetNo are patched in from the view this
+            // command already has in hand - ExpandByElementIdList's own
+            // remarks flag this as the known gap a per-view caller should
+            // close, since PileChainBearingConsistencyCheck never sets
+            // them itself (a whole-model check has no view of its own).
+            var expanded = InvestigationReconciliation.ExpandByElementIdList(issues, "dimension_element_ids")
+                .Select(i => PatchViewContext(i, viewId, activeView.Name, viewInfo?.SheetNo))
+                .ToList();
+
+            session.RecordInvestigation(viewId, investigatedDimensionIds, expanded);
+
+            var sessionNote = session.FindView(viewId) is not null
+                ? "\n\nRecorded against the active checking session - see the checklist window."
+                : "\n\nNo checklist row exists yet for this view (Dimension Triage found nothing to flag " +
+                  "here), so these results were not recorded in the session - informational only.";
+
+            try
+            {
+                CheckingSessionHost.Autosave();
+            }
+            catch (Exception ex)
+            {
+                sessionNote += $"\n\nThe session could not be saved to disk:\n\n{ExceptionMessage.Full(ex)}";
+            }
+
+            CheckingSessionHost.Window?.Refresh();
+
+            TaskDialog.Show("RevitCheck - Pile Chain Bearing", summary + sessionNote);
+            return Result.Succeeded;
+        }
 
         string? outputPath;
         try
@@ -136,5 +184,34 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
             $"{summary}\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
 
         return Result.Succeeded;
+    }
+
+    /// <summary>
+    /// Fills in <see cref="Issue.ViewId"/>/<see cref="Issue.ViewName"/>/
+    /// <see cref="Issue.SheetNo"/> from the active view this command
+    /// already knows, only if the issue doesn't already carry one -
+    /// <see cref="InvestigationReconciliation.ExpandByElementIdList"/>'s
+    /// own remarks name exactly this gap and exactly this fix.
+    /// </summary>
+    private static Issue PatchViewContext(Issue issue, long viewId, string? viewName, string? sheetNo)
+    {
+        if (issue.ViewId is not null)
+        {
+            return issue;
+        }
+
+        return new Issue
+        {
+            RuleId = issue.RuleId,
+            Category = issue.Category,
+            Description = issue.Description,
+            Severity = issue.Severity,
+            ElementId = issue.ElementId,
+            ViewId = viewId,
+            ViewName = viewName,
+            SheetNo = sheetNo,
+            SuggestedFix = issue.SuggestedFix,
+            UniqueId = issue.UniqueId,
+        };
     }
 }

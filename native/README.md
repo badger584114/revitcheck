@@ -861,6 +861,79 @@ anywhere in this codebase yet (still Stage 3's job).
   "rows were captured but ids don't textually match" without dumping real
   coordinates into a dialog. `dotnet build` clean. **Needs one more real
   run.**
+- **Confirmed clean, 2026-08-31 - Pile Model/Schedule is done, Stage 2 is
+  complete.** Real re-run: 0 issues, 43 piles in view, 62 schedules
+  checked, both real candidate schedules matched (19+24=43 rows).
+  `PositionCheck` shows the schedule's parsed Easting/Northing landing
+  exactly on the pile's own live `GetProjectPosition` value - the
+  `AsDouble()` units fix (the fourth and final real bug in this check's
+  schedule-reading path) holds on real data. Both pile commands are now
+  real, validated ribbon buttons. See PLANNING.md §16 for the full detail.
+
+### Interactive checking workflow (PLANNING.md §16 Stage 3) - built, not yet run on the Revit machine
+
+Everything named in Stage 3's design (`~/.claude/plans/an-idea-of-how-floating-peacock.md`)
+is built and passing `dotnet build`/`dotnet test` (316 Core tests, up from
+313) as of 2026-08-31:
+
+- **`Addin/CheckingSessionHost.cs`** (new) - the first cross-command static
+  state in this codebase: the live `CheckingSession`, the live
+  `ChecklistWindow` if one is open, and a fixed per-document session file
+  path under `%LOCALAPPDATA%\RevitCheck\Sessions\`.
+- **`Commands/DimensionProvenanceCommand.cs`/`DimensionOverrideConsistencyCommand.cs`
+  deleted, replaced by `Commands/DimensionTriageCommand.cs`** - runs both
+  underlying (unchanged) Core checks, offers to resume a saved session for
+  this document (a `TaskDialog` with Resume/Start Fresh - resuming is
+  deliberately NOT re-validated against the current model state, a real,
+  named limitation, not a silently glossed-over one) or builds a fresh
+  `CheckingSession.Start(...)`, autosaves, then shows/activates the
+  checklist window.
+- **`UI/ChecklistWindow.cs`** (new) - code-behind-only `System.Windows.Window`,
+  no `.xaml`, no `UseWPF`/SDK change (the Addin project already references
+  `PresentationCore`/`PresentationFramework`/`WindowsBase` directly for
+  `SaveFileDialog`/`BitmapImage`, which is all a code-only WPF window
+  needs). Rows grouped by sheet, showing status and triage/confirmed/
+  manual-review counts; "Open View" and "Mark Selected Resolved..." act on
+  the current `ListView` selection rather than embedding a button in every
+  row (avoids building a `DataTemplate` via `FrameworkElementFactory` in
+  code, unverifiable without the Revit machine); `Refresh()` rebuilds every
+  row wholesale from `CheckingSessionHost.Session`, no data-binding/
+  ViewModel infrastructure. `UI/ReasonPromptWindow.cs` is the small
+  second window "Mark Selected Resolved..." shows for an optional dismissal
+  reason.
+- **`UI/RevitCheckExternalEvents.cs`, `UI/OpenViewExternalEventHandler.cs`,
+  `UI/ExportReconciledBcfExternalEventHandler.cs`** (new) - the standard
+  `ExternalEvent`/`IExternalEventHandler` pattern the checklist window's
+  own Open View/Export buttons need for any Revit API call (new to this
+  codebase - every command before Stage 3 runs entirely inside its own
+  `Execute()`, with no modeless window calling back into the API). "Mark
+  Selected Resolved..." needs none of this - it's a pure `CheckingSession`
+  mutation plus an autosave and a local `Refresh()`.
+- **Both pile commands went dual-mode.** Standalone (no active session)
+  behaviour is unchanged. With a session active: `PileChainBearingConsistencyCommand`
+  calls a new `PileChainBearingConsistencyCheck.RunWithScope` (Core change -
+  returns the investigated-dimension scope alongside the issues, since
+  nothing exposed that before; `Run` itself is unchanged), expands each
+  chain-keyed issue via `InvestigationReconciliation.ExpandByElementIdList`,
+  patches in the active view's id/name/sheet (a known gap that method's own
+  remarks already named), then calls `CheckingSession.RecordInvestigation`.
+  `PileModelScheduleConsistencyCommand` appends its findings to that view's
+  `OtherInvestigationFindings` instead (`otherFindingsRuleId` path) - it
+  "stands alone", no dimension linkage to reconcile.
+- **`Commands/IssueOutput.cs` gained `WriteSibling`/`WriteManualResolutionsSibling`** -
+  lets the Export Reconciled BCF handler write confirmed problems
+  (BCF+JSON+CSV, one save dialog) plus manual-review/still-open-triage
+  (JSON+CSV) and the manual-dismissal audit trail (JSON) alongside it
+  without a second/third dialog interrupting the export.
+
+**Not yet run on the Revit machine** - Stage 4 (PLANNING.md §16) is the
+real-machine validation of the full cycle: open the checklist, open a
+flagged view via its own button, run a pile check while it's active and
+confirm the row updates live, bulk-dismiss a real construction-sequence
+sheet, close and reopen Revit mid-cycle to confirm resume works, export and
+confirm the BCF round-trips through Forma with only confirmed problems in
+it. Every real correction in this document so far came from exactly this
+kind of run, not from guessing ahead of one - same discipline applies here.
 
 ### Former open questions - now answered from real data
 

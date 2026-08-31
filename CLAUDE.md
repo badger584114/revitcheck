@@ -351,6 +351,20 @@ choice.
 > button, folded into the same checklist/session workflow) is expected
 > to repeat for deck/abutments and, later, retaining walls, once a real
 > sample exists for either (see "Next" below).
+>
+> **PLANNING.md §16 update (2026-08-31, later the same day): Stage 3
+> built.** `Addin/CheckingSessionHost.cs` (new cross-command state),
+> `Commands/DimensionTriageCommand.cs` (replaces the two old triage
+> commands, deleted; offers Resume/Start Fresh against a saved
+> per-document session), `UI/ChecklistWindow.cs`/`ReasonPromptWindow.cs`
+> (code-behind-only WPF, no XAML/SDK change), `UI/RevitCheckExternalEvents.cs`
+> + its two `IExternalEventHandler`s, and dual-mode changes to both pile
+> commands (`PileChainBearingConsistencyCheck` gained a `RunWithScope`
+> overload exposing its investigated-dimension scope, a real small Core
+> addition `InvestigationReconciliation.Reconcile` needed). `dotnet build`
+> clean across the whole solution, 316 Core tests passing (313 + 3 new).
+> **Not yet run on the Revit machine** — Stage 4 is next, see PLANNING.md
+> §16 for the full validation list.
 
 Two categories of check:
 
@@ -615,7 +629,7 @@ Notes worth not rediscovering:
 
 ## Next
 
-**The actual current frontier: the interactive checking workflow tying triage → investigation → reconciliation → BCF export together, designed 2026-08-26, not yet built.** Full plan at `~/.claude/plans/an-idea-of-how-floating-peacock.md` — read it before starting, don't re-derive it; §16 above has the headline points. **Stage 1 (pure Core) and Stage 2 (the two pile checks' first real Addin commands) are both done and validated on the real Revit machine as of 2026-08-31** — Stage 3 (the checklist window, session persistence, combined `DimensionTriageCommand`) is next. Piles are this tool's first, easiest element type, not its whole scope — the same per-element-type pattern (own investigation check, own ribbon button, same checklist/session workflow) is expected to repeat for deck/abutments and retaining walls once a real sample exists for either — see "Also open" below.
+**The actual current frontier: the interactive checking workflow tying triage → investigation → reconciliation → BCF export together, designed 2026-08-26.** Full plan at `~/.claude/plans/an-idea-of-how-floating-peacock.md` — read it before touching this, don't re-derive it; §16 above has the headline points. **Stages 1-3 are all built** (Stage 1: pure Core, 2026-08-28; Stage 2: the two pile checks' first real Addin commands, validated on the real Revit machine 2026-08-31; Stage 3: `CheckingSessionHost`, the combined `DimensionTriageCommand` replacing the two old triage buttons, the code-behind `ChecklistWindow`/`ReasonPromptWindow`, the `ExternalEvent` scaffold, and dual-mode pile commands, built 2026-08-31, `dotnet build`/`dotnet test` clean — **not yet run on the Revit machine**). **Stage 4 (the real-machine validation of the full cycle) is next** — see PLANNING.md §16's own list of what that run needs to confirm. Piles are this tool's first, easiest element type, not its whole scope — the same per-element-type pattern (own investigation check, own ribbon button, same checklist/session workflow) is expected to repeat for deck/abutments and retaining walls once a real sample exists for either — see "Also open" below.
 
 **The native add-in's metadata-reconciliation path is done, deployed,
 and calibrated against real data (2026-08-24, PLANNING.md §13) — this is

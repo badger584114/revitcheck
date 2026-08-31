@@ -13,19 +13,26 @@ namespace RevitCheck.Addin.Commands;
 /// Wires <c>revitcheck.pile_model_schedule_consistency</c> up to a real
 /// Revit document - the first real ribbon button for either pile check
 /// (PLANNING.md §16 Stage 2; the Core-side check itself was built and
-/// tested 2026-08-26, PLANNING.md §14). Standalone: unlike the interactive
-/// checking workflow's dual-mode session integration (PLANNING.md §16
-/// Stage 3, not yet built), this always writes results directly - same
-/// shape as <see cref="MetadataReconciliationCommand"/>.
+/// tested 2026-08-26, PLANNING.md §14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>writeBcf: true</c> - this check's findings are already verdicts, not
-/// triage (a pile's live position either agrees with its schedule row or it
-/// doesn't), the same reasoning <see cref="MetadataReconciliationCommand"/>
-/// and <c>InvestigationReconciliation</c>'s own remarks already establish
-/// for why this check "stands alone" and should never be routed through
-/// dimension-triage reconciliation.
+/// <b>Dual-mode, added PLANNING.md §16 Stage 3.</b> If
+/// <see cref="CheckingSessionHost.Session"/> is null, this always writes
+/// results directly - the original, standalone behaviour, same shape as
+/// <see cref="MetadataReconciliationCommand"/>, <c>writeBcf: true</c> (this
+/// check's findings are already verdicts, not triage - a pile's live
+/// position either agrees with its schedule row or it doesn't). If a
+/// session is active, results are appended to that view's
+/// <c>OtherInvestigationFindings</c> instead
+/// (<see cref="CheckingSession.RecordInvestigation"/>'s <c>otherFindingsRuleId</c>
+/// path) - this check is keyed on pile ElementIds, not dimension ids, so
+/// it "stands alone": never reconciled against dimension triage (there's
+/// nothing dimension-shaped to reconcile it against), but already a
+/// verdict, so it counts toward the view being <c>Flagged</c> and flows
+/// into the session's own BCF export exactly like a reconciled confirmed
+/// problem does - see <c>ViewChecklistEntry.OtherInvestigationFindings</c>'s
+/// own remarks.
 /// </para>
 /// <para>
 /// <b>Pile collection is scoped to the active view, not the whole
@@ -155,6 +162,37 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             "." +
             ExtractionErrorSample.Format(model.ExtractionErrors) +
             ScheduleDiagnostics(piles.Elements, schedules, config);
+
+        if (CheckingSessionHost.Session is { } session)
+        {
+            var viewId = activeView.Id.Value;
+            // No dimension linkage to expand or reconcile - see this
+            // class's remarks and InvestigationReconciliation's own on why
+            // this check "stands alone". investigatedElementIds is unused
+            // on this path (RecordInvestigation ignores it whenever
+            // otherFindingsRuleId is set), passed empty rather than
+            // recomputed for nothing.
+            session.RecordInvestigation(viewId, Array.Empty<long>(), issues, PileModelScheduleConsistencyCheck.RuleId);
+
+            var sessionNote = session.FindView(viewId) is not null
+                ? "\n\nRecorded against the active checking session - see the checklist window."
+                : "\n\nNo checklist row exists yet for this view (Dimension Triage found nothing to flag " +
+                  "here), so these results were not recorded in the session - informational only.";
+
+            try
+            {
+                CheckingSessionHost.Autosave();
+            }
+            catch (Exception ex)
+            {
+                sessionNote += $"\n\nThe session could not be saved to disk:\n\n{ExceptionMessage.Full(ex)}";
+            }
+
+            CheckingSessionHost.Window?.Refresh();
+
+            TaskDialog.Show("RevitCheck - Pile Model/Schedule", summary + sessionNote);
+            return Result.Succeeded;
+        }
 
         string? outputPath;
         try
