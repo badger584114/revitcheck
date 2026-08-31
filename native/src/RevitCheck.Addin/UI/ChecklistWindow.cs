@@ -417,8 +417,24 @@ internal sealed class ChecklistWindow : Window
         AppendSection(rows, "Confirmed Problem", entry.LastReconciliation.ConfirmedProblems);
         AppendSection(rows, "Other Finding", entry.OtherInvestigationFindings);
         AppendSection(rows, "Needs Manual Review", entry.LastReconciliation.NeedsManualReview);
-        AppendSection(rows, "Still Open Triage",
-            InvestigationReconciliation.ExpandByElementIdList(entry.LastReconciliation.StillOpenTriage, "drafted_dimension_ids"));
+
+        // A partially-investigated rollup stays ONE issue in StillOpenTriage
+        // until every one of its drafted_dimension_ids has a verdict (see
+        // Reconcile's own remarks) - expanding it always re-lists all of
+        // them, including ones a verdict (automated or manual - via
+        // OnMarkDetailVerdictClick) has already been recorded for. A real
+        // bug found on the Revit machine, 2026-08-31: without this filter,
+        // "Mark Selected Issue(s) Resolved" appeared to do nothing at all,
+        // since resolving adds no new row anywhere to counter the same
+        // stale duplicate still showing here. Excluding anything already in
+        // InvestigatedElementIds - whichever source recorded it - is what
+        // makes this list actually shrink as verdicts come in, matching
+        // Reconcile's own "examined" definition rather than only reflecting
+        // the containing rollup's all-or-nothing clearing.
+        var stillOpen = InvestigationReconciliation.ExpandByElementIdList(entry.LastReconciliation.StillOpenTriage, "drafted_dimension_ids")
+            .Where(i => i.ElementId is not { } id || !entry.InvestigatedElementIds.Contains(id))
+            .ToList();
+        AppendSection(rows, "Still Open Triage", stillOpen);
 
         if (entry.ManualResolutionReason is not null)
         {

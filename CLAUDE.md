@@ -400,6 +400,23 @@ choice.
 > `ExpandByElementIdList` before display, so a reviewer always selects a
 > real dimension, never an opaque summary), with two new buttons — Mark
 > Selected Issue(s) Resolved / Confirmed Problem. 324 Core tests passing.
+>
+> **PLANNING.md §16 update (2026-08-31, same day): one more real bug,
+> found running the manual-verdict feature for real — a display-only one,
+> in exactly the layer Core tests can't reach.** "Confirmed Problem"
+> visibly worked; "Resolved" appeared to do nothing. Both were actually
+> recording correctly — the real bug was in `ChecklistWindow.UpdateDetails`:
+> a partially-investigated rollup stays one issue in `StillOpenTriage`
+> until *every* one of its dimensions has a verdict, so re-expanding it
+> for display always re-listed all of them, including ones already given
+> a verdict. "Confirmed" still looked like it worked because it also adds
+> a new row to the Confirmed Problem section; "Resolved" adds no new row
+> anywhere, so the same stale duplicate was the only thing visible. Fixed
+> by filtering the expanded list against `entry.InvestigatedElementIds`
+> before display. Confirms the Core reconciliation logic was correct the
+> whole time — this was purely an Addin-side display bug, which is why it
+> slipped past 324 passing Core tests and only surfaced on the real
+> machine.
 
 Two categories of check:
 
