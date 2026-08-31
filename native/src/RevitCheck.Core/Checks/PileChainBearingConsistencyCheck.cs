@@ -1,6 +1,7 @@
 using System.Globalization;
 using RevitCheck.Core.Ir;
 using RevitCheck.Core.Issues;
+using RevitCheck.Core.Reporting;
 
 namespace RevitCheck.Core.Checks;
 
@@ -93,6 +94,7 @@ public static class PileChainBearingConsistencyCheck
 
         var edges = PileChainReconstruction.BuildEdges(model, piles, config);
         var chainSet = PileChainReconstruction.BuildChains(edges);
+        var edgeDimensionIds = new HashSet<long>(edges.Select(e => e.DimensionElementId));
 
         foreach (var component in chainSet.AmbiguousComponents)
         {
@@ -118,6 +120,44 @@ public static class PileChainBearingConsistencyCheck
 
             investigated.AddRange(chain.DimensionElementIds);
             EvaluateChain(chain, notes, config, issues);
+        }
+
+        // Real dimensions that plausibly belong to a pile chain but didn't
+        // confidently resolve into one - previously silently dropped, see
+        // PileChainReconstruction.IsNearMissPileMatch's own remarks for the
+        // real case this fixes. Reported per-dimension (ElementId is the
+        // dimension itself, not a pile - no ExpandByElementIdList needed by
+        // a caller), and counted as investigated - a human judgement is
+        // still an examination, the same "clean/problem/manual review all
+        // count as examined" rule InvestigationReconciliation already
+        // applies everywhere else.
+        foreach (var dim in model.Dimensions)
+        {
+            if (edgeDimensionIds.Contains(dim.ElementId))
+            {
+                continue;
+            }
+
+            if (!PileChainReconstruction.IsNearMissPileMatch(dim, piles, config))
+            {
+                continue;
+            }
+
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = InvestigationReconciliation.ManualReviewCategory,
+                Severity = "medium",
+                ElementId = dim.ElementId,
+                ViewId = dim.ViewId,
+                UniqueId = dim.UniqueId,
+                Description =
+                    "One reference on this dimension matches a real pile and the other doesn't confidently " +
+                    "match any pile (or both references match the same pile) - it may be dimensioned to a " +
+                    "setout-point marker or similar rather than a genuine pile-to-pile distance. Needs a human " +
+                    "to check against the drawing with this view open, not an automated verdict.",
+            });
+            investigated.Add(dim.ElementId);
         }
 
         return (issues, investigated);
