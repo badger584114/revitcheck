@@ -417,6 +417,20 @@ choice.
 > whole time — this was purely an Addin-side display bug, which is why it
 > slipped past 324 passing Core tests and only surfaced on the real
 > machine.
+>
+> **PLANNING.md §16 update (2026-08-31, same day): confirmed fixed, via a
+> real diagnostic rather than a fourth guess.** A re-test reported "Mark
+> Resolved still doesn't work" even after the fix above. A temporary
+> diagnostic (removed the same day) showed the real session state right
+> after a click — dimension 6019961 (the confirmed real outlier from §14,
+> a setout-point-marker dimension) was correctly recorded, and the raw
+> `StillOpenTriage` list held only 2 issues, neither of them 6019961.
+> **Confirmed directly by the user: the row disappeared the moment the
+> dialog closed.** The earlier fix was correct all along — the report was
+> from a test pass that predated it reaching a rebuilt, redeployed binary.
+> **The interactive checking workflow is now fully confirmed working on
+> real data, including the per-dimension manual-verdict path — nothing
+> outstanding from Stage 4 remains open.**
 
 Two categories of check:
 
