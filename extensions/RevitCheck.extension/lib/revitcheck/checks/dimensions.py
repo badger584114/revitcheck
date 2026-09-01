@@ -247,6 +247,51 @@ def _drafted_severity(view: Optional[ViewInfo], config: RuleConfig) -> str:
     return config.drafted_in_model_view_severity
 
 
+def _overridden_without_stated_limit(dim: DimensionInfo) -> bool:
+    """True when this dimension carries a typed override that is not a
+    stated MIN/MAX limit.
+
+    Applied to both DRAFTED and MIXED verdicts (not UNKNOWN — an
+    unresolvable reference is a coverage gap, unrelated to override
+    content). Both verdicts' real risk is silent drift — the model
+    moves, the linework a dimension measures (all of it for DRAFTED, part
+    of it for MIXED) does not follow, and the two keep agreeing with each
+    other while both go stale (the module docstring's "Case 2"). An
+    override breaks that risk rather than adding to it: once a drafter
+    has typed a fixed value over the dimension, nothing about what is
+    printed comes from live geometry any more, whether that override
+    states a plain rounded value, or blanks the text entirely for a
+    separately placed `TextNote` to cover. Both are real,
+    confirmed-legitimate conventions on this project (2026-09-02,
+    drg-2873061 section 1: dimension 8199083, 114.779mm typed as 115;
+    dimension 9103358, override blanked and covered by a text note) — and
+    both, as it turned out, classify MIXED, not DRAFTED: an "extent of
+    barrier" style dimension anchors one end to real modeled geometry and
+    the other to a drafted witness point marking where the extent is, by
+    its nature, not an accident the way `mixed_provenance_severity`'s
+    original comment assumed. Flagging either as "measures linework, may
+    have drifted" was real, confirmed noise: not wrong, exactly, but
+    nothing is left for a reviewer to check that the dimension's own
+    verdict does not already say.
+
+    The one override that still deserves its own flag is a stated
+    MIN/MAX limit (`500 MIN.`, see `parse_override_bound`) — a real
+    constraint on the built work, worth surfacing regardless of what the
+    dimension measures.
+
+    Forward-references `parse_override_bound`, defined later in this
+    module (the override-consistency half) — fine in Python, resolved at
+    call time, not def time; not moved up so the two rules' code stays
+    grouped by which half of the module they belong to.
+    """
+    overridden_segments = [s for s in dim.segments if s.is_overridden]
+    if not overridden_segments:
+        return False
+    return not any(
+        parse_override_bound(s.value_override) is not None for s in overridden_segments
+    )
+
+
 def _issue_for_dimension(
     dim: DimensionInfo, view: Optional[ViewInfo], verdict: str, config: RuleConfig
 ) -> Optional[Issue]:
@@ -267,6 +312,8 @@ def _issue_for_dimension(
     )
 
     if verdict == Provenance.DRAFTED:
+        if _overridden_without_stated_limit(dim):
+            return None
         if _is_unlinked_drafting_view(view):
             detail = (
                 "{0} in {1} measures detail linework. A drafting view has no "
@@ -292,6 +339,8 @@ def _issue_for_dimension(
         )
 
     if verdict == Provenance.MIXED:
+        if _overridden_without_stated_limit(dim):
+            return None
         return Issue(
             description=(
                 "{0} in {1} measures model geometry at one end and detail "

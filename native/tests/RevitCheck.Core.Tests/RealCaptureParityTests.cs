@@ -24,6 +24,21 @@ namespace RevitCheck.Core.Tests;
 /// the totals). If this test ever fails, that's real - either a genuine
 /// behavioural difference crept into the C# port, or the committed capture
 /// changed, not a flaky test.
+///
+/// Re-verified 2026-09-02 after a real, intentional behaviour change (both
+/// engines, same commit): a Drafted or Mixed dimension carrying a typed
+/// override that is not a stated MIN/MAX limit no longer gets its own
+/// per-dimension <c>revit.dimension_provenance</c> issue - real confirmed
+/// noise on this project (drg-2873061 section 1, dimensions
+/// 8199083/9103358; see <see cref="Checks.DimensionProvenanceCheck"/>'s own
+/// remarks). First landed as Drafted-only (943 total), then real data on
+/// this exact capture showed both real examples classify Mixed, not
+/// Drafted, so the suppression was extended to cover Mixed too. Final
+/// counts: 928 total (894 provenance + 34 unchanged override-consistency,
+/// 855 high / 72 medium / 1 low, 927 geometry + 1 coverage) - the medium
+/// count (Mixed's own severity) is what moved on the second pass, high
+/// unchanged from the Drafted-only pass. The fixture and the numbers below
+/// were regenerated the same way as the original baseline, not hand-edited.
 /// </summary>
 public class RealCaptureParityTests
 {
@@ -65,13 +80,13 @@ public class RealCaptureParityTests
 
         var issues = catalog.RunChecks(model, new[] { DimensionProvenanceCheck.RuleId, DimensionOverrideConsistencyCheck.RuleId });
 
-        Assert.Equal(957, issues.Count);
-        Assert.Equal(923, issues.Count(i => i.RuleId == DimensionProvenanceCheck.RuleId));
+        Assert.Equal(928, issues.Count);
+        Assert.Equal(894, issues.Count(i => i.RuleId == DimensionProvenanceCheck.RuleId));
         Assert.Equal(34, issues.Count(i => i.RuleId == DimensionOverrideConsistencyCheck.RuleId));
-        Assert.Equal(869, issues.Count(i => i.Severity == "high"));
-        Assert.Equal(87, issues.Count(i => i.Severity == "medium"));
+        Assert.Equal(855, issues.Count(i => i.Severity == "high"));
+        Assert.Equal(72, issues.Count(i => i.Severity == "medium"));
         Assert.Equal(1, issues.Count(i => i.Severity == "low"));
-        Assert.Equal(956, issues.Count(i => i.Category == "geometry"));
+        Assert.Equal(927, issues.Count(i => i.Category == "geometry"));
         Assert.Equal(1, issues.Count(i => i.Category == "coverage"));
     }
 

@@ -19,6 +19,12 @@ public sealed class DimensionSegmentInfo
     public string? Prefix { get; init; }
     public string? Suffix { get; init; }
 
+    // Not `!string.IsNullOrEmpty(ValueOverride)` - that reads a
+    // deliberate blank override (an empty string, distinct from null;
+    // see RevitDimensionSource's dedicated ValueOverride reader) as "not
+    // overridden", which is exactly backwards for the real
+    // blank-override-plus-covering-TextNote convention confirmed
+    // 2026-09-02.
     [JsonIgnore]
-    public bool IsOverridden => !string.IsNullOrEmpty(ValueOverride);
+    public bool IsOverridden => ValueOverride is not null;
 }

@@ -131,6 +131,23 @@ class TestWhatIsSkipped:
         assert findings(issues) == []
         assert coverage(issues).suggested_fix["overridden"] == 0
 
+    def test_a_blank_override_still_counts_as_overridden(self, make):
+        # Real Revit convention (2026-09-02, drg-2873061 section 1,
+        # dimension 9103358): a drafter blanks the value and covers it
+        # with a separately placed TextNote. Revit's own real captured
+        # text for this is a single invisible U+200E character, not "" -
+        # exercised here rather than a plain empty string so this test
+        # actually covers the real shape. Must be counted as overridden
+        # (unparsed, not compared) rather than silently treated the same
+        # as a dimension nobody had ever touched.
+        model = one_dimension(make, 1461.1, "‎")
+        issues = check_dimension_override_consistency(model, RuleConfig())
+        assert findings(issues) == []
+        summary = coverage(issues).suggested_fix
+        assert summary["overridden"] == 1
+        assert summary["checked"] == 0
+        assert summary["unparsed"] == 1
+
     def test_a_non_numeric_override_is_counted_not_guessed(self, make):
         model = one_dimension(make, 1150.0, "VARIES")
         issues = check_dimension_override_consistency(model, RuleConfig())

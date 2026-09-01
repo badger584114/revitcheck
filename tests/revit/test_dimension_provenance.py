@@ -239,6 +239,37 @@ class TestRule:
         assert issues[0].sheet_no == "S101"
         assert "detail linework" in issues[0].description
 
+    def test_drafted_dimension_with_a_plain_override_is_not_flagged(self, make):
+        # Real, confirmed noise (2026-09-02, drg-2873061 section 1,
+        # dimension 8199083): once a drafter has typed a fixed value
+        # over the dimension, it can no longer silently drift the way
+        # an unoverridden drafted dimension can, so flagging it as
+        # "may have drifted" is not actionable.
+        dims = [make.dimension(2, 10, [make.drafted_ref()], value_mm=114.779, override="115")]
+        issues = _run(make.model(views=[make.view(10)], dimensions=dims))
+        assert issues == []
+
+    def test_drafted_dimension_with_a_blank_override_is_not_flagged(self, make):
+        # Real convention (2026-09-02, drg-2873061 section 1, dimension
+        # 9103358): a drafter blanks the override and covers it with a
+        # separately placed TextNote. Revit's own real captured text
+        # for this is a single invisible U+200E character, not "" -
+        # exercised here rather than a plain empty string so this test
+        # would have caught the real bug (see is_overridden's own
+        # remarks) if the fix regressed.
+        dims = [make.dimension(2, 10, [make.drafted_ref()], value_mm=1461.1, override="‎")]
+        issues = _run(make.model(views=[make.view(10)], dimensions=dims))
+        assert issues == []
+
+    def test_drafted_dimension_with_a_stated_limit_is_still_flagged(self, make):
+        # The one override that stays actionable: a MIN/MAX limit is a
+        # real constraint on the built work, not a rounded restatement
+        # a human already typed by hand.
+        dims = [make.dimension(2, 10, [make.drafted_ref()], value_mm=480.0, override="500 MIN.")]
+        issues = _run(make.model(views=[make.view(10)], dimensions=dims))
+        assert len(issues) == 1
+        assert issues[0].element_id == 2
+
     def test_unique_id_falls_back_to_the_dimension_when_no_sheet_anchor(self, make):
         # bcf.py's Component AuthoringToolId depends on this surviving
         # the trip from the IR onto the Issue that gets exported. The
@@ -447,6 +478,31 @@ class TestRule:
         assert len(issues) == 1
         assert issues[0].severity == "medium"
         assert issues[0].suggested_fix["drafted_references"] == 1
+
+    def test_mixed_dimension_with_a_plain_override_is_not_flagged(self, make):
+        # Real correction, 2026-09-02: this exact shape (one real modeled
+        # anchor, one drafted witness point) is what an "extent of
+        # barrier" style dimension looks like, and both real examples
+        # (drg-2873061 section 1, dimensions 8199083/9103358) classified
+        # MIXED, not DRAFTED -- the suppression rule has to cover both
+        # verdicts, not just the one originally guessed at.
+        dims = [
+            make.dimension(
+                1, 10, [make.model_ref(), make.drafted_ref()], value_mm=114.779, override="115"
+            )
+        ]
+        issues = _run(make.model(views=[make.view(10)], dimensions=dims))
+        assert issues == []
+
+    def test_mixed_dimension_with_a_stated_limit_is_still_flagged(self, make):
+        dims = [
+            make.dimension(
+                1, 10, [make.model_ref(), make.drafted_ref()], value_mm=480.0, override="500 MIN."
+            )
+        ]
+        issues = _run(make.model(views=[make.view(10)], dimensions=dims))
+        assert len(issues) == 1
+        assert issues[0].suggested_fix["provenance"] == Provenance.MIXED
 
     def test_spot_dimension_is_labelled_as_one(self, make):
         dims = [

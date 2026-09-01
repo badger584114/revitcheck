@@ -141,11 +141,36 @@ def _workset_name(doc: Any, element: Any) -> Optional[str]:
 def _text_or_none(value: Any) -> Optional[str]:
     """Revit returns an empty string for an unset text property, which
     is a different thing from a drafter typing one. Normalize to None so
-    `is_overridden` means what it says."""
+    `is_overridden` means what it says.
+
+    **Not for `ValueOverride`** — see `_value_override_text`, which this
+    would otherwise silently break."""
     if value is None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _value_override_text(value: Any) -> Optional[str]:
+    """A dimension segment's `ValueOverride`, keeping Revit's own
+    null-vs-empty distinction rather than collapsing it like
+    `_text_or_none` does.
+
+    `_text_or_none` is correct for a property like `Prefix`/`Suffix`,
+    where Revit hands back an empty string to mean "nothing set" — but
+    `ValueOverride` uses the empty string on purpose, to mean "overridden
+    to blank" (the "Replace With Text" checkbox ticked with nothing
+    typed into it). Real, confirmed convention on this project
+    (2026-09-02, drg-2873061 section 1, dimension 9103358): a drafter
+    blanks the dimension's own text this way and places a separate
+    `TextNote` over it instead. Collapsing that to `None` made it
+    indistinguishable from a dimension nobody had ever touched, which
+    silently defeated `is_overridden` for exactly the segments this
+    convention produces.
+    """
+    if value is None:
+        return None
+    return str(value)
 
 
 def _read_reference(doc: Any, ref: Any, errors: List[str]) -> ReferenceInfo:
@@ -213,7 +238,7 @@ def _read_segments(dim: Any) -> List[DimensionSegmentInfo]:
         return [
             DimensionSegmentInfo(
                 value_mm=_mm(getattr(dim, "Value", None)),
-                value_override=_text_or_none(getattr(dim, "ValueOverride", None)),
+                value_override=_value_override_text(getattr(dim, "ValueOverride", None)),
                 prefix=prefix,
                 suffix=suffix,
             )
@@ -224,7 +249,7 @@ def _read_segments(dim: Any) -> List[DimensionSegmentInfo]:
         segments.append(
             DimensionSegmentInfo(
                 value_mm=_mm(getattr(seg, "Value", None)),
-                value_override=_text_or_none(getattr(seg, "ValueOverride", None)),
+                value_override=_value_override_text(getattr(seg, "ValueOverride", None)),
                 prefix=_text_or_none(getattr(seg, "Prefix", None)) or prefix,
                 suffix=_text_or_none(getattr(seg, "Suffix", None)) or suffix,
             )

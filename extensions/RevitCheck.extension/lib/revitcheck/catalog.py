@@ -107,7 +107,14 @@ class RuleConfig:
     drafted_in_drafting_view_severity: str = "low"
 
     # A dimension mixing model geometry and detail linework across its
-    # own witness points. Rarer and usually accidental.
+    # own witness points. Originally assumed rare and usually accidental;
+    # corrected 2026-09-02 by real data (drg-2873061 section 1) — a
+    # deliberate "extent of barrier" style dimension is exactly this
+    # shape (a real modeled anchor at one end, a drafted witness point
+    # marking the extent at the other), not an accident. That correction
+    # lives in the override-suppression rule
+    # (`_overridden_without_stated_limit`), not here — an *unoverridden*
+    # MIXED dimension is still worth this severity.
     mixed_provenance_severity: str = "medium"
 
     # --- overridden-dimension tolerance (revit.dimension_override_consistency)
