@@ -126,7 +126,13 @@ class DimensionSegmentInfo:
 
     @property
     def is_overridden(self) -> bool:
-        return bool(self.value_override)
+        # Not `bool(self.value_override)` — that reads a deliberate blank
+        # override (an empty string, distinct from None; see
+        # `adapters.revit_source._value_override_text`) as "not
+        # overridden", which is exactly backwards for the real
+        # blank-override-plus-covering-TextNote convention confirmed
+        # 2026-09-02.
+        return self.value_override is not None
 
 
 @dataclass

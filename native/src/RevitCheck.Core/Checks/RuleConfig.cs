@@ -36,7 +36,18 @@ public sealed class RuleConfig
     /// <summary>Severity for a drafted dimension in a drafting view, where there was never a model behind it at all - a different, lesser finding, and must not read like the model-view case.</summary>
     public string DraftedInDraftingViewSeverity { get; init; } = "low";
 
-    /// <summary>Severity for a dimension mixing model geometry and detail linework across its own witness points. Rarer and usually accidental.</summary>
+    /// <summary>
+    /// Severity for a dimension mixing model geometry and detail linework
+    /// across its own witness points. Originally assumed rare and usually
+    /// accidental; corrected 2026-09-02 by real data (drg-2873061 section
+    /// 1) - a deliberate "extent of barrier" style dimension is exactly
+    /// this shape (a real modeled anchor at one end, a drafted witness
+    /// point marking the extent at the other), not an accident. That
+    /// correction lives in the override-suppression rule
+    /// (<see cref="DimensionProvenanceCheck"/>'s
+    /// <c>OverriddenWithoutStatedLimit</c>), not here - an
+    /// <b>unoverridden</b> Mixed dimension is still worth this severity.
+    /// </summary>
     public string MixedProvenanceSeverity { get; init; } = "medium";
 
     // --- revit.dimension_override_consistency tolerance model ---

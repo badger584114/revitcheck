@@ -130,6 +130,26 @@ public class DimensionOverrideConsistencyCheckTests
     }
 
     [Fact]
+    public void ABlankOverrideStillCountsAsOverridden()
+    {
+        // Real Revit convention (2026-09-02, drg-2873061 section 1,
+        // dimension 9103358): a drafter blanks the value and covers it
+        // with a separately placed TextNote. Revit's own real captured
+        // text for this is a single invisible U+200E character, not "" -
+        // exercised here rather than a plain empty string so this test
+        // actually covers the real shape. Must be counted as overridden
+        // (unparsed, not compared) rather than silently treated the same
+        // as a dimension nobody had ever touched.
+        var model = OneDimension(1461.1, "‎");
+        var issues = DimensionOverrideConsistencyCheck.Run(model, new RuleConfig());
+        Assert.Empty(Findings(issues));
+        var summary = Coverage(issues).SuggestedFix!;
+        Assert.Equal(1, summary["overridden"]);
+        Assert.Equal(0, summary["checked"]);
+        Assert.Equal(1, summary["unparsed"]);
+    }
+
+    [Fact]
     public void ANonNumericOverrideIsCountedNotGuessed()
     {
         var model = OneDimension(1150.0, "VARIES");

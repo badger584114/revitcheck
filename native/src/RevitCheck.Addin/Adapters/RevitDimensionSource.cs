@@ -589,7 +589,7 @@ public static class RevitDimensionSource
                 new()
                 {
                     ValueMm = Mm(dim.Value),
-                    ValueOverride = TextOrNone(dim.ValueOverride),
+                    ValueOverride = ValueOverrideText(dim.ValueOverride),
                     Prefix = prefix,
                     Suffix = suffix,
                 },
@@ -602,7 +602,7 @@ public static class RevitDimensionSource
             segments.Add(new Core.Ir.DimensionSegmentInfo
             {
                 ValueMm = Mm(seg.Value),
-                ValueOverride = TextOrNone(seg.ValueOverride),
+                ValueOverride = ValueOverrideText(seg.ValueOverride),
                 Prefix = TextOrNone(seg.Prefix) ?? prefix,
                 Suffix = TextOrNone(seg.Suffix) ?? suffix,
             });
@@ -643,8 +643,11 @@ public static class RevitDimensionSource
 
     /// <summary>
     /// Revit returns an empty string for an unset text property, which is a
-    /// different thing from a drafter typing one. Normalize to null so
-    /// <c>DimensionSegmentInfo.IsOverridden</c> means what it says.
+    /// different thing from a drafter typing one. Normalize to null so a
+    /// property like <see cref="Dimension.Prefix"/>/<see cref="Dimension.Suffix"/>
+    /// reads as unset when Revit's own empty string means exactly that.
+    /// <b>Not for <c>ValueOverride</c></b> - see <see cref="ValueOverrideText"/>,
+    /// which this would otherwise silently break.
     /// </summary>
     private static string? TextOrNone(string? value)
     {
@@ -656,6 +659,27 @@ public static class RevitDimensionSource
         var text = value.Trim();
         return text.Length == 0 ? null : text;
     }
+
+    /// <summary>
+    /// A dimension segment's <c>ValueOverride</c>, keeping Revit's own
+    /// null-vs-empty distinction rather than collapsing it like
+    /// <see cref="TextOrNone"/> does.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="TextOrNone"/> is correct for a property like
+    /// <c>Prefix</c>/<c>Suffix</c>, where Revit hands back an empty string
+    /// to mean "nothing set" - but <c>ValueOverride</c> uses the empty
+    /// string on purpose, to mean "overridden to blank" (the "Replace With
+    /// Text" checkbox ticked with nothing typed into it). Real, confirmed
+    /// convention on this project (2026-09-02, drg-2873061 section 1,
+    /// dimension 9103358): a drafter blanks the dimension's own text this
+    /// way and places a separate <see cref="TextNote"/> over it instead.
+    /// Collapsing that to null made it indistinguishable from a dimension
+    /// nobody had ever touched, which silently defeated
+    /// <see cref="Core.Ir.DimensionSegmentInfo.IsOverridden"/> for exactly
+    /// the segments this convention produces.
+    /// </remarks>
+    private static string? ValueOverrideText(string? value) => value;
 
     private static double? Mm(double? feet) => feet is null ? null : feet.Value * MmPerFoot;
 

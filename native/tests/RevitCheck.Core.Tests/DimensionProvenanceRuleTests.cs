@@ -40,6 +40,54 @@ public class DimensionProvenanceRuleTests
     }
 
     [Fact]
+    public void DraftedDimensionWithAPlainOverrideIsNotFlagged()
+    {
+        // Real, confirmed noise (2026-09-02, drg-2873061 section 1,
+        // dimension 8199083): once a drafter has typed a fixed value over
+        // the dimension, it can no longer silently drift the way an
+        // unoverridden drafted dimension can, so flagging it as "may have
+        // drifted" is not actionable.
+        var dims = new[]
+        {
+            RevitCheckTestBuilders.Dimension(2, 10, new[] { RevitCheckTestBuilders.DraftedRef() }, valueMm: 114.779, overrideText: "115"),
+        };
+        var issues = Run(RevitCheckTestBuilders.Model(views: new[] { RevitCheckTestBuilders.View(10) }, dimensions: dims));
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void DraftedDimensionWithABlankOverrideIsNotFlagged()
+    {
+        // Real convention (2026-09-02, drg-2873061 section 1, dimension
+        // 9103358): a drafter blanks the override and covers it with a
+        // separately placed TextNote. Revit's own real captured text for
+        // this is a single invisible U+200E character, not "" - exercised
+        // here rather than a plain empty string so this test would have
+        // caught the real bug (see DimensionSegmentInfo.IsOverridden's own
+        // remarks) if the fix regressed.
+        var dims = new[]
+        {
+            RevitCheckTestBuilders.Dimension(2, 10, new[] { RevitCheckTestBuilders.DraftedRef() }, valueMm: 1461.1, overrideText: "‎"),
+        };
+        var issues = Run(RevitCheckTestBuilders.Model(views: new[] { RevitCheckTestBuilders.View(10) }, dimensions: dims));
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void DraftedDimensionWithAStatedLimitIsStillFlagged()
+    {
+        // The one override that stays actionable: a MIN/MAX limit is a
+        // real constraint on the built work, not a rounded restatement a
+        // human already typed by hand.
+        var dims = new[]
+        {
+            RevitCheckTestBuilders.Dimension(2, 10, new[] { RevitCheckTestBuilders.DraftedRef() }, valueMm: 480.0, overrideText: "500 MIN."),
+        };
+        var issues = Run(RevitCheckTestBuilders.Model(views: new[] { RevitCheckTestBuilders.View(10) }, dimensions: dims));
+        Assert.Equal(2, Assert.Single(issues).ElementId);
+    }
+
+    [Fact]
     public void UniqueIdFallsBackToTheDimensionWhenNoSheetAnchor()
     {
         // bcf.py's Component AuthoringToolId depends on this surviving the
@@ -254,6 +302,36 @@ public class DimensionProvenanceRuleTests
         var issue = Assert.Single(issues);
         Assert.Equal("medium", issue.Severity);
         Assert.Equal(1, issue.SuggestedFix!["drafted_references"]);
+    }
+
+    [Fact]
+    public void MixedDimensionWithAPlainOverrideIsNotFlagged()
+    {
+        // Real correction, 2026-09-02: this exact shape (one real modeled
+        // anchor, one drafted witness point) is what an "extent of
+        // barrier" style dimension looks like, and both real examples
+        // (drg-2873061 section 1, dimensions 8199083/9103358) classified
+        // Mixed, not Drafted - the suppression rule has to cover both
+        // verdicts, not just the one originally guessed at.
+        var dims = new[]
+        {
+            RevitCheckTestBuilders.Dimension(
+                1, 10, new[] { RevitCheckTestBuilders.ModelRef(), RevitCheckTestBuilders.DraftedRef() }, valueMm: 114.779, overrideText: "115"),
+        };
+        var issues = Run(RevitCheckTestBuilders.Model(views: new[] { RevitCheckTestBuilders.View(10) }, dimensions: dims));
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void MixedDimensionWithAStatedLimitIsStillFlagged()
+    {
+        var dims = new[]
+        {
+            RevitCheckTestBuilders.Dimension(
+                1, 10, new[] { RevitCheckTestBuilders.ModelRef(), RevitCheckTestBuilders.DraftedRef() }, valueMm: 480.0, overrideText: "500 MIN."),
+        };
+        var issues = Run(RevitCheckTestBuilders.Model(views: new[] { RevitCheckTestBuilders.View(10) }, dimensions: dims));
+        Assert.Equal("mixed", Assert.Single(issues).SuggestedFix!["provenance"]);
     }
 
     [Fact]

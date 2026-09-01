@@ -128,6 +128,54 @@ public static class DimensionProvenanceCheck
         return result;
     }
 
+    /// <summary>
+    /// True when this dimension carries a typed override that is not a
+    /// stated MIN/MAX limit.
+    /// </summary>
+    /// <remarks>
+    /// Applied to both Drafted and Mixed verdicts (not Unknown - an
+    /// unresolvable reference is a coverage gap, unrelated to override
+    /// content). Both verdicts' real risk is silent drift - the model
+    /// moves, the linework a dimension measures (all of it for Drafted,
+    /// part of it for Mixed) does not follow, and the two keep agreeing
+    /// with each other while both go stale (see <c>checks/dimensions.py</c>'s
+    /// module docstring, "Case 2" - the direct port this check is kept in
+    /// parity with). An override breaks that risk rather than adding to
+    /// it: once a drafter has typed a fixed value over the dimension,
+    /// nothing about what is printed comes from live geometry any more,
+    /// whether that override states a plain rounded value, or blanks the
+    /// text entirely for a separately placed <see cref="Ir.TextNoteInfo"/>
+    /// to cover. Both are real, confirmed-legitimate conventions on this
+    /// project (2026-09-02, drg-2873061 section 1: dimension 8199083,
+    /// 114.779mm typed as 115; dimension 9103358, override blanked and
+    /// covered by a text note) - and both, as it turned out, classify
+    /// Mixed, not Drafted: an "extent of barrier" style dimension anchors
+    /// one end to real modeled geometry and the other to a drafted witness
+    /// point marking where the extent is, by its nature, not an accident
+    /// the way <see cref="RuleConfig.MixedProvenanceSeverity"/>'s original
+    /// remarks assumed. Flagging either as "measures linework, may have
+    /// drifted" was real, confirmed noise: not wrong, exactly, but nothing
+    /// is left for a reviewer to check that the dimension's own verdict
+    /// does not already say.
+    /// <para>
+    /// The one override that still deserves its own flag is a stated
+    /// MIN/MAX limit (<c>500 MIN.</c>, see
+    /// <see cref="DimensionOverrideConsistencyCheck.ParseOverrideBound"/>)
+    /// - a real constraint on the built work, worth surfacing regardless
+    /// of what the dimension measures.
+    /// </para>
+    /// </remarks>
+    private static bool OverriddenWithoutStatedLimit(DimensionInfo dim)
+    {
+        var overriddenSegments = dim.Segments.Where(s => s.IsOverridden).ToList();
+        if (overriddenSegments.Count == 0)
+        {
+            return false;
+        }
+
+        return !overriddenSegments.Any(s => DimensionOverrideConsistencyCheck.ParseOverrideBound(s.ValueOverride) is not null);
+    }
+
     private static Issue? IssueForDimension(DimensionInfo dim, ViewInfo? view, Provenance verdict, RuleConfig config)
     {
         var kind = dim.IsSpot ? "Spot dimension" : "Dimension";
@@ -137,6 +185,11 @@ public static class DimensionProvenanceCheck
         {
             case Provenance.Drafted:
             {
+                if (OverriddenWithoutStatedLimit(dim))
+                {
+                    return null;
+                }
+
                 var detail = ViewScoping.IsUnlinkedDraftingView(view)
                     ? $"{kind} in {DimensionDescriptions.DescribeView(view)} measures detail linework. A drafting view has no model behind it, so this cannot track the model by any means — correct for a standard detail, a drift risk if it is project-specific setout."
                     : $"{kind} in {DimensionDescriptions.DescribeView(view)} measures detail linework, not model geometry — it will not update when the model changes, and will keep agreeing with the line it measures while doing so.";
@@ -162,6 +215,11 @@ public static class DimensionProvenanceCheck
             }
 
             case Provenance.Mixed:
+                if (OverriddenWithoutStatedLimit(dim))
+                {
+                    return null;
+                }
+
                 return new Issue
                 {
                     RuleId = RuleId,
