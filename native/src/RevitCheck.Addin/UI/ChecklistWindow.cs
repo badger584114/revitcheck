@@ -222,15 +222,24 @@ internal sealed class ChecklistWindow : Window
     }
 
     /// <summary>
-    /// "Mark Selected Issue(s) Resolved/Confirmed Problem" - real user
-    /// feedback, 2026-08-31: manually checking a pile dimension against
-    /// the drawing had no way to record the verdict on that specific
-    /// dimension, only a whole view. Both act on <see cref="_detailsListView"/>'s
+    /// "Mark Selected Issue(s) Resolved/Confirmed Problem", "Select in
+    /// Revit" and "Copy Element ID(s)" - all act on <see cref="_detailsListView"/>'s
     /// selection, a different list from <see cref="_listView"/>'s own
     /// toolbar (<see cref="BuildToolbar"/>) - kept as a visually separate
     /// row so "act on this view" and "act on this specific issue" don't
     /// read as the same action.
     /// </summary>
+    /// <remarks>
+    /// "Select in Revit"/"Copy Element ID(s)" are real user feedback,
+    /// 2026-09-02: retyping an Element Id from this pane into Revit's own
+    /// Select-by-ID search box by hand was the actual friction. "Select in
+    /// Revit" (an <see cref="Autodesk.Revit.UI.ExternalEvent"/> call, see
+    /// <see cref="SelectElementsExternalEventHandler"/>) is the direct fix
+    /// and the one to reach for day to day; "Copy Element ID(s)" needs no
+    /// Revit API call at all (<see cref="Clipboard"/> is a WPF/Windows
+    /// call, not a Revit one) and stays as a fallback for pasting an id
+    /// somewhere outside Revit entirely.
+    /// </remarks>
     private StackPanel BuildDetailsToolbar()
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 0, 8, 8) };
@@ -248,9 +257,27 @@ internal sealed class ChecklistWindow : Window
         {
             Content = "Mark Selected Issue(s) Confirmed Problem",
             Padding = new Thickness(8, 4, 8, 4),
+            Margin = new Thickness(0, 0, 16, 0),
         };
         confirm.Click += (_, _) => OnMarkDetailVerdictClick(isConfirmedProblem: true);
         panel.Children.Add(confirm);
+
+        var selectInRevit = new Button
+        {
+            Content = "Select in Revit",
+            Padding = new Thickness(8, 4, 8, 4),
+            Margin = new Thickness(0, 0, 8, 0),
+        };
+        selectInRevit.Click += OnSelectInRevitClick;
+        panel.Children.Add(selectInRevit);
+
+        var copyIds = new Button
+        {
+            Content = "Copy Element ID(s)",
+            Padding = new Thickness(8, 4, 8, 4),
+        };
+        copyIds.Click += OnCopyElementIdsClick;
+        panel.Children.Add(copyIds);
 
         return panel;
     }
@@ -536,6 +563,65 @@ internal sealed class ChecklistWindow : Window
         }
 
         Refresh();
+    }
+
+    /// <summary>
+    /// Selects and zooms to the checked element(s) behind the selected
+    /// detail row(s) in Revit itself - see <see cref="BuildDetailsToolbar"/>'s
+    /// remarks for why this exists. Goes through <see cref="RevitCheckExternalEvents.SelectElements"/>
+    /// the same way <see cref="OnOpenViewClick"/> goes through <see cref="RevitCheckExternalEvents.OpenView"/>.
+    /// </summary>
+    private void OnSelectInRevitClick(object sender, RoutedEventArgs e)
+    {
+        var elementIds = _detailsListView.SelectedItems.Cast<DetailRow>()
+            .Where(r => r.ElementId is not null)
+            .Select(r => r.ElementId!.Value)
+            .ToList();
+        if (elementIds.Count == 0)
+        {
+            MessageBox.Show(this, "Select one or more issues below with an element to select.", "RevitCheck",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var handler = RevitCheckExternalEvents.SelectElementsHandler;
+        var ev = RevitCheckExternalEvents.SelectElements;
+        if (handler is null || ev is null)
+        {
+            return;
+        }
+
+        handler.RequestedElementIds = elementIds;
+        ev.Raise();
+    }
+
+    /// <summary>
+    /// Copies the checked element id(s) behind the selected detail row(s)
+    /// to the clipboard, one per line - a plain WPF/Windows call, no Revit
+    /// API context needed (see <see cref="BuildDetailsToolbar"/>'s remarks).
+    /// </summary>
+    private void OnCopyElementIdsClick(object sender, RoutedEventArgs e)
+    {
+        var elementIds = _detailsListView.SelectedItems.Cast<DetailRow>()
+            .Where(r => r.ElementId is not null)
+            .Select(r => r.ElementId!.Value)
+            .ToList();
+        if (elementIds.Count == 0)
+        {
+            MessageBox.Show(this, "Select one or more issues below with an element to copy.", "RevitCheck",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(string.Join(Environment.NewLine, elementIds));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Could not copy to the clipboard:\n\n{ExceptionMessage.Full(ex)}", "RevitCheck",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void OnOpenViewClick(object sender, RoutedEventArgs e)

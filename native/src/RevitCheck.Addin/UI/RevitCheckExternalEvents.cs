@@ -19,6 +19,10 @@ internal static class RevitCheckExternalEvents
 
     public static ExternalEvent? ExportBcf { get; private set; }
 
+    public static SelectElementsExternalEventHandler? SelectElementsHandler { get; private set; }
+
+    public static ExternalEvent? SelectElements { get; private set; }
+
     public static void Initialize()
     {
         OpenViewHandler = new OpenViewExternalEventHandler();
@@ -26,5 +30,8 @@ internal static class RevitCheckExternalEvents
 
         ExportBcfHandler = new ExportReconciledBcfExternalEventHandler();
         ExportBcf = ExternalEvent.Create(ExportBcfHandler);
+
+        SelectElementsHandler = new SelectElementsExternalEventHandler();
+        SelectElements = ExternalEvent.Create(SelectElementsHandler);
     }
 }
