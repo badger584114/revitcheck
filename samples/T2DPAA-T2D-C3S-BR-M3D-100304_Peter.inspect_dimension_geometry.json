@@ -5,28 +5,42 @@
       "dimension_type_name": "Elevation_Survey 2.5",
       "element_id": 6825741,
       "is_spot_dimension": true,
-      "nearest_structural_framing": {
+      "nearby_shelf_candidates": {
         "candidate_element_ids": [
-          7894434,
+          5010349,
           5026293,
-          5889420
-        ],
-        "candidate_location_points_mm": [
-          [
-            244588.69197510625,
-            1203434.1832956003,
-            21512.69814917429
-          ],
-          [
-            241500.28311575283,
-            1213641.5139652414,
-            21797.51300000105
-          ],
-          [
-            239675.3882364952,
-            1220508.1278852231,
-            21927.26350000105
-          ]
+          5355699,
+          5382679,
+          5454978,
+          5462752,
+          6209869,
+          6233639,
+          6233732,
+          6233780,
+          6307284,
+          6814841,
+          6817536,
+          6817817,
+          7894434,
+          7957115,
+          7968156,
+          8074299,
+          8211511,
+          8212126,
+          8453324,
+          8453490,
+          8803927,
+          8803928,
+          8803929,
+          8803930,
+          8803938,
+          8803939,
+          8803940,
+          8803941,
+          8803949,
+          8803950,
+          8803951,
+          8803952
         ],
         "faces": [
           {
@@ -54,151 +68,284 @@
             "z_read_at_projected_point": true
           },
           {
-            "distance_2d_mm": 2381.128819187218,
+            "distance_2d_mm": 164.79024426095407,
+            "facing": "up",
+            "representative_point_mm": [
+              242265.80969961188,
+              1207957.8137779916,
+              21686.51527044942
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 21686.51527044942,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 240.36564740188666,
+            "facing": "up",
+            "representative_point_mm": [
+              242114.73936625448,
+              1207942.9133153644,
+              21687.863395911394
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 21687.863395911394,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 240.36564740194197,
             "facing": "down",
             "representative_point_mm": [
-              242649.47325172738,
-              1210154.4769513106,
-              21145.0
+              242114.73936625442,
+              1207942.9133153644,
+              21490.324742047273
             ],
-            "source_element_id": 5026293,
-            "z_mm": 21145.0,
+            "source_element_id": 5355699,
+            "z_mm": 21490.324742047273,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 2381.1288191873605,
+            "distance_2d_mm": 410.16498412436295,
             "facing": "up",
             "representative_point_mm": [
-              242649.47325172744,
-              1210154.4769513106,
-              20894.999999999996
+              242202.78466230383,
+              1208194.9609160146,
+              21173.325809012134
             ],
-            "source_element_id": 5026293,
-            "z_mm": 20894.999999999996,
+            "source_element_id": 5355699,
+            "z_mm": 21173.325809012134,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 4320.29513448183,
-            "facing": "up",
-            "representative_point_mm": [
-              242128.49625168866,
-              1212114.7805069753,
-              20461.757502316246
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 20461.757502316246,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 4320.295135250894,
+            "distance_2d_mm": 478.3006585400166,
             "facing": "down",
             "representative_point_mm": [
-              242128.49625148633,
-              1212114.7805077366,
-              21036.778974371817
+              242185.28407118624,
+              1208260.8111760784,
+              19809.95073450291
             ],
-            "source_element_id": 5026293,
-            "z_mm": 21036.778974371817,
+            "source_element_id": 5355699,
+            "z_mm": 19809.95073450291,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 5086.891610720797,
+            "distance_2d_mm": 538.5367302795909,
             "facing": "up",
             "representative_point_mm": [
-              244641.31842952542,
-              1203278.6798013472,
-              21513.415924309124
+              242824.98177307134,
+              1207944.2175355372,
+              21894.447775457764
             ],
-            "source_element_id": 7894434,
-            "z_mm": 21513.415924309124,
+            "source_element_id": 6209869,
+            "z_mm": 21894.447775457764,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 5094.043890433184,
+            "distance_2d_mm": 538.5367302795909,
             "facing": "down",
             "representative_point_mm": [
-              244643.63738374834,
-              1203271.8276299697,
-              20313.43608292879
+              242824.98177307134,
+              1207944.2175355372,
+              21694.447775457767
             ],
-            "source_element_id": 7894434,
-            "z_mm": 20313.43608292879,
+            "source_element_id": 6209869,
+            "z_mm": 21694.447775457767,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 5962.651161490609,
+            "distance_2d_mm": 577.6839292481643,
             "facing": "up",
             "representative_point_mm": [
-              241699.28361442912,
-              1213729.7981735778,
-              21798.137734573047
+              242159.7576067264,
+              1208356.8607501695,
+              21557.696890611074
             ],
-            "source_element_id": 5026293,
-            "z_mm": 21798.137734573047,
+            "source_element_id": 5355699,
+            "z_mm": 21557.696890611074,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 12375.16824536321,
+            "distance_2d_mm": 689.6142156376743,
             "facing": "up",
             "representative_point_mm": [
-              240042.3499213369,
-              1219964.4169951307,
-              20423.999999999996
+              242912.7395048942,
+              1207469.2235372048,
+              20293.484064841472
             ],
-            "source_element_id": 5889420,
-            "z_mm": 20423.999999999996,
+            "source_element_id": 7957115,
+            "z_mm": 20293.484064841472,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 12375.168245363215,
+            "distance_2d_mm": 689.6142156378675,
             "facing": "down",
             "representative_point_mm": [
-              240042.34992133683,
-              1219964.4169951307,
-              20798.999999999996
+              242912.7395048943,
+              1207469.2235372046,
+              11095.00000000102
             ],
-            "source_element_id": 5889420,
-            "z_mm": 20798.999999999996,
+            "source_element_id": 7957115,
+            "z_mm": 11095.00000000102,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 12993.909321029214,
+            "distance_2d_mm": 1139.4072586778427,
             "facing": "up",
             "representative_point_mm": [
-              238970.67964838658,
-              1220356.547600017,
-              20037.578546633813
+              242001.00787070274,
+              1208895.813251217,
+              19841.127640045408
             ],
-            "source_element_id": 5889420,
-            "z_mm": 20037.578546633813,
+            "source_element_id": 6307284,
+            "z_mm": 19841.127640045408,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 13013.929361084196,
+            "distance_2d_mm": 1139.7724112306296,
             "facing": "down",
             "representative_point_mm": [
-              239666.5246677496,
-              1220541.4792334107,
-              18537.328493401543
+              242000.9140756309,
+              1208896.1661781461,
+              19821.130974196643
             ],
-            "source_element_id": 5889420,
-            "z_mm": 18537.328493401543,
+            "source_element_id": 6307284,
+            "z_mm": 19821.130974196643,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 13027.615590620182,
+            "distance_2d_mm": 1321.4104381863926,
+            "facing": "down",
+            "representative_point_mm": [
+              243459.93451473545,
+              1207153.1680799571,
+              1299.7034131213986
+            ],
+            "source_element_id": 7968156,
+            "z_mm": 1299.7034131213986,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1321.4104381863926,
             "facing": "up",
             "representative_point_mm": [
-              239874.31265776424,
-              1220596.6983534326,
-              21927.893613706434
+              243459.93451473545,
+              1207153.1680799571,
+              20349.7034131214
             ],
-            "source_element_id": 5889420,
-            "z_mm": 21927.893613706434,
+            "source_element_id": 7968156,
+            "z_mm": 20349.7034131214,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1438.0834177493539,
+            "facing": "down",
+            "representative_point_mm": [
+              242837.75005077352,
+              1209134.5706141084,
+              -168.07800000000174
+            ],
+            "source_element_id": 5010349,
+            "z_mm": -168.07800000000174,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1438.0834177493539,
+            "facing": "up",
+            "representative_point_mm": [
+              242837.75005077352,
+              1209134.5706141084,
+              18381.922
+            ],
+            "source_element_id": 5010349,
+            "z_mm": 18381.922,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1545.3438516981375,
+            "facing": "up",
+            "representative_point_mm": [
+              241896.72979276886,
+              1209288.1491268082,
+              19848.541209224793
+            ],
+            "source_element_id": 6307284,
+            "z_mm": 19848.541209224793,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1545.7090158199996,
+            "facing": "down",
+            "representative_point_mm": [
+              241896.63599769704,
+              1209288.5020537374,
+              19828.54454337603
+            ],
+            "source_element_id": 6307284,
+            "z_mm": 19828.54454337603,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1813.0540394936322,
+            "facing": "down",
+            "representative_point_mm": [
+              240523.6060473579,
+              1208126.7797363063,
+              21553.149944913097
+            ],
+            "source_element_id": 6233780,
+            "z_mm": 21553.149944913097,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2165.810597165446,
+            "facing": "up",
+            "representative_point_mm": [
+              240453.9886613361,
+              1208919.9687887938,
+              21659.093646469224
+            ],
+            "source_element_id": 6233780,
+            "z_mm": 21659.093646469224,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2235.1445741260304,
+            "facing": "down",
+            "representative_point_mm": [
+              240394.9008247675,
+              1208956.245554613,
+              19844.28558024097
+            ],
+            "source_element_id": 6233780,
+            "z_mm": 19844.28558024097,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2324.7862713833806,
+            "facing": "up",
+            "representative_point_mm": [
+              241711.01819326956,
+              1210045.3526918609,
+              21589.88062881228
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 21589.88062881228,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2335.272227809873,
+            "facing": "down",
+            "representative_point_mm": [
+              242743.36701878253,
+              1210092.2292691525,
+              11091.572696947169
+            ],
+            "source_element_id": 5462752,
+            "z_mm": 11091.572696947169,
             "z_read_at_projected_point": false
           }
         ],
-        "total_horizontal_faces": 14
+        "search_radius_mm": 1500.0,
+        "total_horizontal_faces": 234
       },
       "number_of_segments": 0,
       "origin": [
@@ -602,28 +749,45 @@
       "dimension_type_name": "Elevation_Survey 2.5",
       "element_id": 6825752,
       "is_spot_dimension": true,
-      "nearest_structural_framing": {
+      "nearby_shelf_candidates": {
         "candidate_element_ids": [
-          7891698,
+          4985472,
           4999722,
-          5889408
-        ],
-        "candidate_location_points_mm": [
-          [
-            233832.02149235152,
-            1242582.83619153,
-            21348.444462098763
-          ],
-          [
-            236783.04103392016,
-            1231391.2926026254,
-            21735.35899246108
-          ],
-          [
-            238910.62683425128,
-            1223385.7299595557,
-            21913.204500001048
-          ]
+          5108153,
+          5108165,
+          5355699,
+          5382462,
+          5454978,
+          5460904,
+          5544154,
+          6307665,
+          6814841,
+          6817536,
+          6817817,
+          7891698,
+          7892263,
+          7937947,
+          7938375,
+          8073866,
+          8211320,
+          8453432,
+          8453502,
+          8803705,
+          8803706,
+          8803707,
+          8803708,
+          8803821,
+          8803822,
+          8803823,
+          8803824,
+          8803832,
+          8803833,
+          8803834,
+          8803835,
+          8803843,
+          8803844,
+          8803845,
+          8803846
         ],
         "faces": [
           {
@@ -651,6 +815,270 @@
             "z_read_at_projected_point": true
           },
           {
+            "distance_2d_mm": 227.15389973318332,
+            "facing": "up",
+            "representative_point_mm": [
+              234461.49166230502,
+              1237325.6936285817,
+              21462.68203141227
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 21462.68203141227,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 375.74377601132863,
+            "facing": "down",
+            "representative_point_mm": [
+              234499.65760663457,
+              1237182.08491816,
+              19712.172230977845
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 19712.172230977845,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 638.053968012015,
+            "facing": "down",
+            "representative_point_mm": [
+              234697.45786397246,
+              1238109.7357667596,
+              10977.390860830521
+            ],
+            "source_element_id": 7938375,
+            "z_mm": 10977.390860830521,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 638.0539680120311,
+            "facing": "up",
+            "representative_point_mm": [
+              234697.4578639725,
+              1238109.7357667596,
+              20184.400000000027
+            ],
+            "source_element_id": 7938375,
+            "z_mm": 20184.400000000027,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 882.5933633484301,
+            "facing": "up",
+            "representative_point_mm": [
+              234614.63605080615,
+              1236688.3005963387,
+              19743.056858605672
+            ],
+            "source_element_id": 6307665,
+            "z_mm": 19743.056858605672,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 883.0226128602297,
+            "facing": "down",
+            "representative_point_mm": [
+              234614.74631558574,
+              1236687.8856981003,
+              19723.061466608262
+            ],
+            "source_element_id": 6307665,
+            "z_mm": 19723.061466608262,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1257.490942315633,
+            "facing": "down",
+            "representative_point_mm": [
+              234992.44409724005,
+              1238654.4556660128,
+              1184.4000000000037
+            ],
+            "source_element_id": 7892263,
+            "z_mm": 1184.4000000000037,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1257.490942315633,
+            "facing": "up",
+            "representative_point_mm": [
+              234992.44409724005,
+              1238654.4556660128,
+              20234.400000000005
+            ],
+            "source_element_id": 7892263,
+            "z_mm": 20234.400000000005,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1288.4916647397717,
+            "facing": "up",
+            "representative_point_mm": [
+              234718.91397884165,
+              1236295.9914395965,
+              19751.772194657115
+            ],
+            "source_element_id": 6307665,
+            "z_mm": 19751.772194657115,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1288.92094133861,
+            "facing": "down",
+            "representative_point_mm": [
+              234719.02424362127,
+              1236295.5765413581,
+              19731.776802659704
+            ],
+            "source_element_id": 6307665,
+            "z_mm": 19731.776802659704,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1475.9071777547636,
+            "facing": "down",
+            "representative_point_mm": [
+              235537.62897072398,
+              1236603.0640562908,
+              -256.97000000000133
+            ],
+            "source_element_id": 4985472,
+            "z_mm": -256.97000000000133,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1475.9071777547636,
+            "facing": "up",
+            "representative_point_mm": [
+              235537.62897072398,
+              1236603.0640562908,
+              18293.03
+            ],
+            "source_element_id": 4985472,
+            "z_mm": 18293.03,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1477.0710294212374,
+            "facing": "down",
+            "representative_point_mm": [
+              232968.75092005782,
+              1237184.0125991916,
+              21457.12220698917
+            ],
+            "source_element_id": 5108165,
+            "z_mm": 21457.12220698917,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1675.229294118064,
+            "facing": "up",
+            "representative_point_mm": [
+              233175.34537610528,
+              1236402.7971981333,
+              21563.705265005025
+            ],
+            "source_element_id": 5108165,
+            "z_mm": 21563.705265005025,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1738.446830034665,
+            "facing": "down",
+            "representative_point_mm": [
+              233131.16256843213,
+              1236357.4845369116,
+              19748.926380623947
+            ],
+            "source_element_id": 5108165,
+            "z_mm": 19748.926380623947,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2070.778480953826,
+            "facing": "up",
+            "representative_point_mm": [
+              234935.0244182948,
+              1235543.9106902916,
+              21501.640907804052
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 21501.640907804052,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2107.3534510992877,
+            "facing": "down",
+            "representative_point_mm": [
+              234944.41861578551,
+              1235508.5627220757,
+              19749.34994100175
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 19749.34994100175,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2113.8544624661545,
+            "facing": "up",
+            "representative_point_mm": [
+              234946.08838567988,
+              1235502.2798040072,
+              20812.0
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 20812.0,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2113.8544624661545,
+            "facing": "down",
+            "representative_point_mm": [
+              234946.08838567988,
+              1235502.2798040072,
+              20962.0
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 20962.0,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2172.6163425505256,
+            "facing": "down",
+            "representative_point_mm": [
+              234886.16250488415,
+              1239662.4552029285,
+              11005.339812038454
+            ],
+            "source_element_id": 7937947,
+            "z_mm": 11005.339812038454,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2172.6163425506606,
+            "facing": "up",
+            "representative_point_mm": [
+              234886.16250488415,
+              1239662.4552029287,
+              20171.461680480606
+            ],
+            "source_element_id": 7937947,
+            "z_mm": 20171.461680480606,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 2261.0785601690727,
+            "facing": "down",
+            "representative_point_mm": [
+              233245.7823801663,
+              1235601.048562047,
+              21489.78539887222
+            ],
+            "source_element_id": 5108165,
+            "z_mm": 21489.78539887222,
+            "z_read_at_projected_point": false
+          },
+          {
             "distance_2d_mm": 2461.7528626672,
             "facing": "up",
             "representative_point_mm": [
@@ -661,141 +1089,10 @@
             "source_element_id": 4999722,
             "z_mm": 20812.0,
             "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 2461.7528626672,
-            "facing": "down",
-            "representative_point_mm": [
-              235890.98270938327,
-              1235584.9528456903,
-              20962.0
-            ],
-            "source_element_id": 4999722,
-            "z_mm": 20962.0,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 5064.774763987893,
-            "facing": "up",
-            "representative_point_mm": [
-              233833.43008307618,
-              1242577.5360239493,
-              21348.48659857589
-            ],
-            "source_element_id": 7891698,
-            "z_mm": 21348.48659857589,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 5064.954509225424,
-            "facing": "down",
-            "representative_point_mm": [
-              233833.3834095872,
-              1242577.7116443824,
-              20148.449782874985
-            ],
-            "source_element_id": 7891698,
-            "z_mm": 20148.449782874985,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 6665.435085409705,
-            "facing": "up",
-            "representative_point_mm": [
-              237001.2486410762,
-              1231407.3053612735,
-              21736.230040568396
-            ],
-            "source_element_id": 4999722,
-            "z_mm": 21736.230040568396,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 8412.27949419514,
-            "facing": "down",
-            "representative_point_mm": [
-              237453.47308795576,
-              1229705.700125114,
-              20672.0
-            ],
-            "source_element_id": 4999722,
-            "z_mm": 20672.0,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 8412.279494195269,
-            "facing": "up",
-            "representative_point_mm": [
-              237453.47308795576,
-              1229705.7001251138,
-              20097.0
-            ],
-            "source_element_id": 4999722,
-            "z_mm": 20097.0,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 10432.186496236049,
-            "facing": "up",
-            "representative_point_mm": [
-              237974.89383430692,
-              1227743.7268652527,
-              20174.999999999996
-            ],
-            "source_element_id": 4999722,
-            "z_mm": 20174.999999999996,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 10432.186496236049,
-            "facing": "down",
-            "representative_point_mm": [
-              237974.89383430692,
-              1227743.7268652527,
-              20949.999999999996
-            ],
-            "source_element_id": 4999722,
-            "z_mm": 20949.999999999996,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 14882.767280887325,
-            "facing": "up",
-            "representative_point_mm": [
-              238225.20144200456,
-              1223161.5919272548,
-              20023.63995383187
-            ],
-            "source_element_id": 5889408,
-            "z_mm": 20023.63995383187,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 14900.246117918958,
-            "facing": "down",
-            "representative_point_mm": [
-              238921.04646928905,
-              1223346.523530842,
-              18523.294245265333
-            ],
-            "source_element_id": 5889408,
-            "z_mm": 18523.294245265333,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 14912.206884583991,
-            "facing": "up",
-            "representative_point_mm": [
-              239128.8344414155,
-              1223401.7427181727,
-              21914.07554662566
-            ],
-            "source_element_id": 5889408,
-            "z_mm": 21914.07554662566,
-            "z_read_at_projected_point": false
           }
         ],
-        "total_horizontal_faces": 14
+        "search_radius_mm": 1500.0,
+        "total_horizontal_faces": 166
       },
       "number_of_segments": 0,
       "origin": [
@@ -1199,30 +1496,251 @@
       "dimension_type_name": "Elevation_Survey 2.5",
       "element_id": 9324286,
       "is_spot_dimension": true,
-      "nearest_structural_framing": {
+      "nearby_shelf_candidates": {
         "candidate_element_ids": [
-          5889420,
+          4999722,
+          5009503,
+          5026293,
+          5108057,
+          5108081,
+          5108093,
+          5108105,
+          5108318,
+          5276421,
+          5355699,
+          5462299,
           5889408,
-          5026293
-        ],
-        "candidate_location_points_mm": [
-          [
-            239675.3882364952,
-            1220508.1278852231,
-            21927.26350000105
-          ],
-          [
-            238910.62683425128,
-            1223385.7299595557,
-            21913.204500001048
-          ],
-          [
-            241500.28311575283,
-            1213641.5139652414,
-            21797.51300000105
-          ]
+          5889420,
+          6079822,
+          6209869,
+          6298712,
+          6308373,
+          6814841,
+          6817536,
+          6817817,
+          7504259,
+          8453324,
+          8453432,
+          8453490,
+          8453502
         ],
         "faces": [
+          {
+            "distance_2d_mm": 0.04244249344469566,
+            "facing": "down",
+            "representative_point_mm": [
+              238656.45999357422,
+              1221532.8508401606,
+              20062.13713266125
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 20062.13713266125,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 33.414317646531735,
+            "facing": "up",
+            "representative_point_mm": [
+              238665.03147893946,
+              1221500.5985272224,
+              21798.118246520407
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 21798.118246520407,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 35.76807168449291,
+            "facing": "down",
+            "representative_point_mm": [
+              238651.5878304806,
+              1221497.4556755119,
+              21803.581926392537
+            ],
+            "source_element_id": 5108318,
+            "z_mm": 21803.581926392537,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 37.613757473956696,
+            "facing": "up",
+            "representative_point_mm": [
+              238651.3369821268,
+              1221495.6271156585,
+              21893.562999091006
+            ],
+            "source_element_id": 5108318,
+            "z_mm": 21893.562999091006,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 40.962189395284554,
+            "facing": "down",
+            "representative_point_mm": [
+              238643.61394921792,
+              1221493.992500678,
+              21943.01648577946
+            ],
+            "source_element_id": 6209869,
+            "z_mm": 21943.01648577946,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 41.20368349169276,
+            "facing": "down",
+            "representative_point_mm": [
+              238637.00277751635,
+              1221569.2179427207,
+              21944.399450884393
+            ],
+            "source_element_id": 6209869,
+            "z_mm": 21944.399450884393,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 45.310399201204014,
+            "facing": "up",
+            "representative_point_mm": [
+              238642.25147577762,
+              1221489.863264109,
+              22142.921906410593
+            ],
+            "source_element_id": 6209869,
+            "z_mm": 22142.921906410593,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 45.57429729825356,
+            "facing": "up",
+            "representative_point_mm": [
+              238634.9400412565,
+              1221573.0711730758,
+              22144.30389390348
+            ],
+            "source_element_id": 6209869,
+            "z_mm": 22144.30389390348,
+            "z_read_at_projected_point": true
+          },
+          {
+            "distance_2d_mm": 436.4131258036781,
+            "facing": "up",
+            "representative_point_mm": [
+              238545.8537742086,
+              1221955.0589962902,
+              21799.44882368954
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 21799.44882368954,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 478.2039822146011,
+            "facing": "down",
+            "representative_point_mm": [
+              238535.11983229336,
+              1221995.448081607,
+              20056.139680156706
+            ],
+            "source_element_id": 5355699,
+            "z_mm": 20056.139680156706,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 485.41689457723777,
+            "facing": "down",
+            "representative_point_mm": [
+              238768.07339545563,
+              1221060.4835856925,
+              20050.950591579316
+            ],
+            "source_element_id": 6308373,
+            "z_mm": 20050.950591579316,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 485.7819148981614,
+            "facing": "up",
+            "representative_point_mm": [
+              238768.16718606453,
+              1221060.1306755561,
+              20070.947257745385
+            ],
+            "source_element_id": 6308373,
+            "z_mm": 20070.947257745385,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 687.0387396472668,
+            "facing": "down",
+            "representative_point_mm": [
+              239025.38476190757,
+              1222112.4681708352,
+              10985.35143264322
+            ],
+            "source_element_id": 5276421,
+            "z_mm": 10985.35143264322,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 687.0387396472854,
+            "facing": "up",
+            "representative_point_mm": [
+              239025.3847619076,
+              1222112.4681708352,
+              18519.934000001045
+            ],
+            "source_element_id": 5276421,
+            "z_mm": 18519.934000001045,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 891.2891082244903,
+            "facing": "down",
+            "representative_point_mm": [
+              238872.35211667608,
+              1220668.147874414,
+              20043.537375151995
+            ],
+            "source_element_id": 6308373,
+            "z_mm": 20043.537375151995,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 891.6542272478575,
+            "facing": "up",
+            "representative_point_mm": [
+              238872.445907285,
+              1220667.7949642777,
+              20063.534041318064
+            ],
+            "source_element_id": 6308373,
+            "z_mm": 20063.534041318064,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1068.1218260697945,
+            "facing": "down",
+            "representative_point_mm": [
+              238369.13198117362,
+              1222561.6450424877,
+              20036.882351071206
+            ],
+            "source_element_id": 6298712,
+            "z_mm": 20036.882351071206,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1068.5510917812023,
+            "facing": "up",
+            "representative_point_mm": [
+              238369.02171658174,
+              1222562.0599400196,
+              20056.87774308431
+            ],
+            "source_element_id": 6298712,
+            "z_mm": 20056.87774308431,
+            "z_read_at_projected_point": false
+          },
           {
             "distance_2d_mm": 1217.5905130678889,
             "facing": "up",
@@ -1248,6 +1766,30 @@
             "z_read_at_projected_point": false
           },
           {
+            "distance_2d_mm": 1474.0301221746242,
+            "facing": "down",
+            "representative_point_mm": [
+              238264.85585497375,
+              1222953.9546784926,
+              20028.167029853674
+            ],
+            "source_element_id": 6298712,
+            "z_mm": 20028.167029853674,
+            "z_read_at_projected_point": false
+          },
+          {
+            "distance_2d_mm": 1474.4594039941446,
+            "facing": "up",
+            "representative_point_mm": [
+              238264.74559038185,
+              1222954.3695760246,
+              20048.16242186678
+            ],
+            "source_element_id": 6298712,
+            "z_mm": 20048.16242186678,
+            "z_read_at_projected_point": false
+          },
+          {
             "distance_2d_mm": 1536.1152116634955,
             "facing": "up",
             "representative_point_mm": [
@@ -1260,151 +1802,32 @@
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 1684.825940244707,
+            "distance_2d_mm": 1567.1291808891947,
             "facing": "up",
             "representative_point_mm": [
-              238225.20144200456,
-              1223161.5919272548,
-              20023.63995383187
+              239060.4578656243,
+              1220018.7350701154,
+              21772.786267984804
             ],
-            "source_element_id": 5889408,
-            "z_mm": 20023.63995383187,
+            "source_element_id": 5355699,
+            "z_mm": 21772.786267984804,
             "z_read_at_projected_point": false
           },
           {
-            "distance_2d_mm": 1832.8315835798355,
+            "distance_2d_mm": 1601.0868844247832,
             "facing": "down",
             "representative_point_mm": [
-              238921.04646928905,
-              1223346.523530842,
-              18523.294245265333
+              237271.96517843395,
+              1220728.7255179991,
+              20058.75114735555
             ],
-            "source_element_id": 5889408,
-            "z_mm": 18523.294245265333,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 1927.6284529579873,
-            "facing": "up",
-            "representative_point_mm": [
-              239128.8344414155,
-              1223401.7427181727,
-              21914.07554662566
-            ],
-            "source_element_id": 5889408,
-            "z_mm": 21914.07554662566,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 2093.0443152962275,
-            "facing": "down",
-            "representative_point_mm": [
-              240042.34992133683,
-              1219964.4169951307,
-              20798.999999999996
-            ],
-            "source_element_id": 5889420,
-            "z_mm": 20798.999999999996,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 2093.0443152962503,
-            "facing": "up",
-            "representative_point_mm": [
-              240042.3499213369,
-              1219964.4169951307,
-              20423.999999999996
-            ],
-            "source_element_id": 5889420,
-            "z_mm": 20423.999999999996,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 8323.108499349037,
-            "facing": "up",
-            "representative_point_mm": [
-              240795.71496181597,
-              1213489.4052620737,
-              19907.818061720052
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 19907.818061720052,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 8354.323321706102,
-            "facing": "down",
-            "representative_point_mm": [
-              241491.5596463514,
-              1213674.3381553383,
-              18407.568008489583
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 18407.568008489583,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 8375.387333677445,
-            "facing": "up",
-            "representative_point_mm": [
-              241699.28361442912,
-              1213729.7981735778,
-              21798.137734573047
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 21798.137734573047,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 10037.725484206947,
-            "facing": "down",
-            "representative_point_mm": [
-              242128.49625148633,
-              1212114.7805077366,
-              21036.778974371817
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 21036.778974371817,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 10037.7254849913,
-            "facing": "up",
-            "representative_point_mm": [
-              242128.49625168866,
-              1212114.7805069753,
-              20461.757502316246
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 20461.757502316246,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 12058.71335360202,
-            "facing": "up",
-            "representative_point_mm": [
-              242649.47325172744,
-              1210154.4769513106,
-              20894.999999999996
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 20894.999999999996,
-            "z_read_at_projected_point": false
-          },
-          {
-            "distance_2d_mm": 12058.713353602141,
-            "facing": "down",
-            "representative_point_mm": [
-              242649.47325172738,
-              1210154.4769513106,
-              21145.0
-            ],
-            "source_element_id": 5026293,
-            "z_mm": 21145.0,
+            "source_element_id": 5108318,
+            "z_mm": 20058.75114735555,
             "z_read_at_projected_point": false
           }
         ],
-        "total_horizontal_faces": 15
+        "search_radius_mm": 1500.0,
+        "total_horizontal_faces": 339
       },
       "number_of_segments": 0,
       "origin": [
@@ -1802,75 +2225,6 @@
         ],
         "view_type": "Section"
       }
-    }
-  ],
-  "framing_collection_errors": null,
-  "framings": [
-    {
-      "element_id": 4999722
-    },
-    {
-      "element_id": 5026293
-    },
-    {
-      "element_id": 5108033
-    },
-    {
-      "element_id": 5108045
-    },
-    {
-      "element_id": 5108057
-    },
-    {
-      "element_id": 5108081
-    },
-    {
-      "element_id": 5108093
-    },
-    {
-      "element_id": 5108105
-    },
-    {
-      "element_id": 5108117
-    },
-    {
-      "element_id": 5108129
-    },
-    {
-      "element_id": 5108141
-    },
-    {
-      "element_id": 5108153
-    },
-    {
-      "element_id": 5108165
-    },
-    {
-      "element_id": 5108318
-    },
-    {
-      "element_id": 5355699
-    },
-    {
-      "element_id": 5889408
-    },
-    {
-      "element_id": 5889420
-    },
-    {
-      "element_id": 6233639
-    },
-    {
-      "element_id": 6233732
-    },
-    {
-      "element_id": 6233780
-    },
-    {
-      "element_id": 7891698
-    },
-    {
-      "element_id": 7894434
     }
   ],
   "pile_collection_errors": null,
