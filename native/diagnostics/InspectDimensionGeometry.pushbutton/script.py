@@ -186,7 +186,32 @@ the list regardless of what the Reference or a parameter claims. Every
 new Revit API member (`Element.Geometry`, `Options`, `Solid.Faces`,
 `PlanarFace.Origin`/`FaceNormal`, `GeometryInstance.GetInstanceGeometry`)
 was verified against the real `RevitAPI.dll` before writing this, same
-discipline as everywhere else in `native/`. Not yet run.
+discipline as everywhere else in `native/`.
+
+**Run for real the same day - two real bugs found, both fixed:**
+
+1. **Only 2 horizontal faces came back for a real abutment cross-section
+   that should have several real steps** (crest, shelf, base) - `Options()`
+   was left at its class default `DetailLevel` (`Coarse` when unset),
+   which collapses a parametric civil profile down to a simplified
+   bounding block instead of the real detailed geometry a Fine-detail
+   drafted section actually shows. Fixed: `options.DetailLevel =
+   ViewDetailLevel.Fine`, explicit.
+2. **The single "nearest" pick was too fragile.** A curved/chained
+   abutment is several adjacent `Structural Framing` instances, and a
+   `Location` point is a curve midpoint that can sit several metres from
+   where a given spot elevation actually is (real distances seen on the
+   first run: 1.9-8m) - close enough to plausibly pick the wrong
+   instance outright. `_nearest_structural_framing` (singular) became
+   `_nearest_structural_framings` (`STRUCTURAL_FRAMING_CANDIDATE_COUNT =
+   3`), walking the several nearest candidates and merging their faces
+   into one list sorted by 2D distance, rather than betting everything on
+   one guess.
+
+Neither fix alone was confirmed sufficient on its own - both were made
+together, before the next real run, since the first run's data couldn't
+tell them apart (too few faces found *and* possibly the wrong element).
+**Needs one more real run to confirm.**
 """
 
 import math
@@ -208,6 +233,7 @@ from Autodesk.Revit.DB import (
     Solid,
     SpotDimension,
     UV,
+    ViewDetailLevel,
     XYZ,
 )
 
@@ -502,31 +528,43 @@ def _collect_structural_framing(view):
     return {"framings": framings}
 
 
-def _nearest_structural_framing(candidate_xyz, framings):
-    """2D (X/Y) nearest-neighbour pick from `framings`' own Location point
-    - same reasoning `_nearest_pile` already gives for why Z is excluded
-    as a search axis: a spot elevation's own Z is the very thing being
-    checked here, not a safe key to search by."""
+# How many of the nearest Structural Framing elements (by their own
+# Location point) to walk geometry on, not just the single closest one -
+# widened 2026-09-02 after the first real run: a curved/chained abutment
+# is several adjacent Structural Framing instances, and a Location point
+# is a curve midpoint that can sit several metres from where a given spot
+# elevation actually is (real distances seen: 1.9-8m) - a single nearest
+# pick is too fragile to trust blindly for that shape, so this widens the
+# net rather than betting on one guess.
+STRUCTURAL_FRAMING_CANDIDATE_COUNT = 3
+
+
+def _nearest_structural_framings(candidate_xyz, framings, count=STRUCTURAL_FRAMING_CANDIDATE_COUNT):
+    """The `count` nearest `framings` by 2D (X/Y) distance from their own
+    Location point to `candidate_xyz` - same reasoning `_nearest_pile`
+    already gives for why Z is excluded as a search axis: a spot
+    elevation's own Z is the very thing being checked here, not a safe
+    key to search by. Returns a list, nearest first."""
     if candidate_xyz is None or not framings:
-        return None
-    best = None
-    best_dist_ft = None
+        return []
+    scored = []
     for framing in framings:
         p = framing["point"]
         if p is None:
             continue
         dx = candidate_xyz.X - p.X
         dy = candidate_xyz.Y - p.Y
-        dist_ft = math.sqrt(dx * dx + dy * dy)
-        if best_dist_ft is None or dist_ft < best_dist_ft:
-            best_dist_ft = dist_ft
-            best = framing
-    return best
+        scored.append((math.sqrt(dx * dx + dy * dy), framing))
+    scored.sort(key=lambda pair: pair[0])
+    return [framing for _dist, framing in scored[:count]]
 
 
-def _horizontal_faces(element, near_xyz=None, max_listed=10):
+def _horizontal_faces(element, near_xyz=None):
     """Every roughly-horizontal `PlanarFace` on `element`'s own real solid
-    geometry, sorted by 2D distance from `near_xyz` when given.
+    geometry, sorted by 2D distance from `near_xyz` when given. Returns
+    the full list (uncapped) - the caller merges results across several
+    candidate elements (see `STRUCTURAL_FRAMING_CANDIDATE_COUNT`'s own
+    remarks) and truncates once, over the merged set, not per element.
 
     Added because neither a spot elevation's own `Reference` nor a named
     parameter proved reliable for finding a bearing shelf (real finding,
@@ -564,10 +602,20 @@ def _horizontal_faces(element, near_xyz=None, max_listed=10):
     """
     faces = []
     errors = []
+    element_id = _eid(element.Id)
     try:
         options = Options()
         options.ComputeReferences = False
         options.IncludeNonVisibleObjects = False
+        # Real bug, found on the first real run 2026-09-02: left at the
+        # class default (Coarse when unset), this returned only 2
+        # horizontal faces total for a real abutment cross-section that
+        # should have several real steps (crest, one or more shelves,
+        # base) - a Coarse representation collapses a parametric civil
+        # profile down to a simplified bounding block, not the real
+        # detailed geometry a Fine-detail-level drafted section actually
+        # shows. Explicit Fine fixes it.
+        options.DetailLevel = ViewDetailLevel.Fine
         geom_element = element.get_Geometry(options)
     except Exception as exc:  # noqa: BLE001
         return {"faces": [], "_error": "Geometry: {0}".format(exc)}
@@ -595,6 +643,7 @@ def _horizontal_faces(element, near_xyz=None, max_listed=10):
             pass
 
         entry = {
+            "source_element_id": element_id,
             "z_mm": z_mm,
             "facing": "up" if normal.Z > 0 else "down",
             "representative_point_mm": _point(representative_point),
@@ -632,7 +681,7 @@ def _horizontal_faces(element, near_xyz=None, max_listed=10):
     if near_xyz is not None:
         faces.sort(key=lambda e: e["distance_2d_mm"] if e.get("distance_2d_mm") is not None else float("inf"))
 
-    out = {"faces": faces[:max_listed], "total_horizontal_faces": len(faces)}
+    out = {"faces": faces, "total_horizontal_faces": len(faces)}
     if errors:
         out["_errors"] = errors
     return out
@@ -1040,23 +1089,45 @@ def _describe_dimension(dim, piles=None, framings=None):
     except Exception as exc:  # noqa: BLE001
         errors.append("references: {0}".format(exc))
 
-    # Structural Framing horizontal-face probe (added 2026-09-02) - see
-    # `_horizontal_faces`'s own docstring for why this doesn't rely on
-    # the reference resolution above. Spot dimensions only - an ordinary
-    # linear dimension's own reference-resolution path above already
-    # works (this project's real data, PLANNING.md §14); this is
-    # specifically for the case that path doesn't cover.
+    # Structural Framing horizontal-face probe (added 2026-09-02, widened
+    # the same day after the first real run) - see `_horizontal_faces`'s
+    # own docstring for why this doesn't rely on the reference resolution
+    # above. Spot dimensions only - an ordinary linear dimension's own
+    # reference-resolution path above already works (this project's real
+    # data, PLANNING.md §14); this is specifically for the case that path
+    # doesn't cover. Walks the several nearest candidates
+    # (`STRUCTURAL_FRAMING_CANDIDATE_COUNT`), not just the single closest
+    # one, and merges their faces into one list sorted by 2D distance -
+    # see `_nearest_structural_framings`'s own remarks for why one
+    # nearest pick proved too fragile on the first real run.
     if entry["is_spot_dimension"] and framings and projection_candidate_xyz is not None:
         try:
-            nearest = _nearest_structural_framing(projection_candidate_xyz, framings)
-            if nearest is not None:
-                framing_element = doc.GetElement(ElementId(nearest["element_id"]))
-                faces = _horizontal_faces(framing_element, near_xyz=projection_candidate_xyz) if framing_element is not None else {"faces": []}
-                entry["nearest_structural_framing"] = {
-                    "element_id": nearest["element_id"],
-                    "location_point_mm": _point(nearest["point"]),
-                }
-                entry["nearest_structural_framing"].update(faces)
+            candidates = _nearest_structural_framings(projection_candidate_xyz, framings)
+            merged_faces = []
+            candidate_errors = []
+            for candidate in candidates:
+                framing_element = doc.GetElement(ElementId(candidate["element_id"]))
+                if framing_element is None:
+                    continue
+                result = _horizontal_faces(framing_element, near_xyz=projection_candidate_xyz)
+                merged_faces.extend(result["faces"])
+                if result.get("_error"):
+                    candidate_errors.append("{0}: {1}".format(candidate["element_id"], result["_error"]))
+                if result.get("_errors"):
+                    candidate_errors.extend(
+                        "{0}: {1}".format(candidate["element_id"], e) for e in result["_errors"]
+                    )
+
+            merged_faces.sort(key=lambda e: e["distance_2d_mm"] if e.get("distance_2d_mm") is not None else float("inf"))
+
+            entry["nearest_structural_framing"] = {
+                "candidate_element_ids": [c["element_id"] for c in candidates],
+                "candidate_location_points_mm": [_point(c["point"]) for c in candidates],
+                "faces": merged_faces[:MAX_NEARBY_ELEMENTS_LISTED],
+                "total_horizontal_faces": len(merged_faces),
+            }
+            if candidate_errors:
+                entry["nearest_structural_framing"]["_errors"] = candidate_errors
         except Exception as exc:  # noqa: BLE001
             errors.append("nearest_structural_framing: {0}".format(exc))
 

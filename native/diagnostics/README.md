@@ -110,7 +110,18 @@ given a spot's own Origin, find the nearest `OST_StructuralFraming`
 element by 2D location, then walk its real solid geometry and list
 every roughly-horizontal `PlanarFace`'s actual Z. Every new Revit API
 member was verified against the real `RevitAPI.dll` before writing this.
-**Not yet run.**
+
+**Run for real the same day - two real bugs found and fixed:** only 2
+horizontal faces came back for a real abutment cross-section that should
+have several real steps (crest, shelf, base) - `Options()`'s default
+`DetailLevel` (`Coarse` when unset) collapses a parametric civil profile
+to a simplified bounding block; fixed with an explicit
+`ViewDetailLevel.Fine`. Separately, a single "nearest" candidate proved
+too fragile for a curved/chained abutment (real distances of 1.9-8m
+between a spot and its nearest framing element's own `Location` point) -
+`_nearest_structural_framing` became `_nearest_structural_framings`,
+walking the 3 nearest candidates and merging their faces rather than
+betting on one guess. **Needs one more real run to confirm.**
 
 ## `InspectPileSetout.pushbutton`
 
