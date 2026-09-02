@@ -230,11 +230,11 @@ public sealed class CheckingSession
     /// <b>An <see cref="Issue"/> with no <see cref="Issue.ElementId"/> is
     /// dropped from the dimension-linked path entirely</b> - a real bug
     /// found on the Revit machine, 2026-09-02
-    /// (<c>AbutmentElevationConsistencyCommand</c>'s first real dual-mode
+    /// (<c>SpotElevationConsistencyCommand</c>'s first real dual-mode
     /// run). CLAUDE.md's "report a coverage indicator, never fail
     /// silently" means an investigation check may reasonably append one
     /// whole-check summary Issue (no single element to anchor it to) even
-    /// on a clean run, the way <c>AbutmentElevationConsistencyCheck.RunWithScope</c>
+    /// on a clean run, the way <c>SpotElevationConsistencyCheck.RunWithScope</c>
     /// does - but <see cref="InvestigationReconciliation.Reconcile"/>
     /// categorizes *any* issue not carrying
     /// <see cref="InvestigationReconciliation.ManualReviewCategory"/> as a

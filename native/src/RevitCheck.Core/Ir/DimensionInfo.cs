@@ -23,7 +23,7 @@ public sealed class DimensionInfo
     /// caller opts in (<c>RevitDimensionSource.Collect</c>'s
     /// <c>populateNearbyShelfFaces</c>, off by default: a real solid-geometry
     /// walk per spot is comparatively expensive, worth paying only for
-    /// <see cref="RevitCheck.Core.Checks.AbutmentElevationConsistencyCheck"/>'s own run).
+    /// <see cref="RevitCheck.Core.Checks.SpotElevationConsistencyCheck"/>'s own run).
     /// Empty either because nothing was found, or because the search never
     /// ran at all - <see cref="ShelfSearchPerformed"/> is the only way to
     /// tell those apart; an empty list here must never be read as "checked,

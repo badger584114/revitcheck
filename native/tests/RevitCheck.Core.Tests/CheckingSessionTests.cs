@@ -66,7 +66,7 @@ public class CheckingSessionTests
 
     /// <summary>
     /// A whole-check coverage summary with no single element to anchor to -
-    /// the real shape AbutmentElevationConsistencyCheck.RunWithScope always
+    /// the real shape SpotElevationConsistencyCheck.RunWithScope always
     /// appends, even on a clean run (CLAUDE.md's "report a coverage
     /// indicator, never fail silently"). Real bug, 2026-09-02: passed into
     /// RecordInvestigation unfiltered, this used to be categorized as a
@@ -75,7 +75,7 @@ public class CheckingSessionTests
     /// matches issues with an ElementId, it was never cleaned up on re-run
     /// either.
     /// </summary>
-    private static Issue InvestigationCoverageNote(string ruleId = "revitcheck.abutment_elevation_consistency") => new()
+    private static Issue InvestigationCoverageNote(string ruleId = "revitcheck.spot_elevation_consistency") => new()
     {
         RuleId = ruleId,
         Category = "coverage",
@@ -171,7 +171,7 @@ public class CheckingSessionTests
     public void RecordInvestigation_a_whole_check_coverage_note_does_not_flag_an_otherwise_clean_view()
     {
         // Real bug, 2026-09-02: a coverage-style issue with no ElementId
-        // (the shape AbutmentElevationConsistencyCheck.RunWithScope always
+        // (the shape SpotElevationConsistencyCheck.RunWithScope always
         // appends) used to be silently promoted to a confirmed problem,
         // flagging a view that was actually clean. See
         // InvestigationCoverageNote's own remarks.

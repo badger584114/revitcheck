@@ -949,13 +949,24 @@ kind of run, not from guessing ahead of one - same discipline applies here.
 4. ~~Where a real mapping file and CSV should live~~ - neither: both are
    picked per run (see "Wired up" above), never committed to this repo.
 
-### Abutment Elevation - the second element-type check, built 2026-09-02 (PLANNING.md §18)
+### Spot Elevation - the first check verifying against raw geometry, built 2026-09-02 (PLANNING.md §18)
 
-**`revitcheck.abutment_elevation_consistency`** compares a Spot Elevation's
-own drafted value against real solid geometry found near it - the second
-element-type check in the per-element-type pattern the two pile checks
-established, and the first to verify against raw geometry rather than a
-schedule or a live parameter.
+**`revitcheck.spot_elevation_consistency`** compares a Spot Elevation's own
+drafted value against real solid geometry found near it - the first check
+to verify against raw geometry rather than a schedule or a live parameter.
+
+**Built and proven against abutments; renamed from "Abutment Elevation" the
+same day, per the user's own direction.** Nothing about it is actually
+abutment-specific - it checks any Spot Elevation in any view against any
+nearby real geometry, no category filter anywhere. The real organizing axis
+for this project's checking tools isn't element type (piles vs. abutments
+vs. deck) or view type (plan vs. section) - it's dimension type plus how a
+dimension's provenance resolves (Spot vs. linear; direct-to-geometry vs.
+witness-line), which is what actually determines the verification
+technique. The pile checks stayed pile-specific because their own
+conventions genuinely are pile-specific (category, `DIT_SiteID`, schedule
+join) - this one never was, and calling it "Abutment Elevation" implied a
+scope restriction that was never really there.
 
 Built only after real diagnostic work (`InspectDimensionGeometry.pushbutton`,
 extended the same day) confirmed, against three real Spot Elevations, that
@@ -975,7 +986,7 @@ stable within one client's own project history.
 
 - `Ir/NearbyFaceInfo.cs` (new) + `DimensionInfo.NearbyHorizontalFaces`/
   `ShelfSearchPerformed` - additive IR, populated only when a caller opts in.
-- `Checks/AbutmentElevationConsistencyCheck.cs` (new, Core, fully tested off-Revit,
+- `Checks/SpotElevationConsistencyCheck.cs` (new, Core, fully tested off-Revit,
   11 tests) - judges the nearest real face **by 2D (plan) distance, never
   by Z agreement** (picking whichever face happens to agree would be
   circular), reports a mismatch, a manual-review "couldn't determine" gap
@@ -986,7 +997,7 @@ stable within one client's own project history.
   which Spot Elevations were actually investigated, separate from issues -
   same reasoning `PileChainBearingConsistencyCheck.RunWithScope` already
   established.
-- `RuleConfig.AbutmentElevationToleranceMm` (10.0mm placeholder, not yet
+- `RuleConfig.SpotElevationToleranceMm` (10.0mm placeholder, not yet
   calibrated against a known-bad case - see its own remarks).
 - `Adapters/RevitDimensionSource.cs` gained the real geometry-walk work
   (`NearbyHorizontalFaces`/`AppendHorizontalFaces`/`WalkGeometry`/`FaceEntry`),
@@ -997,8 +1008,8 @@ stable within one client's own project history.
   and `Face.Project` for both the real Z and the 2D distance (reading a
   face's own untrimmed-plane `Origin` instead is wrong for any face with a
   real slope/crossfall - the diagnostic's own third real bug).
-- `Commands/AbutmentElevationConsistencyCommand.cs` (new ribbon button,
-  "Abutment Elevation") - **dual-mode from the start**, not standalone-first
+- `Commands/SpotElevationConsistencyCommand.cs` (new ribbon button,
+  "Spot Elevation") - **dual-mode from the start**, not standalone-first
   the way both pile commands were: this check's issues already carry each
   Spot Elevation's own real ElementId/ViewId/ViewName/SheetNo (resolved
   inside the check itself), so no `ExpandByElementIdList`/view-context
