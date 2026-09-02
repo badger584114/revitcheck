@@ -976,10 +976,16 @@ stable within one client's own project history.
 - `Ir/NearbyFaceInfo.cs` (new) + `DimensionInfo.NearbyHorizontalFaces`/
   `ShelfSearchPerformed` - additive IR, populated only when a caller opts in.
 - `Checks/AbutmentElevationConsistencyCheck.cs` (new, Core, fully tested off-Revit,
-  9 new tests) - judges the nearest real face **by 2D (plan) distance, never
+  11 tests) - judges the nearest real face **by 2D (plan) distance, never
   by Z agreement** (picking whichever face happens to agree would be
-  circular), reports a mismatch, a "no nearby geometry" coverage gap, or
-  clean, plus an always-present coverage summary.
+  circular), reports a mismatch, a manual-review "couldn't determine" gap
+  (no nearby geometry / no drafted value - `InvestigationReconciliation.
+  ManualReviewCategory`, not a plain coverage/geometry category, so
+  reconciliation never wrongly auto-exports one as a confirmed problem), or
+  clean, plus an always-present coverage summary. `RunWithScope` exposes
+  which Spot Elevations were actually investigated, separate from issues -
+  same reasoning `PileChainBearingConsistencyCheck.RunWithScope` already
+  established.
 - `RuleConfig.AbutmentElevationToleranceMm` (10.0mm placeholder, not yet
   calibrated against a known-bad case - see its own remarks).
 - `Adapters/RevitDimensionSource.cs` gained the real geometry-walk work
@@ -992,13 +998,18 @@ stable within one client's own project history.
   face's own untrimmed-plane `Origin` instead is wrong for any face with a
   real slope/crossfall - the diagnostic's own third real bug).
 - `Commands/AbutmentElevationConsistencyCommand.cs` (new ribbon button,
-  "Abutment Elevation") - **standalone only, not dual-mode**, matching this
-  codebase's own precedent (both pile commands started standalone before
-  Stage 3 added session integration). Scoped to the active view - a real
+  "Abutment Elevation") - **dual-mode from the start**, not standalone-first
+  the way both pile commands were: this check's issues already carry each
+  Spot Elevation's own real ElementId/ViewId/ViewName/SheetNo (resolved
+  inside the check itself), so no `ExpandByElementIdList`/view-context
+  patching step is needed the way pile chain bearing's whole-model,
+  pile-keyed issues need both. Scoped to the active view - a real
   solid-geometry walk per spot is comparatively expensive.
 
 `dotnet build` clean across the whole solution including the net48 Addin,
-341 Core tests passing (332 + 9 new). **Not yet run on the Revit machine** -
-same discipline as everything else in this document: every real correction
-in the diagnostic work that led here came from an actual run, and this real
-check needs the same before being trusted.
+343 Core tests passing. **Confirmed on a real machine run, 2026-09-02: 3
+Spot Elevations in view, all 3 confirmed, 0 issues** - the first check in
+this project's history to work cleanly on its very first real run, no bugs
+found or fixed afterward. Session/dimension-triage reconciliation
+(`RunWithScope` + `RecordInvestigation`) is built but not yet confirmed
+against a real checking session - that's the next real validation step.

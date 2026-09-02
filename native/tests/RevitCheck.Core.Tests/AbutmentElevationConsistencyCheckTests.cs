@@ -1,5 +1,6 @@
 using RevitCheck.Core.Checks;
 using RevitCheck.Core.Ir;
+using RevitCheck.Core.Reporting;
 using Xunit;
 
 namespace RevitCheck.Core.Tests;
@@ -8,6 +9,9 @@ public class AbutmentElevationConsistencyCheckTests
 {
     private static List<Issues.Issue> Run(RevitModel model, RuleConfig? config = null) =>
         AbutmentElevationConsistencyCheck.Run(model, config ?? new RuleConfig());
+
+    private static (List<Issues.Issue> Issues, List<long> InvestigatedElementIds) RunWithScope(RevitModel model, RuleConfig? config = null) =>
+        AbutmentElevationConsistencyCheck.RunWithScope(model, config ?? new RuleConfig());
 
     private static DimensionInfo SpotDimension(
         long elementId,
@@ -61,7 +65,11 @@ public class AbutmentElevationConsistencyCheckTests
 
         Assert.Equal(2, issues.Count);
         var finding = issues.Single(i => i.RuleId == AbutmentElevationConsistencyCheck.RuleId && i.ElementId == 1);
-        Assert.Equal("low", finding.Severity);
+        // manual_review, not coverage - this dimension WAS investigated,
+        // just inconclusively (see the check's own remarks on why plain
+        // coverage/geometry here would wrongly auto-export as confirmed).
+        Assert.Equal(InvestigationReconciliation.ManualReviewCategory, finding.Category);
+        Assert.Equal("medium", finding.Severity);
         Assert.Contains("no Origin captured", finding.Description);
         Assert.Equal(1, Coverage(issues).SuggestedFix!["no_value"]);
     }
@@ -74,6 +82,7 @@ public class AbutmentElevationConsistencyCheckTests
         var issues = Run(model);
 
         var finding = issues.Single(i => i.ElementId == 1);
+        Assert.Equal(InvestigationReconciliation.ManualReviewCategory, finding.Category);
         Assert.Equal("medium", finding.Severity);
         Assert.Contains("no real geometry was found nearby", finding.Description);
         Assert.Equal(1, Coverage(issues).SuggestedFix!["no_candidate"]);
@@ -161,5 +170,49 @@ public class AbutmentElevationConsistencyCheckTests
 
         var strict = Run(model, new RuleConfig { AbutmentElevationToleranceMm = 5.0 });
         Assert.Equal(1, Coverage(strict).SuggestedFix!["mismatched"]);
+    }
+
+    [Fact]
+    public void UnsearchedDimensionsAreExcludedFromTheInvestigatedScope()
+    {
+        var faces = new List<NearbyFaceInfo> { new() { ZMm = 5002.0, Distance2DMm = 0.0 } };
+        var dims = new List<DimensionInfo>
+        {
+            SpotDimension(1, originZMm: 5000.0, faces: faces), // searched, confirmed
+            SpotDimension(2, shelfSearchPerformed: false), // never in scope for this check at all
+        };
+        var model = new RevitModel { Dimensions = dims };
+
+        var (issues, investigated) = RunWithScope(model);
+
+        Assert.Equal(new List<long> { 1 }, investigated);
+        // The confirmed dimension carries no issue of its own - only the
+        // coverage summary - matching every other clean-verdict check in
+        // this codebase.
+        Assert.DoesNotContain(issues, i => i.ElementId == 1);
+    }
+
+    [Fact]
+    public void EveryOutcomeCountsAsInvestigatedIncludingInconclusiveOnes()
+    {
+        // Confirmed, mismatched, no-candidate and no-value all reached a
+        // real verdict-attempt - all four belong in the investigated
+        // scope, since the point is whether the check looked, not whether
+        // it managed a confident automated answer (mirrors
+        // PileChainBearingConsistencyCheck.RunWithScope's own reasoning).
+        var confirmedFace = new List<NearbyFaceInfo> { new() { ZMm = 5000.0, Distance2DMm = 0.0 } };
+        var mismatchedFace = new List<NearbyFaceInfo> { new() { ZMm = 5050.0, Distance2DMm = 0.0 } };
+        var dims = new List<DimensionInfo>
+        {
+            SpotDimension(1, originZMm: 5000.0, faces: confirmedFace),
+            SpotDimension(2, originZMm: 5000.0, faces: mismatchedFace),
+            SpotDimension(3, originZMm: 5000.0, faces: new List<NearbyFaceInfo>()),
+            SpotDimension(4, originZMm: null),
+        };
+        var model = new RevitModel { Dimensions = dims };
+
+        var (_, investigated) = RunWithScope(model);
+
+        Assert.Equal(new List<long> { 1, 2, 3, 4 }, investigated);
     }
 }
