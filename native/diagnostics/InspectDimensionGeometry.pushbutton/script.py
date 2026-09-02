@@ -211,7 +211,24 @@ discipline as everywhere else in `native/`.
 Neither fix alone was confirmed sufficient on its own - both were made
 together, before the next real run, since the first run's data couldn't
 tell them apart (too few faces found *and* possibly the wrong element).
-**Needs one more real run to confirm.**
+
+**Second real re-run confirmed fix 1 (99/64/55 faces now, up from
+2/11/9) but the closest-by-Z candidates still weren't convincing** -
+10-500mm off, at 2-7m distances too far to trust without independent
+evidence of a real crossfall that size. Ruled out a plausible-looking
+alternative lead the same day (two nearby `Generic Models`
+`FamilyInstance`s within 750mm of two spots) - confirmed by the user to
+be part of the retaining wall itself, not a separate bearing pad/plinth
+family. **Third real bug, found by re-examining the geometry-reading
+logic itself rather than guessing at a fourth external cause:** `z_mm`
+was read at `PlanarFace.Origin`, an arbitrary point on the face's own
+untrimmed plane - correct only for a perfectly flat plane, wrong for a
+real shelf with any longitudinal grade/crossfall (common, for drainage),
+where `Origin` and the spot's own location can genuinely differ. Fixed
+by reusing `Face.Project(near_xyz)` - the exact technique this file
+already proved for linear dimensions above - to read Z at the real
+projected point nearest the spot, not an arbitrary one. **Needs one more
+real run to confirm.**
 """
 
 import math
@@ -589,16 +606,21 @@ def _horizontal_faces(element, near_xyz=None):
     machine needed) before writing this, same discipline this project
     uses everywhere else in `native/`.
 
-    `PlanarFace.Origin` is a point on the face's *underlying, untrimmed*
-    plane - not guaranteed to sit within the face's real (possibly
-    trimmed/non-convex) boundary - but every point on a horizontal
-    plane shares the same Z regardless of trimming, so it's still a
-    reliable source for the one number this diagnostic actually needs.
-    A separate bounding-box-centre `Evaluate` gives a best-effort
-    representative *point* (for the 2D distance sort/display only, not
-    for the Z value) - not guaranteed to land inside a non-convex face's
-    real boundary either, which is an accepted, documented limitation
-    for a throwaway diagnostic, not a claim this is exact.
+    **Z is read via `Face.Project(near_xyz)`, not `PlanarFace.Origin`**
+    (real bug, fixed on the second real run 2026-09-02) - `Origin` is an
+    arbitrary point on the face's own untrimmed plane, which is only
+    correct for a perfectly flat plane. A real shelf with even a slight
+    longitudinal grade/crossfall (common, for drainage) has a genuinely
+    different Z at `Origin` than at the spot's own location, on the
+    *same, correct* face - so this always projects `near_xyz` onto the
+    real, trimmed face first (the exact technique already proven for
+    linear dimensions elsewhere in this file,
+    `_geometry_object_point`/`Face.Project`) and reads Z there, falling
+    back to a bounding-box-centre `Evaluate` only when there's no
+    candidate point or the projection misses the face's real extent
+    entirely (still real geometry, just not guaranteed to be at the
+    location that actually matters for a sloped face - `faces[].
+    z_read_at_projected_point` says which happened for each entry).
     """
     faces = []
     errors = []
@@ -629,24 +651,58 @@ def _horizontal_faces(element, near_xyz=None):
             return None
         if abs(normal.Z) < 0.9:  # not roughly horizontal - skip
             return None
-        try:
-            z_mm = _mm(face.Origin.Z)
-        except Exception:  # noqa: BLE001
-            return None
 
-        representative_point = None
-        try:
-            bbox = face.GetBoundingBox()
-            mid_uv = UV((bbox.Min.U + bbox.Max.U) / 2.0, (bbox.Min.V + bbox.Max.V) / 2.0)
-            representative_point = face.Evaluate(mid_uv)
-        except Exception:  # noqa: BLE001 - best-effort only, see docstring
-            pass
+        # Real bug, found on the second real run 2026-09-02: reading Z at
+        # face.Origin (an arbitrary point on the face's own untrimmed
+        # plane, not necessarily anywhere near the spot) is only correct
+        # for a perfectly flat plane - a real shelf with even a slight
+        # longitudinal grade/crossfall (common, for drainage) has a
+        # genuinely different Z at Origin than at the spot's own
+        # location, on the *same, correct* face. Face.Project(near_xyz) -
+        # the exact technique already proven for linear dimensions above
+        # (_geometry_object_point) - finds the true nearest point *on the
+        # real, trimmed face* to the spot's own position, so both the Z
+        # and the 2D distance below are read at the location that
+        # actually matters, not an arbitrary one.
+        projected_point = None
+        if near_xyz is not None:
+            try:
+                result = face.Project(near_xyz)
+                if result is not None:
+                    projected_point = result.XYZPoint
+            except Exception:  # noqa: BLE001 - candidate may be off this face entirely
+                pass
+
+        if projected_point is not None:
+            representative_point = projected_point
+        else:
+            # No candidate point, or the projection missed this face's
+            # real extent entirely - fall back to a bbox-centre Evaluate,
+            # same limitation the module docstring's Face-resolution
+            # history already names (not guaranteed inside a non-convex
+            # face's real boundary, and wrong for a sloped face).
+            representative_point = None
+            try:
+                bbox = face.GetBoundingBox()
+                mid_uv = UV((bbox.Min.U + bbox.Max.U) / 2.0, (bbox.Min.V + bbox.Max.V) / 2.0)
+                representative_point = face.Evaluate(mid_uv)
+            except Exception:  # noqa: BLE001
+                pass
+
+        if representative_point is not None:
+            z_mm = _mm(representative_point.Z)
+        else:
+            try:
+                z_mm = _mm(face.Origin.Z)
+            except Exception:  # noqa: BLE001
+                return None
 
         entry = {
             "source_element_id": element_id,
             "z_mm": z_mm,
             "facing": "up" if normal.Z > 0 else "down",
             "representative_point_mm": _point(representative_point),
+            "z_read_at_projected_point": projected_point is not None,
         }
         if near_xyz is not None and representative_point is not None:
             dx = representative_point.X - near_xyz.X

@@ -121,7 +121,19 @@ too fragile for a curved/chained abutment (real distances of 1.9-8m
 between a spot and its nearest framing element's own `Location` point) -
 `_nearest_structural_framing` became `_nearest_structural_framings`,
 walking the 3 nearest candidates and merging their faces rather than
-betting on one guess. **Needs one more real run to confirm.**
+betting on one guess.
+
+**Re-run confirmed the `DetailLevel` fix (99/64/55 faces now) but the
+closest-by-Z candidates still weren't convincing (10-500mm off at 2-7m
+distances).** A plausible alternative lead (two nearby `Generic Models`
+`FamilyInstance`s within 750mm of two spots) was ruled out by the user -
+part of the retaining wall itself, not a separate bearing pad/plinth.
+**Third real bug**: `z_mm` was read at `PlanarFace.Origin` - an
+arbitrary point on the face's own untrimmed plane, wrong for a face with
+any real longitudinal grade/crossfall. Fixed by reusing
+`Face.Project(near_xyz)` - the same technique this file already proved
+for linear dimensions - to read Z at the real projected point nearest
+the spot. **Needs one more real run to confirm.**
 
 ## `InspectPileSetout.pushbutton`
 
