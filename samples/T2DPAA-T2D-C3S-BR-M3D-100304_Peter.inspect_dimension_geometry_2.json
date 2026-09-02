@@ -1,0 +1,1337 @@
+{
+  "dimensions": [
+    {
+      "curve": null,
+      "dimension_type_name": "Elevation_Survey 2.5",
+      "element_id": 5392639,
+      "is_spot_dimension": true,
+      "number_of_segments": 0,
+      "origin": [
+        199151.86635193802,
+        1234742.7988451158,
+        19389.916308001506
+      ],
+      "pile_match": null,
+      "references": [
+        {
+          "element_location_point": [
+            200373.5736431736,
+            1226444.9417600802,
+            21460.714691925168
+          ],
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "geometry_object_kind": null,
+          "geometry_point": null,
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": null,
+          "nearest_pile": {
+            "distance_2d_mm": 945.8629815319327,
+            "pile_element_id": 5010999,
+            "pile_key_value": "PIL232105",
+            "pile_point_mm": [
+              200481.62119349945,
+              1225505.2702713667,
+              18103.158
+            ]
+          },
+          "resolved_category": "Structural Framing",
+          "resolved_class_name": "FamilyInstance",
+          "resolved_element_id": 5006919,
+          "resolved_workset": "Workset1",
+          "stable_representation": "f8f62003-afe3-4958-be82-d44a86d9b7e9-004c6647:0:INSTANCE:69ee76ac-3524-4e09-b1ae-e32ee2194392-005fbf62:1882:LINEAR/0"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5006919,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5033831,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034391,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034498,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5038135,
+                "workset": "View \"Section: G.A section_01 a\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5048854,
+                "workset": "View \"Section: Section 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108141,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108153,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108165,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5114299,
+                "workset": "View \"Section: G.A section_01 a\""
+              },
+              {
+                "category": "Walls",
+                "class_name": "Wall",
+                "element_id": 5252868,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5280985,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5282184,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5283866,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5365934,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5770800,
+                "workset": "View \"Section: DRG-2873010 - SECTION 1a\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5852119,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5852120,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5852547,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5852548,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852567,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852569,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6261257,
+                "workset": "View \"Section: Section 66\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 6261514,
+                "workset": "View \"Section: Section 66\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 101,
+            "truncated": true
+          },
+          "origin": [
+            199151.86635193802,
+            1234742.7988451158,
+            19389.916308001506
+          ],
+          "value_mm": null,
+          "value_override": null
+        }
+      ],
+      "unique_id": "fdd8f852-015f-495b-9e0e-a7da6e9a808c-005248ff",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            18791.444294050198,
+            12463.30327121032,
+            -0.0
+          ],
+          "min": [
+            -17653.030414055767,
+            3548.603081622037,
+            -1500.0
+          ]
+        },
+        "element_id": 5378304,
+        "name": "DRG-2873062 - ABUTMENT A ELEVATION",
+        "origin": [
+          202881.8381217374,
+          1220014.2653040292,
+          10849.492730614465
+        ],
+        "right_direction": [
+          -0.25504262862710697,
+          0.9669298100601593,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "view_direction": [
+          0.9669298100601593,
+          0.25504262862710697,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": null,
+      "dimension_type_name": "Elevation_Survey 2.5",
+      "element_id": 9324248,
+      "is_spot_dimension": true,
+      "number_of_segments": 0,
+      "origin": [
+        203279.7646115376,
+        1218505.627366632,
+        19752.422695826084
+      ],
+      "pile_match": null,
+      "references": [
+        {
+          "element_location_point": null,
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "geometry_object_kind": "Edge",
+          "geometry_point": [
+            205066.63690306316,
+            1211731.1516848714,
+            19624.668642395754
+          ],
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5005779,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034594,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034606,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034617,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034628,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5046202,
+                "workset": "View \"Section: S1-G13-Girder\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5046237,
+                "workset": "View \"Section: S1-G13-Girder\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5048863,
+                "workset": "View \"Section: Section 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108033,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108045,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5365934,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5458522,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5458562,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 5820764,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 5820765,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5820767,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5820768,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailArc",
+                "element_id": 5820769,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailArc",
+                "element_id": 5820770,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5852119,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5852120,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852228,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852229,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852230,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 177,
+            "truncated": true
+          },
+          "nearest_pile": null,
+          "resolved_category": "Detail Items",
+          "resolved_class_name": "FilledRegion",
+          "resolved_element_id": 6804448,
+          "resolved_workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\"",
+          "stable_representation": "58ae1a4c-35fe-44b5-b237-55bdf70cb5c2-0067d3e0:1:LINEAR/1"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5005779,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5006919,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034558,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034570,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034582,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034594,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5048860,
+                "workset": "View \"Section: Section 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108045,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108057,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108081,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108318,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5274724,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5365934,
+                "workset": "Workset1"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5852119,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5852120,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852196,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852201,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852202,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852203,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5852418,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5852419,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852420,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852421,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852426,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 180,
+            "truncated": true
+          },
+          "origin": [
+            203279.7646115376,
+            1218505.627366632,
+            19752.422695826084
+          ],
+          "value_mm": null,
+          "value_override": null
+        }
+      ],
+      "unique_id": "8dadb25b-175d-4d14-9547-899e500571e7-008e46d8",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            18791.444294050198,
+            12463.30327121032,
+            -0.0
+          ],
+          "min": [
+            -17653.030414055767,
+            3548.603081622037,
+            -1500.0
+          ]
+        },
+        "element_id": 5378304,
+        "name": "DRG-2873062 - ABUTMENT A ELEVATION",
+        "origin": [
+          202881.8381217374,
+          1220014.2653040292,
+          10849.492730614465
+        ],
+        "right_direction": [
+          -0.25504262862710697,
+          0.9669298100601593,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "view_direction": [
+          0.9669298100601593,
+          0.25504262862710697,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    },
+    {
+      "curve": null,
+      "dimension_type_name": "Elevation_Survey 2.5",
+      "element_id": 9332887,
+      "is_spot_dimension": true,
+      "number_of_segments": 0,
+      "origin": [
+        206853.50919458875,
+        1204956.676003111,
+        19496.91458896542
+      ],
+      "pile_match": null,
+      "references": [
+        {
+          "element_location_point": null,
+          "element_reference_type": "REFERENCE_TYPE_LINEAR",
+          "geometry_object_kind": "Edge",
+          "geometry_point": [
+            205066.63690306316,
+            1211731.1516848714,
+            19624.668642395754
+          ],
+          "global_point": null,
+          "linked": false,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5005779,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034594,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034606,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034617,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5034628,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5046202,
+                "workset": "View \"Section: S1-G13-Girder\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5046237,
+                "workset": "View \"Section: S1-G13-Girder\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailLine",
+                "element_id": 5048863,
+                "workset": "View \"Section: Section 1\""
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108033,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5108045,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5365934,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5458522,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5458562,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 5820764,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "Lines",
+                "class_name": "DetailArc",
+                "element_id": 5820765,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5820767,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5820768,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailArc",
+                "element_id": 5820769,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailArc",
+                "element_id": 5820770,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5852119,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5852120,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852228,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852229,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5852230,
+                "workset": "View \"Section: DRG-2873010 - SECTION 2\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 177,
+            "truncated": true
+          },
+          "nearest_pile": null,
+          "resolved_category": "Detail Items",
+          "resolved_class_name": "FilledRegion",
+          "resolved_element_id": 6804448,
+          "resolved_workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\"",
+          "stable_representation": "58ae1a4c-35fe-44b5-b237-55bdf70cb5c2-0067d3e0:1:LINEAR/0"
+        }
+      ],
+      "segments": [
+        {
+          "index": 0,
+          "nearby_geometry": {
+            "listed": [
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5005779,
+                "workset": "Workset1"
+              },
+              {
+                "category": "BRIDGE-08 SETOUT.dwg",
+                "class_name": "ImportInstance",
+                "element_id": 5088878,
+                "workset": "LINKS"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5282862,
+                "workset": "Workset1"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5283224,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Generic Models",
+                "class_name": "FamilyInstance",
+                "element_id": 5283272,
+                "workset": "40_TempDummyModel"
+              },
+              {
+                "category": "Structural Framing",
+                "class_name": "FamilyInstance",
+                "element_id": 5365934,
+                "workset": "Workset1"
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5519219,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5519220,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5519225,
+                "workset": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5547176,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5547177,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547179,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547180,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547181,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5547183,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5547184,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547186,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547187,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547188,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": null,
+                "class_name": "Sketch",
+                "element_id": 5547190,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "Detail Items",
+                "class_name": "FilledRegion",
+                "element_id": 5547191,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547192,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547193,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547194,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              },
+              {
+                "category": "<Sketch>",
+                "class_name": "DetailLine",
+                "element_id": 5547195,
+                "workset": "View \"Section: DRG-2873066 - SECTION 1\""
+              }
+            ],
+            "search_radius_mm": 750.0,
+            "total_nearby": 189,
+            "truncated": true
+          },
+          "origin": [
+            206853.50919458875,
+            1204956.676003111,
+            19496.91458896542
+          ],
+          "value_mm": null,
+          "value_override": null
+        }
+      ],
+      "unique_id": "d4c1ad29-b383-4a20-b149-0ed3b88a393b-008e6897",
+      "view": {
+        "_errors": [
+          "sketch_plane: 'NoneType' object has no attribute 'GetPlane'"
+        ],
+        "crop_box": {
+          "max": [
+            18791.444294050198,
+            12463.30327121032,
+            -0.0
+          ],
+          "min": [
+            -17653.030414055767,
+            3548.603081622037,
+            -1500.0
+          ]
+        },
+        "element_id": 5378304,
+        "name": "DRG-2873062 - ABUTMENT A ELEVATION",
+        "origin": [
+          202881.8381217374,
+          1220014.2653040292,
+          10849.492730614465
+        ],
+        "right_direction": [
+          -0.25504262862710697,
+          0.9669298100601593,
+          0.0
+        ],
+        "sheet_no": null,
+        "sketch_plane": null,
+        "up_direction": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "view_direction": [
+          0.9669298100601593,
+          0.25504262862710697,
+          -0.0
+        ],
+        "view_type": "Section"
+      }
+    }
+  ],
+  "pile_collection_errors": null,
+  "piles": [
+    {
+      "element_id": 5010885,
+      "key_value": "PIL232101",
+      "point_mm": [
+        198410.59036649336,
+        1233357.0106325583,
+        17927.4
+      ]
+    },
+    {
+      "element_id": 5010971,
+      "key_value": "PIL232102",
+      "point_mm": [
+        198928.81390414937,
+        1231392.3519503237,
+        17971.4
+      ]
+    },
+    {
+      "element_id": 5010981,
+      "key_value": "PIL232103",
+      "point_mm": [
+        199446.41902091488,
+        1229429.981210074,
+        18015.4
+      ]
+    },
+    {
+      "element_id": 5010989,
+      "key_value": "PIL232104",
+      "point_mm": [
+        199964.02010709094,
+        1227467.6257407204,
+        18060.153
+      ]
+    },
+    {
+      "element_id": 5010999,
+      "key_value": "PIL232105",
+      "point_mm": [
+        200481.62119349945,
+        1225505.2702713667,
+        18103.158
+      ]
+    },
+    {
+      "element_id": 5011007,
+      "key_value": "PIL232106",
+      "point_mm": [
+        200999.2222797922,
+        1223542.9148020134,
+        18147.037
+      ]
+    },
+    {
+      "element_id": 5011015,
+      "key_value": "PIL232107",
+      "point_mm": [
+        201516.82336596824,
+        1221580.55933266,
+        18191.023
+      ]
+    },
+    {
+      "element_id": 5011428,
+      "key_value": "PIL232112",
+      "point_mm": [
+        204646.7425963931,
+        1209714.2509280941,
+        18102.5
+      ]
+    },
+    {
+      "element_id": 5011438,
+      "key_value": "PIL232114",
+      "point_mm": [
+        205657.62802670748,
+        1205881.7308543161,
+        18029.5
+      ]
+    },
+    {
+      "element_id": 5011450,
+      "key_value": "PIL232111",
+      "point_mm": [
+        204140.9934201751,
+        1211631.672835436,
+        18138.303
+      ]
+    },
+    {
+      "element_id": 5011458,
+      "key_value": "PIL232110",
+      "point_mm": [
+        203635.24424394435,
+        1213549.0947427747,
+        18174.971
+      ]
+    },
+    {
+      "element_id": 5011466,
+      "key_value": "PIL232109",
+      "point_mm": [
+        203129.49506761314,
+        1215466.5166500867,
+        18210.645
+      ]
+    },
+    {
+      "element_id": 5020923,
+      "key_value": "PIL232113",
+      "point_mm": [
+        205152.49177261113,
+        1207796.829020752,
+        18065.921
+      ]
+    },
+    {
+      "element_id": 5030958,
+      "key_value": "PIL232108",
+      "point_mm": [
+        202032.87165062316,
+        1219624.0909237326,
+        18234.768
+      ]
+    },
+    {
+      "element_id": 6131864,
+      "key_value": "N/A",
+      "point_mm": [
+        199299.92101990318,
+        1233397.3032872933,
+        19418.884804083747
+      ]
+    },
+    {
+      "element_id": 6304541,
+      "key_value": "N/A",
+      "point_mm": [
+        206528.10990173946,
+        1205993.427462084,
+        19516.70740536596
+      ]
+    },
+    {
+      "element_id": 6304962,
+      "key_value": "N/A",
+      "point_mm": [
+        204457.79829277535,
+        1213842.498420592,
+        19664.188950722626
+      ]
+    },
+    {
+      "element_id": 6305022,
+      "key_value": "N/A",
+      "point_mm": [
+        203940.197585706,
+        1215804.8529629041,
+        19701.401738153825
+      ]
+    },
+    {
+      "element_id": 6305124,
+      "key_value": "N/A",
+      "point_mm": [
+        203422.5973565826,
+        1217767.2056908836,
+        19738.73139360704
+      ]
+    },
+    {
+      "element_id": 6305180,
+      "key_value": "N/A",
+      "point_mm": [
+        202923.1412775731,
+        1219660.764551709,
+        19726.294984702963
+      ]
+    },
+    {
+      "element_id": 6305236,
+      "key_value": "N/A",
+      "point_mm": [
+        202405.5349356635,
+        1221623.1404571182,
+        19682.793994944685
+      ]
+    },
+    {
+      "element_id": 6305279,
+      "key_value": "N/A",
+      "point_mm": [
+        201370.33084040345,
+        1225547.8597065476,
+        19594.542340825603
+      ]
+    },
+    {
+      "element_id": 6305312,
+      "key_value": "N/A",
+      "point_mm": [
+        200852.7361576598,
+        1227510.1914091255,
+        19550.62821913269
+      ]
+    },
+    {
+      "element_id": 6305749,
+      "key_value": "N/A",
+      "point_mm": [
+        206013.0104910558,
+        1207955.7563207978,
+        19553.704344445214
+      ]
+    },
+    {
+      "element_id": 6305872,
+      "key_value": "N/A",
+      "point_mm": [
+        200335.1225853963,
+        1229472.5946137833,
+        19506.714685178835
+      ]
+    },
+    {
+      "element_id": 6305910,
+      "key_value": "N/A",
+      "point_mm": [
+        199817.52238948323,
+        1231434.9467257052,
+        19462.79980412367
+      ]
+    },
+    {
+      "element_id": 6306119,
+      "key_value": "N/A",
+      "point_mm": [
+        205493.00295149477,
+        1209917.7784103127,
+        19590.71340334918
+      ]
+    },
+    {
+      "element_id": 6306264,
+      "key_value": "N/A",
+      "point_mm": [
+        204975.39273742447,
+        1211880.1676206915,
+        19627.32436505279
+      ]
+    },
+    {
+      "element_id": 6306739,
+      "key_value": "N/A",
+      "point_mm": [
+        201887.931506862,
+        1223585.505318202,
+        19638.456295651686
+      ]
+    },
+    {
+      "element_id": 7926091,
+      "key_value": "PIL232115",
+      "point_mm": [
+        206198.63146068316,
+        1203832.7396424038,
+        19968.752214804856
+      ]
+    }
+  ],
+  "source": "selection"
+}
