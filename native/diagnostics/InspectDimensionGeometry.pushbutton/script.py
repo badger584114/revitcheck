@@ -160,7 +160,102 @@ match this diagnostic exists to catch, not introduce.
 a model category (returns what the view would actually show, respecting
 its crop region and visibility/graphics overrides), so this reuses the
 same per-view scoping the dimension collection above already relies on,
-rather than adding a second, different mechanism. Not yet run.
+rather than adding a second, different mechanism.
+
+**Extended 2026-09-02 for PLANNING.md §18's abutment bearing-shelf
+question, after two real diagnostic runs against real Spot Elevations
+found the same problem twice over:** a spot elevation's own `Reference`
+resolved cleanly to a real `Structural Framing` instance once and to a
+view-specific `FilledRegion` (a 2D fill/hatch annotation) twice - and
+even in the one case that resolved to the model, `Start Level Offset`/
+`End Level Offset` (the obvious parameter) turned out to be the
+profile's crest, off by ~2m from the spot's own value, not the bearing
+shelf a girder actually sits on. Confirmed by the user: which real part
+of the abutment a given `Structural Framing` instance represents
+(a retaining-wall-style capping-beam extension vs. the bearing-shelf
+portion) genuinely varies, and there is no reliable parameter name for
+"the shelf" specifically. `_collect_structural_framing`/
+`_nearest_structural_framing`/`_horizontal_faces` (new) sidestep both
+the Reference and any parameter entirely: given a spot's own Origin,
+find the nearest `OST_StructuralFraming` element by 2D location (same
+technique `_nearest_pile` already uses, same reasoning for excluding Z
+from the search), then walk its *real solid geometry* and list every
+roughly-horizontal `PlanarFace`'s actual Z - geometry can't lie about
+where a horizontal surface is, so the shelf should show up directly in
+the list regardless of what the Reference or a parameter claims. Every
+new Revit API member (`Element.Geometry`, `Options`, `Solid.Faces`,
+`PlanarFace.Origin`/`FaceNormal`, `GeometryInstance.GetInstanceGeometry`)
+was verified against the real `RevitAPI.dll` before writing this, same
+discipline as everywhere else in `native/`.
+
+**Run for real the same day - two real bugs found, both fixed:**
+
+1. **Only 2 horizontal faces came back for a real abutment cross-section
+   that should have several real steps** (crest, shelf, base) - `Options()`
+   was left at its class default `DetailLevel` (`Coarse` when unset),
+   which collapses a parametric civil profile down to a simplified
+   bounding block instead of the real detailed geometry a Fine-detail
+   drafted section actually shows. Fixed: `options.DetailLevel =
+   ViewDetailLevel.Fine`, explicit.
+2. **The single "nearest" pick was too fragile.** A curved/chained
+   abutment is several adjacent `Structural Framing` instances, and a
+   `Location` point is a curve midpoint that can sit several metres from
+   where a given spot elevation actually is (real distances seen on the
+   first run: 1.9-8m) - close enough to plausibly pick the wrong
+   instance outright. `_nearest_structural_framing` (singular) became
+   `_nearest_structural_framings` (`STRUCTURAL_FRAMING_CANDIDATE_COUNT =
+   3`), walking the several nearest candidates and merging their faces
+   into one list sorted by 2D distance, rather than betting everything on
+   one guess.
+
+Neither fix alone was confirmed sufficient on its own - both were made
+together, before the next real run, since the first run's data couldn't
+tell them apart (too few faces found *and* possibly the wrong element).
+
+**Second real re-run confirmed fix 1 (99/64/55 faces now, up from
+2/11/9) but the closest-by-Z candidates still weren't convincing** -
+10-500mm off, at 2-7m distances too far to trust without independent
+evidence of a real crossfall that size. Ruled out a plausible-looking
+alternative lead the same day (two nearby `Generic Models`
+`FamilyInstance`s within 750mm of two spots) - confirmed by the user to
+be part of the retaining wall itself, not a separate bearing pad/plinth
+family. **Third real bug, found by re-examining the geometry-reading
+logic itself rather than guessing at a fourth external cause:** `z_mm`
+was read at `PlanarFace.Origin`, an arbitrary point on the face's own
+untrimmed plane - correct only for a perfectly flat plane, wrong for a
+real shelf with any longitudinal grade/crossfall (common, for drainage),
+where `Origin` and the spot's own location can genuinely differ. Fixed
+by reusing `Face.Project(near_xyz)` - the exact technique this file
+already proved for linear dimensions above - to read Z at the real
+projected point nearest the spot, not an arbitrary one.
+
+**Confirmed on a real re-run the same day - 2 of 3 spots matched
+exactly** (`delta=0.000mm`, `distance_2d_mm=0.0`,
+`z_read_at_projected_point=True`) - the same precision bar the pile
+checks needed before being trusted. The third came back 22mm off at
+1.2m because none of the (at the time) 3 nearest Structural Framing
+candidates by `Location` distance actually contained the real shelf
+face under it.
+
+**Made category-agnostic the same day, before designing the real
+check - a bigger correction than a wider candidate count, per the user
+directly:** a category-filtered search "will fall over as soon as we
+put another model into it" - the real element carrying a bearing shelf
+could be a Generic Model, a two-point adaptive family, a dedicated
+Abutment category, or something not yet seen; Structural Framing is an
+old, being-phased-out modelling workflow on this project specifically,
+not a stable category to search by (this project's own "logic built on
+a client convention breaks" lesson, CLAUDE.md, one level more specific:
+not even stable *within* one client's own project history).
+`_collect_structural_framing`/`_nearest_structural_framings` (category-
+filtered) became `_collect_geometry_candidates` (category-agnostic,
+minus the same noise-category/class exclusion `_nearby_elements` already
+uses) - a small 3D bounding-box search around each spot's own point
+(`SHELF_SEARCH_RADIUS_MM`), not a category collector. Real data already
+justified a small radius: the two exact matches above both had
+`distance_2d_mm=0.0` - the spot's own point can sit exactly on the real
+shelf face. **Needs one more real run to confirm the category-agnostic
+search still finds the same real matches.**
 """
 
 import math
@@ -175,9 +270,14 @@ from Autodesk.Revit.DB import (
     ElementId,
     Face,
     FilteredElementCollector,
+    GeometryInstance,
+    Options,
     Outline,
+    PlanarFace,
+    Solid,
     SpotDimension,
     UV,
+    ViewDetailLevel,
     XYZ,
 )
 
@@ -431,6 +531,247 @@ def _pile_to_pile_distance_mm(pile_a, pile_b):
         "distance_3d_mm": _mm(math.sqrt(dx * dx + dy * dy + dz * dz)),
         "distance_2d_mm": _mm(math.sqrt(dx * dx + dy * dy)),
     }
+
+
+# --- Category-agnostic horizontal-face probe (added 2026-09-02, made
+# category-agnostic the same day) - see the module docstring's "Abutment
+# bearing shelf" note for the real question this answers. ---
+
+# How far around a spot elevation's own point to search for candidate
+# geometry, in 3D this time (not the 2D-only radius _nearby_elements
+# uses for its own, unrelated display purpose) - real data confirmed the
+# spot's own point can sit exactly on the real shelf face
+# (distance_2d_mm=0.0 twice, once Face.Project was reading the right
+# location), so this does not need to be large; kept a little more
+# generous than NEARBY_SEARCH_RADIUS_MM as a first real value, not a
+# calibrated one - may need tuning once more real data comes in.
+SHELF_SEARCH_RADIUS_MM = 1500.0
+SHELF_SEARCH_RADIUS_FT = SHELF_SEARCH_RADIUS_MM / MM_PER_FOOT
+
+
+def _collect_geometry_candidates(view, near_xyz):
+    """Every element (any category, any class) whose bounding box
+    intersects a small region around `near_xyz`, minus known noise
+    (`_NOISE_CATEGORIES`/`_NOISE_CLASSES`, already built for
+    `_nearby_elements`'s own unrelated display purpose).
+
+    **Not filtered by category - confirmed by the user 2026-09-02: a
+    Structural Framing collector (this function's first version) "will
+    fall over as soon as we put another model into it" - the real
+    element carrying a bearing shelf could just as well be a Generic
+    Model, a two-point adaptive family, a dedicated Abutment category,
+    or something not yet seen. Structural Framing is an old, being-
+    phased-out modelling workflow on this project specifically, not a
+    stable category name to search by - the same "logic built on a
+    client convention breaks, logic built on a domain invariant survives"
+    lesson CLAUDE.md already names, one level more specific: not even
+    stable *within* one client's own project history.** The real
+    invariant is geometry itself, not what produced it - this searches
+    broadly and lets `_horizontal_faces` (which needs real solid
+    geometry regardless of category) filter out anything that has none.
+
+    Scoped to the view (same reasoning `_collect_piles` already gives)
+    and to a small 3D bounding box around the spot's own point, not
+    document-wide - a real signal already confirmed twice
+    (`distance_2d_mm=0.0`): the spot's own point can sit exactly on the
+    real shelf face, so a small radius is enough net without also
+    pulling in unrelated geometry elsewhere in the model.
+    """
+    try:
+        min_pt = XYZ(near_xyz.X - SHELF_SEARCH_RADIUS_FT, near_xyz.Y - SHELF_SEARCH_RADIUS_FT, near_xyz.Z - SHELF_SEARCH_RADIUS_FT)
+        max_pt = XYZ(near_xyz.X + SHELF_SEARCH_RADIUS_FT, near_xyz.Y + SHELF_SEARCH_RADIUS_FT, near_xyz.Z + SHELF_SEARCH_RADIUS_FT)
+        outline = Outline(min_pt, max_pt)
+        collector = (
+            FilteredElementCollector(doc, view.Id)
+            .WherePasses(BoundingBoxIntersectsFilter(outline))
+            .WhereElementIsNotElementType()
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"candidates": [], "_error": str(exc)}
+
+    candidates = []
+    for element in collector:
+        eid = _eid(element.Id)
+        if eid is None:
+            continue
+        class_name = type(element).__name__
+        category_name = None
+        try:
+            if element.Category is not None:
+                category_name = element.Category.Name
+        except Exception:  # noqa: BLE001
+            pass
+        if class_name in _NOISE_CLASSES or category_name in _NOISE_CATEGORIES:
+            continue
+        candidates.append({"element_id": eid, "category": category_name, "class_name": class_name})
+    return {"candidates": candidates}
+
+
+def _horizontal_faces(element, near_xyz=None):
+    """Every roughly-horizontal `PlanarFace` on `element`'s own real solid
+    geometry, sorted by 2D distance from `near_xyz` when given. Returns
+    the full list (uncapped) - the caller merges results across every
+    candidate `_collect_geometry_candidates` finds and truncates once,
+    over the merged set, not per element.
+
+    Added because neither a spot elevation's own `Reference` nor a named
+    parameter proved reliable for finding a bearing shelf (real finding,
+    2026-09-02): a spot's `Reference` resolved cleanly to the real
+    Structural Framing instance once and to a view-specific `FilledRegion`
+    twice, and even where it *did* resolve, `Start Level Offset`/`End
+    Level Offset` turned out to be the profile's crest, not the shelf a
+    girder actually sits on (confirmed by the user - this genuinely
+    varies by which real part of the abutment a given instance
+    represents: a retaining-wall-style capping-beam extension vs. the
+    bearing-shelf portion). Real geometry can't lie about where a
+    horizontal surface actually is, so this reads it directly instead of
+    trusting either the Reference or a parameter name.
+
+    `FamilyInstance` geometry is nested inside a `GeometryInstance` -
+    `GetInstanceGeometry()` (no `Transform` argument) already returns it
+    pre-transformed into world/project space, so no manual transform is
+    needed here. Every member used (`Element.Geometry`, `Options`,
+    `Solid.Faces`, `PlanarFace.Origin`/`FaceNormal`,
+    `GeometryInstance.GetInstanceGeometry`) was verified against the real
+    `RevitAPI.dll` (`System.Reflection.MetadataLoadContext`, no Revit
+    machine needed) before writing this, same discipline this project
+    uses everywhere else in `native/`.
+
+    **Z is read via `Face.Project(near_xyz)`, not `PlanarFace.Origin`**
+    (real bug, fixed on the second real run 2026-09-02) - `Origin` is an
+    arbitrary point on the face's own untrimmed plane, which is only
+    correct for a perfectly flat plane. A real shelf with even a slight
+    longitudinal grade/crossfall (common, for drainage) has a genuinely
+    different Z at `Origin` than at the spot's own location, on the
+    *same, correct* face - so this always projects `near_xyz` onto the
+    real, trimmed face first (the exact technique already proven for
+    linear dimensions elsewhere in this file,
+    `_geometry_object_point`/`Face.Project`) and reads Z there, falling
+    back to a bounding-box-centre `Evaluate` only when there's no
+    candidate point or the projection misses the face's real extent
+    entirely (still real geometry, just not guaranteed to be at the
+    location that actually matters for a sloped face - `faces[].
+    z_read_at_projected_point` says which happened for each entry).
+    """
+    faces = []
+    errors = []
+    element_id = _eid(element.Id)
+    try:
+        options = Options()
+        options.ComputeReferences = False
+        options.IncludeNonVisibleObjects = False
+        # Real bug, found on the first real run 2026-09-02: left at the
+        # class default (Coarse when unset), this returned only 2
+        # horizontal faces total for a real abutment cross-section that
+        # should have several real steps (crest, one or more shelves,
+        # base) - a Coarse representation collapses a parametric civil
+        # profile down to a simplified bounding block, not the real
+        # detailed geometry a Fine-detail-level drafted section actually
+        # shows. Explicit Fine fixes it.
+        options.DetailLevel = ViewDetailLevel.Fine
+        geom_element = element.get_Geometry(options)
+    except Exception as exc:  # noqa: BLE001
+        return {"faces": [], "_error": "Geometry: {0}".format(exc)}
+
+    def _face_entry(face):
+        if not isinstance(face, PlanarFace):
+            return None
+        try:
+            normal = face.FaceNormal
+        except Exception:  # noqa: BLE001
+            return None
+        if abs(normal.Z) < 0.9:  # not roughly horizontal - skip
+            return None
+
+        # Real bug, found on the second real run 2026-09-02: reading Z at
+        # face.Origin (an arbitrary point on the face's own untrimmed
+        # plane, not necessarily anywhere near the spot) is only correct
+        # for a perfectly flat plane - a real shelf with even a slight
+        # longitudinal grade/crossfall (common, for drainage) has a
+        # genuinely different Z at Origin than at the spot's own
+        # location, on the *same, correct* face. Face.Project(near_xyz) -
+        # the exact technique already proven for linear dimensions above
+        # (_geometry_object_point) - finds the true nearest point *on the
+        # real, trimmed face* to the spot's own position, so both the Z
+        # and the 2D distance below are read at the location that
+        # actually matters, not an arbitrary one.
+        projected_point = None
+        if near_xyz is not None:
+            try:
+                result = face.Project(near_xyz)
+                if result is not None:
+                    projected_point = result.XYZPoint
+            except Exception:  # noqa: BLE001 - candidate may be off this face entirely
+                pass
+
+        if projected_point is not None:
+            representative_point = projected_point
+        else:
+            # No candidate point, or the projection missed this face's
+            # real extent entirely - fall back to a bbox-centre Evaluate,
+            # same limitation the module docstring's Face-resolution
+            # history already names (not guaranteed inside a non-convex
+            # face's real boundary, and wrong for a sloped face).
+            representative_point = None
+            try:
+                bbox = face.GetBoundingBox()
+                mid_uv = UV((bbox.Min.U + bbox.Max.U) / 2.0, (bbox.Min.V + bbox.Max.V) / 2.0)
+                representative_point = face.Evaluate(mid_uv)
+            except Exception:  # noqa: BLE001
+                pass
+
+        if representative_point is not None:
+            z_mm = _mm(representative_point.Z)
+        else:
+            try:
+                z_mm = _mm(face.Origin.Z)
+            except Exception:  # noqa: BLE001
+                return None
+
+        entry = {
+            "source_element_id": element_id,
+            "z_mm": z_mm,
+            "facing": "up" if normal.Z > 0 else "down",
+            "representative_point_mm": _point(representative_point),
+            "z_read_at_projected_point": projected_point is not None,
+        }
+        if near_xyz is not None and representative_point is not None:
+            dx = representative_point.X - near_xyz.X
+            dy = representative_point.Y - near_xyz.Y
+            entry["distance_2d_mm"] = _mm(math.sqrt(dx * dx + dy * dy))
+        return entry
+
+    def _walk(geom_obj):
+        if isinstance(geom_obj, Solid):
+            try:
+                if geom_obj.Faces is not None and geom_obj.Volume > 0:
+                    for face in geom_obj.Faces:
+                        entry = _face_entry(face)
+                        if entry is not None:
+                            faces.append(entry)
+            except Exception as exc:  # noqa: BLE001
+                errors.append("solid faces: {0}".format(exc))
+        elif isinstance(geom_obj, GeometryInstance):
+            try:
+                for sub in geom_obj.GetInstanceGeometry():
+                    _walk(sub)
+            except Exception as exc:  # noqa: BLE001
+                errors.append("instance geometry: {0}".format(exc))
+
+    if geom_element is not None:
+        try:
+            for obj in geom_element:
+                _walk(obj)
+        except Exception as exc:  # noqa: BLE001
+            errors.append("walk: {0}".format(exc))
+
+    if near_xyz is not None:
+        faces.sort(key=lambda e: e["distance_2d_mm"] if e.get("distance_2d_mm") is not None else float("inf"))
+
+    out = {"faces": faces, "total_horizontal_faces": len(faces)}
+    if errors:
+        out["_errors"] = errors
+    return out
 
 
 def _nearby_elements(global_point_xyz, exclude_element_id):
@@ -788,7 +1129,7 @@ def _projection_candidate_xyz(dim):
     return None
 
 
-def _describe_dimension(dim, piles=None):
+def _describe_dimension(dim, view, piles=None):
     entry = {
         "element_id": _eid(dim.Id),
         "unique_id": None,
@@ -800,6 +1141,7 @@ def _describe_dimension(dim, piles=None):
         "segments": [],
         "references": [],
         "pile_match": None,
+        "nearby_shelf_candidates": None,
     }
     errors = []
 
@@ -833,6 +1175,49 @@ def _describe_dimension(dim, piles=None):
         ]
     except Exception as exc:  # noqa: BLE001
         errors.append("references: {0}".format(exc))
+
+    # Category-agnostic horizontal-face probe (added 2026-09-02, made
+    # category-agnostic the same day - see `_collect_geometry_candidates`'s
+    # own remarks for why: a category-filtered search "will fall over as
+    # soon as we put another model into it", confirmed by the user).
+    # See `_horizontal_faces`'s own docstring for why this doesn't rely
+    # on the reference resolution above. Spot dimensions only - an
+    # ordinary linear dimension's own reference-resolution path above
+    # already works (this project's real data, PLANNING.md §14); this is
+    # specifically for the case that path doesn't cover. Walks every
+    # candidate within `SHELF_SEARCH_RADIUS_MM`, not just one guess, and
+    # merges their faces into one list sorted by 2D distance.
+    if entry["is_spot_dimension"] and projection_candidate_xyz is not None:
+        try:
+            candidate_result = _collect_geometry_candidates(view, projection_candidate_xyz)
+            candidates = candidate_result.get("candidates", [])
+            merged_faces = []
+            candidate_errors = [candidate_result["_error"]] if candidate_result.get("_error") else []
+            for candidate in candidates:
+                geom_element = doc.GetElement(ElementId(candidate["element_id"]))
+                if geom_element is None:
+                    continue
+                result = _horizontal_faces(geom_element, near_xyz=projection_candidate_xyz)
+                merged_faces.extend(result["faces"])
+                if result.get("_error"):
+                    candidate_errors.append("{0}: {1}".format(candidate["element_id"], result["_error"]))
+                if result.get("_errors"):
+                    candidate_errors.extend(
+                        "{0}: {1}".format(candidate["element_id"], e) for e in result["_errors"]
+                    )
+
+            merged_faces.sort(key=lambda e: e["distance_2d_mm"] if e.get("distance_2d_mm") is not None else float("inf"))
+
+            entry["nearby_shelf_candidates"] = {
+                "candidate_element_ids": [c["element_id"] for c in candidates],
+                "search_radius_mm": SHELF_SEARCH_RADIUS_MM,
+                "faces": merged_faces[:MAX_NEARBY_ELEMENTS_LISTED],
+                "total_horizontal_faces": len(merged_faces),
+            }
+            if candidate_errors:
+                entry["nearby_shelf_candidates"]["_errors"] = candidate_errors
+        except Exception as exc:  # noqa: BLE001
+            errors.append("nearby_shelf_candidates: {0}".format(exc))
 
     # Pile-to-pile comparison (added 2026-08-26) - see the module
     # docstring's "Extended" note. Only meaningful with exactly two
@@ -907,7 +1292,7 @@ piles = pile_collection["piles"]
 view_cache = {}
 results = []
 for dim in dimensions:
-    entry = _describe_dimension(dim, piles=piles)
+    entry = _describe_dimension(dim, doc.ActiveView, piles=piles)
     try:
         owner_view = doc.ActiveView
         view_key = _eid(owner_view.Id)
@@ -956,7 +1341,12 @@ import json  # noqa: E402 - after the early-exit paths above, same style as capt
 
 # Strip the raw XYZ objects (not JSON-serializable, and already captured
 # as point_mm) before writing - piles list itself stays in memory as-is
-# for the distance math above, this is only for the dump.
+# for the distance math above, this is only for the dump. The shelf
+# probe's own candidates are collected per-spot now (a bounding-box
+# search around each spot's own point, not a single document/view-wide
+# collection reused across all dimensions the way piles are), so their
+# only record is already inside each dimension's own
+# nearby_shelf_candidates entry - nothing extra to strip here.
 piles_for_json = [{k: v for k, v in pile.items() if k != "point"} for pile in piles]
 
 with open(path, "w") as f:

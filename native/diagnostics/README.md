@@ -93,6 +93,67 @@ geometry and tag-to-tag), not one. The current build is unchanged since
 run 4's fix; if you're running this again, that's for a specific new
 question, not to re-chase the same one.
 
+**Extended 2026-09-02 for PLANNING.md §18's abutment bearing-shelf
+question, after two real runs found the same problem twice over:** a
+Spot Elevation's own `Reference` resolved cleanly to the real
+`Structural Framing` instance once and to a view-specific `FilledRegion`
+twice, and even where it did resolve, `Start Level Offset`/`End Level
+Offset` (the obvious parameter) turned out to be the profile's crest,
+not the bearing shelf a girder actually sits on — confirmed by the user,
+who also confirmed there's no reliable parameter name for "the shelf"
+specifically, since which real part of the abutment a given `Structural
+Framing` instance represents genuinely varies (a retaining-wall-style
+capping-beam extension vs. the bearing-shelf portion). New
+`_collect_structural_framing`/`_nearest_structural_framing`/
+`_horizontal_faces` sidestep both the Reference and any parameter:
+given a spot's own Origin, find the nearest `OST_StructuralFraming`
+element by 2D location, then walk its real solid geometry and list
+every roughly-horizontal `PlanarFace`'s actual Z. Every new Revit API
+member was verified against the real `RevitAPI.dll` before writing this.
+
+**Run for real the same day - two real bugs found and fixed:** only 2
+horizontal faces came back for a real abutment cross-section that should
+have several real steps (crest, shelf, base) - `Options()`'s default
+`DetailLevel` (`Coarse` when unset) collapses a parametric civil profile
+to a simplified bounding block; fixed with an explicit
+`ViewDetailLevel.Fine`. Separately, a single "nearest" candidate proved
+too fragile for a curved/chained abutment (real distances of 1.9-8m
+between a spot and its nearest framing element's own `Location` point) -
+`_nearest_structural_framing` became `_nearest_structural_framings`,
+walking the 3 nearest candidates and merging their faces rather than
+betting on one guess.
+
+**Re-run confirmed the `DetailLevel` fix (99/64/55 faces now) but the
+closest-by-Z candidates still weren't convincing (10-500mm off at 2-7m
+distances).** A plausible alternative lead (two nearby `Generic Models`
+`FamilyInstance`s within 750mm of two spots) was ruled out by the user -
+part of the retaining wall itself, not a separate bearing pad/plinth.
+**Third real bug**: `z_mm` was read at `PlanarFace.Origin` - an
+arbitrary point on the face's own untrimmed plane, wrong for a face with
+any real longitudinal grade/crossfall. Fixed by reusing
+`Face.Project(near_xyz)` - the same technique this file already proved
+for linear dimensions - to read Z at the real projected point nearest
+the spot. **Confirmed on a real re-run the same day: 2 of 3 spots
+matched exactly** (`delta=0.000mm`, `distance_2d_mm=0.0`) - the same
+precision bar the pile checks needed before being trusted.
+
+**Made category-agnostic the same day, before designing the real check
+- confirmed by the user directly: a category-filtered search "will fall
+over as soon as we put another model into it".** The real element
+carrying a bearing shelf could be a Generic Model, a two-point adaptive
+family, a dedicated Abutment category, or something not yet seen -
+Structural Framing is an old, being-phased-out modelling workflow on
+this project specifically, not a stable category to search by (this
+project's own "logic built on a client convention breaks" lesson, one
+level more specific: not even stable *within* one client's own project
+history). `_collect_structural_framing`/`_nearest_structural_framings`
+became `_collect_geometry_candidates` - a small 3D bounding-box search
+around each spot's own point, minus known noise categories/classes, not
+a category collector. **Confirmed on a real re-run: all 3 spots now
+match** (2 exact at `delta=0.000mm`, the third improved from 22mm off
+to 2.3mm off once the right, non-Structural-Framing element was found)
+- complete, clean validation, ready to design the real Core check.
+
 ## `InspectPileSetout.pushbutton`
 
 The follow-on diagnostic after run 7 pivoted the pile-setout question away

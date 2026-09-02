@@ -197,4 +197,31 @@ public sealed class RuleConfig
     /// than being tightened further without a real reason to.
     /// </summary>
     public int PileChainMinimumPiles { get; init; } = 2;
+
+    // --- revitcheck.abutment_elevation_consistency ---
+    //
+    // Compares a Spot Elevation's own drafted value (DimensionInfo.Origin.Z -
+    // Value/ValueOverride are confirmed unreliable for this Spot Dimension
+    // family, always null on real data, PLANNING.md §18) against real solid
+    // geometry found near it. Deliberately not scoped by category - real
+    // data confirmed a category-filtered search "will fall over as soon as
+    // we put another model into it" (the user, 2026-09-02): the element
+    // carrying a bearing shelf could be Structural Framing (an old,
+    // being-phased-out workflow on this project specifically), a Generic
+    // Model, a two-point adaptive family, a dedicated Abutment category, or
+    // something not yet seen - not even stable within one client's own
+    // project history, so no RuleConfig field names a category here the way
+    // PileCategoryName does for piles.
+
+    /// <summary>
+    /// Flag a Spot Elevation whose own value disagrees with the nearest real
+    /// horizontal face's Z by more than this (mm). Real data (PLANNING.md
+    /// §18, 3 real Spot Elevations sampled): two matched exactly (0.000mm),
+    /// the third matched to 2.3mm once the search was made category-agnostic
+    /// - a small, real sample, not a statistically calibrated figure. 10mm
+    /// is a generous placeholder several times looser than every real clean
+    /// case seen so far, not a tight figure calibrated against a known-bad
+    /// case - no real wrong-elevation example has been seen yet.
+    /// </summary>
+    public double AbutmentElevationToleranceMm { get; init; } = 10.0;
 }

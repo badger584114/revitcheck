@@ -34,7 +34,7 @@ public static class CheckRegistry
         catalog.Register(MetadataReconciliationCheck.RuleId, model => MetadataReconciliationCheck.Run(model, mapping, csv, config));
     }
 
-    /// <summary>Registers the ported dimension checks (revit.dimension_provenance, revit.dimension_override_consistency) plus revitcheck.pile_model_schedule_consistency, bound to a RuleConfig for this run.</summary>
+    /// <summary>Registers the ported dimension checks (revit.dimension_provenance, revit.dimension_override_consistency) plus revitcheck.pile_model_schedule_consistency, revitcheck.pile_chain_bearing_consistency and revitcheck.abutment_elevation_consistency, bound to a RuleConfig for this run.</summary>
     public static void RegisterAll(Catalog catalog, RuleConfig ruleConfig)
     {
         RegisterAll(catalog);
@@ -42,5 +42,6 @@ public static class CheckRegistry
         catalog.Register(DimensionOverrideConsistencyCheck.RuleId, model => DimensionOverrideConsistencyCheck.Run(model, ruleConfig));
         catalog.Register(PileModelScheduleConsistencyCheck.RuleId, model => PileModelScheduleConsistencyCheck.Run(model, ruleConfig));
         catalog.Register(PileChainBearingConsistencyCheck.RuleId, model => PileChainBearingConsistencyCheck.Run(model, ruleConfig));
+        catalog.Register(AbutmentElevationConsistencyCheck.RuleId, model => AbutmentElevationConsistencyCheck.Run(model, ruleConfig));
     }
 }
