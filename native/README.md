@@ -948,3 +948,57 @@ kind of run, not from guessing ahead of one - same discipline applies here.
    spread in the export) - `RevitMetadataElementSource.DefaultCategories`.
 4. ~~Where a real mapping file and CSV should live~~ - neither: both are
    picked per run (see "Wired up" above), never committed to this repo.
+
+### Abutment Elevation - the second element-type check, built 2026-09-02 (PLANNING.md §18)
+
+**`revitcheck.abutment_elevation_consistency`** compares a Spot Elevation's
+own drafted value against real solid geometry found near it - the second
+element-type check in the per-element-type pattern the two pile checks
+established, and the first to verify against raw geometry rather than a
+schedule or a live parameter.
+
+Built only after real diagnostic work (`InspectDimensionGeometry.pushbutton`,
+extended the same day) confirmed, against three real Spot Elevations, that
+neither a spot's own `Value`/`ValueOverride` (unconditionally null for this
+family), nor its `Reference` (mixed - a real model element once, a
+view-specific annotation twice), nor an available parameter on nearby model
+geometry (a profile's own "Start/End Level Offset", which turned out to
+describe the crest, not the bearing shelf a girder actually sits on) could
+be trusted. Real solid geometry, read via `Face.Project`, is the one thing
+that can't misrepresent where a horizontal surface actually is - confirmed
+to match within a few millimetres (two exact, one at 2.3mm) once the search
+was made **category-agnostic**: a category-filtered search (the first cut,
+`OST_StructuralFraming`) "will fall over as soon as we put another model
+into it" - confirmed by the user directly, Structural Framing being an old,
+being-phased-out modelling workflow on this project specifically, not even
+stable within one client's own project history.
+
+- `Ir/NearbyFaceInfo.cs` (new) + `DimensionInfo.NearbyHorizontalFaces`/
+  `ShelfSearchPerformed` - additive IR, populated only when a caller opts in.
+- `Checks/AbutmentElevationConsistencyCheck.cs` (new, Core, fully tested off-Revit,
+  9 new tests) - judges the nearest real face **by 2D (plan) distance, never
+  by Z agreement** (picking whichever face happens to agree would be
+  circular), reports a mismatch, a "no nearby geometry" coverage gap, or
+  clean, plus an always-present coverage summary.
+- `RuleConfig.AbutmentElevationToleranceMm` (10.0mm placeholder, not yet
+  calibrated against a known-bad case - see its own remarks).
+- `Adapters/RevitDimensionSource.cs` gained the real geometry-walk work
+  (`NearbyHorizontalFaces`/`AppendHorizontalFaces`/`WalkGeometry`/`FaceEntry`),
+  a direct port of the validated diagnostic: a small (1500mm), category-agnostic
+  3D bounding-box search around each Spot Elevation's own point, `Options.DetailLevel
+  = Fine` (Coarse - the class default - collapses a parametric civil profile
+  to a simplified block, a real bug found and fixed in the diagnostic first),
+  and `Face.Project` for both the real Z and the 2D distance (reading a
+  face's own untrimmed-plane `Origin` instead is wrong for any face with a
+  real slope/crossfall - the diagnostic's own third real bug).
+- `Commands/AbutmentElevationConsistencyCommand.cs` (new ribbon button,
+  "Abutment Elevation") - **standalone only, not dual-mode**, matching this
+  codebase's own precedent (both pile commands started standalone before
+  Stage 3 added session integration). Scoped to the active view - a real
+  solid-geometry walk per spot is comparatively expensive.
+
+`dotnet build` clean across the whole solution including the net48 Addin,
+341 Core tests passing (332 + 9 new). **Not yet run on the Revit machine** -
+same discipline as everything else in this document: every real correction
+in the diagnostic work that led here came from an actual run, and this real
+check needs the same before being trusted.

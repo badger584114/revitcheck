@@ -92,7 +92,8 @@ public static class RevitDimensionSource
         Document doc,
         bool sheetedViewsOnly = true,
         ISet<string>? includeWorksets = null,
-        View? scopeView = null)
+        View? scopeView = null,
+        bool populateNearbyShelfFaces = false)
     {
         var errors = new List<string>();
         var (sheets, views) = CollectSheetsAndViews(doc, errors);
@@ -104,7 +105,14 @@ public static class RevitDimensionSource
         // of whether it happens to be placed on a sheet, or the caller's
         // explicit choice would silently come back empty.
         var effectiveSheetedViewsOnly = scopeView is null && sheetedViewsOnly;
-        var dimensions = CollectDimensions(doc, errors, scannedViews, includeWorksets, effectiveSheetedViewsOnly);
+        // populateNearbyShelfFaces needs a real View (the solid-geometry
+        // walk is scoped to it, same reasoning every other per-view
+        // collector in this file already follows) - silently ignored
+        // without scopeView rather than guessing a whole-document sweep,
+        // matching populateLivePosition's own opt-in-cost discipline in
+        // RevitMetadataElementSource.
+        var effectivePopulateNearbyShelfFaces = populateNearbyShelfFaces && scopeView is not null;
+        var dimensions = CollectDimensions(doc, errors, scannedViews, includeWorksets, effectiveSheetedViewsOnly, effectivePopulateNearbyShelfFaces ? scopeView : null);
         var textNotes = CollectTextNotes(doc, errors, scannedViews, effectiveSheetedViewsOnly);
 
         var excludedWorksets = new List<string>();
@@ -302,7 +310,8 @@ public static class RevitDimensionSource
         List<string> errors,
         List<Core.Ir.ViewInfo> views,
         ISet<string>? includeWorksets,
-        bool sheetedViewsOnly)
+        bool sheetedViewsOnly,
+        View? shelfSearchView = null)
     {
         var seen = new Dictionary<long, Core.Ir.DimensionInfo>();
 
@@ -364,10 +373,12 @@ public static class RevitDimensionSource
                             }
                         }
 
+                        XYZ? rawOrigin = null;
                         Core.Ir.Point3D? origin;
                         try
                         {
-                            origin = PointOf(element.Origin);
+                            rawOrigin = element.Origin;
+                            origin = PointOf(rawOrigin);
                         }
                         catch
                         {
@@ -377,17 +388,42 @@ public static class RevitDimensionSource
                             origin = null;
                         }
 
+                        var isSpot = element is SpotDimension;
+                        var shelfSearchPerformed = false;
+                        var nearbyHorizontalFaces = new List<Core.Ir.NearbyFaceInfo>();
+                        // Spot dimensions only - an ordinary linear
+                        // dimension's own reference-resolution path already
+                        // works (PLANNING.md §14); this is specifically for
+                        // the case that path doesn't cover
+                        // (revitcheck.abutment_elevation_consistency,
+                        // PLANNING.md §18). Real solid-geometry walk per
+                        // spot, so only performed when a caller opts in.
+                        if (isSpot && shelfSearchView is not null && rawOrigin is not null)
+                        {
+                            shelfSearchPerformed = true;
+                            try
+                            {
+                                nearbyHorizontalFaces = NearbyHorizontalFaces(doc, shelfSearchView, rawOrigin);
+                            }
+                            catch (Exception ex)
+                            {
+                                errors.Add($"dimension {elementId}: shelf face search: {ex.Message}");
+                            }
+                        }
+
                         seen[elementId] = new Core.Ir.DimensionInfo
                         {
                             ElementId = elementId,
                             ViewId = view.ElementId,
-                            IsSpot = element is SpotDimension,
+                            IsSpot = isSpot,
                             References = references,
                             Segments = ReadSegments(element),
                             Origin = origin,
                             TypeName = element.DimensionType?.Name,
                             WorksetName = worksetName,
                             UniqueId = TextOrNone(element.UniqueId),
+                            ShelfSearchPerformed = shelfSearchPerformed,
+                            NearbyHorizontalFaces = nearbyHorizontalFaces,
                         };
                     }
                     catch (Exception ex)
@@ -685,6 +721,247 @@ public static class RevitDimensionSource
 
     private static Core.Ir.Point3D? PointOf(XYZ? xyz) =>
         xyz is null ? null : new Core.Ir.Point3D { X = xyz.X * MmPerFoot, Y = xyz.Y * MmPerFoot, Z = xyz.Z * MmPerFoot };
+
+    // --- Category-agnostic bearing-shelf geometry probe (added
+    // 2026-09-02, PLANNING.md §18) - ports real, validated diagnostic work
+    // (native/diagnostics/InspectDimensionGeometry.pushbutton/script.py)
+    // for revitcheck.abutment_elevation_consistency. See NearbyFaceInfo's
+    // own remarks for why this doesn't rely on a Spot Elevation's own
+    // Reference or any named parameter, and why the search is deliberately
+    // NOT filtered by category - confirmed by the user directly: the real
+    // element carrying a bearing shelf varies even within one client's own
+    // project history (Structural Framing is "an old workflow... being
+    // phased out" on this project specifically), so no category name here
+    // would be stable enough to search by the way RuleConfig.PileCategoryName
+    // is for piles.
+
+    // First real value, not a calibrated one (see RuleConfig.
+    // AbutmentElevationToleranceMm's own remarks) - real data confirmed a
+    // spot's own point can sit exactly on the real shelf face
+    // (distance_2d_mm=0.0, more than once), so this does not need to be
+    // large.
+    private const double ShelfSearchRadiusMm = 1500.0;
+    private const double ShelfSearchRadiusFt = ShelfSearchRadiusMm / MmPerFoot;
+
+    // Categories/classes confirmed as pure noise by the real diagnostic
+    // work this ports (a document-wide bounding-box search pulled in
+    // cameras, work-plane grids, scope boxes, and view-specific annotation
+    // groups from unrelated views - none of which can ever carry a real
+    // bearing shelf).
+    private static readonly HashSet<string> ShelfSearchNoiseCategories = new(StringComparer.Ordinal)
+    {
+        "Cameras", "Work Plane Grid", "Scope Boxes", "Guide Grid", "Internal Origin", "Survey Point", "Project Base Point",
+    };
+
+    private static readonly HashSet<string> ShelfSearchNoiseClasses = new(StringComparer.Ordinal) { "Group" };
+
+    /// <summary>
+    /// Every roughly-horizontal real face found within <see cref="ShelfSearchRadiusMm"/>
+    /// of <paramref name="nearXyz"/> - any category, any class, minus known
+    /// noise. Scoped to <paramref name="view"/> (same reasoning every other
+    /// per-view collector in this file already follows) and to a small 3D
+    /// bounding box, not document-wide - real data already justified a
+    /// small radius (see this method's own remarks above).
+    /// </summary>
+    private static List<Core.Ir.NearbyFaceInfo> NearbyHorizontalFaces(Document doc, View view, XYZ nearXyz)
+    {
+        var faces = new List<Core.Ir.NearbyFaceInfo>();
+
+        IEnumerable<Element> candidates;
+        try
+        {
+            var minPt = new XYZ(nearXyz.X - ShelfSearchRadiusFt, nearXyz.Y - ShelfSearchRadiusFt, nearXyz.Z - ShelfSearchRadiusFt);
+            var maxPt = new XYZ(nearXyz.X + ShelfSearchRadiusFt, nearXyz.Y + ShelfSearchRadiusFt, nearXyz.Z + ShelfSearchRadiusFt);
+            var outline = new Outline(minPt, maxPt);
+            candidates = new FilteredElementCollector(doc, view.Id)
+                .WherePasses(new BoundingBoxIntersectsFilter(outline))
+                .WhereElementIsNotElementType();
+        }
+        catch
+        {
+            // A candidate search that can't even run is a coverage gap
+            // (ShelfSearchPerformed still records the attempt), not a
+            // crash - matches every other best-effort geometry read in
+            // this file.
+            return faces;
+        }
+
+        foreach (var element in candidates)
+        {
+            string? categoryName = null;
+            try
+            {
+                categoryName = element.Category?.Name;
+            }
+            catch
+            {
+                // best effort, matches _describe_element's own handling
+            }
+
+            var className = element.GetType().Name;
+            if (ShelfSearchNoiseClasses.Contains(className) || (categoryName is not null && ShelfSearchNoiseCategories.Contains(categoryName)))
+            {
+                continue;
+            }
+
+            AppendHorizontalFaces(element, nearXyz, faces);
+        }
+
+        return faces;
+    }
+
+    private static void AppendHorizontalFaces(Element element, XYZ nearXyz, List<Core.Ir.NearbyFaceInfo> faces)
+    {
+        GeometryElement? geomElement;
+        try
+        {
+            var options = new Options
+            {
+                ComputeReferences = false,
+                IncludeNonVisibleObjects = false,
+                // Real bug, found on the first real run (PLANNING.md §18):
+                // left at the class default (Coarse when unset), a real
+                // abutment cross-section came back with only 2 horizontal
+                // faces total - a Coarse representation collapses a
+                // parametric civil profile down to a simplified bounding
+                // block, not the real detailed geometry a Fine-detail
+                // drafted section actually shows.
+                DetailLevel = ViewDetailLevel.Fine,
+            };
+            geomElement = element.get_Geometry(options);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (geomElement is null)
+        {
+            return;
+        }
+
+        foreach (var geomObj in geomElement)
+        {
+            WalkGeometry(geomObj, element.Id.Value, nearXyz, faces);
+        }
+    }
+
+    private static void WalkGeometry(GeometryObject geomObj, long sourceElementId, XYZ nearXyz, List<Core.Ir.NearbyFaceInfo> faces)
+    {
+        switch (geomObj)
+        {
+            case Solid solid when solid.Faces is not null && solid.Volume > 0:
+                foreach (Face face in solid.Faces)
+                {
+                    var entry = FaceEntry(face, sourceElementId, nearXyz);
+                    if (entry is not null)
+                    {
+                        faces.Add(entry);
+                    }
+                }
+
+                break;
+            case GeometryInstance instance:
+                // FamilyInstance geometry is nested here - GetInstanceGeometry()
+                // (no Transform argument) already returns it pre-transformed
+                // into world/project space.
+                try
+                {
+                    foreach (var sub in instance.GetInstanceGeometry())
+                    {
+                        WalkGeometry(sub, sourceElementId, nearXyz, faces);
+                    }
+                }
+                catch
+                {
+                    // best effort, matches _walk's own handling
+                }
+
+                break;
+        }
+    }
+
+    private static Core.Ir.NearbyFaceInfo? FaceEntry(Face face, long sourceElementId, XYZ nearXyz)
+    {
+        if (face is not PlanarFace planarFace)
+        {
+            return null;
+        }
+
+        XYZ normal;
+        try
+        {
+            normal = planarFace.FaceNormal;
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (Math.Abs(normal.Z) < 0.9) // not roughly horizontal - skip
+        {
+            return null;
+        }
+
+        // Face.Project(nearXyz) finds the real point on the *trimmed* face
+        // nearest the spot - the exact technique this file's Track B
+        // history already proved for linear dimensions. Real bug, found on
+        // the second real run (PLANNING.md §18): reading Z at the face's
+        // own untrimmed-plane Origin is wrong for any face with a real
+        // slope/crossfall, so both the Z and the 2D distance below are
+        // always read at the projected point when the projection succeeds.
+        XYZ? representativePoint = null;
+        var wasProjected = false;
+        try
+        {
+            var result = face.Project(nearXyz);
+            if (result is not null)
+            {
+                representativePoint = result.XYZPoint;
+                wasProjected = true;
+            }
+        }
+        catch
+        {
+            // candidate point may be off this face entirely
+        }
+
+        if (representativePoint is null)
+        {
+            try
+            {
+                var bbox = planarFace.GetBoundingBox();
+                var midUv = new UV((bbox.Min.U + bbox.Max.U) / 2.0, (bbox.Min.V + bbox.Max.V) / 2.0);
+                representativePoint = planarFace.Evaluate(midUv);
+            }
+            catch
+            {
+                // best-effort only - see NearbyFaceInfo's own remarks
+            }
+        }
+
+        if (representativePoint is null)
+        {
+            try
+            {
+                return new Core.Ir.NearbyFaceInfo { ZMm = planarFace.Origin.Z * MmPerFoot, SourceElementId = sourceElementId, ZReadAtProjectedPoint = false };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        var dx = (representativePoint.X - nearXyz.X) * MmPerFoot;
+        var dy = (representativePoint.Y - nearXyz.Y) * MmPerFoot;
+        return new Core.Ir.NearbyFaceInfo
+        {
+            ZMm = representativePoint.Z * MmPerFoot,
+            Distance2DMm = Math.Sqrt(dx * dx + dy * dy),
+            SourceElementId = sourceElementId,
+            ZReadAtProjectedPoint = wasProjected,
+        };
+    }
 }
 
 /// <summary>

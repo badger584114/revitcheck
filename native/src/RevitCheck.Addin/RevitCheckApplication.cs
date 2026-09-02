@@ -18,7 +18,11 @@ namespace RevitCheck.Addin;
 /// per-reference LocalPoint, TextNotes, schedule reading) was built
 /// (PLANNING.md §16 Stage 2). The two dimension buttons were replaced by
 /// one combined Dimension Triage button, and the pile buttons gained
-/// dual-mode session integration, in PLANNING.md §16 Stage 3.
+/// dual-mode session integration, in PLANNING.md §16 Stage 3. Abutment
+/// Elevation - the second element-type check, verifying a Spot Elevation
+/// against real solid geometry rather than a schedule or parameter - was
+/// added standalone-only (PLANNING.md §18), the same way both pile buttons
+/// started before Stage 3 gave them dual-mode.
 /// </summary>
 public class RevitCheckApplication : IExternalApplication
 {
@@ -120,6 +124,26 @@ public class RevitCheckApplication : IExternalApplication
         SetIcons(pileChainBearingButton, "PileChainBearing");
 
         panel.AddItem(pileChainBearingButton);
+
+        var abutmentElevationButton = new PushButtonData(
+            "RevitCheck.AbutmentElevationConsistency",
+            "Abutment\nElevation",
+            assemblyPath,
+            typeof(AbutmentElevationConsistencyCommand).FullName)
+        {
+            ToolTip = "For each Spot Elevation visible in the active view, searches nearby real solid " +
+                      "geometry (any category - not filtered, since no single category is stable enough " +
+                      "across this project's own history, let alone across clients) and compares the " +
+                      "drafted value against the nearest real horizontal face. Open the abutment " +
+                      "elevation/section view before running this.",
+        };
+
+        // Reuses the Pile Chain Bearing icon - no dedicated Abutment
+        // Elevation icon exists yet (cosmetic, not blocking), same
+        // precedent Dimension Triage set reusing Dimension Provenance's.
+        SetIcons(abutmentElevationButton, "PileChainBearing");
+
+        panel.AddItem(abutmentElevationButton);
 
         var metadataButton = new PushButtonData(
             "RevitCheck.MetadataReconciliation",
