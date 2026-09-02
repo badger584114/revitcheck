@@ -4,6 +4,7 @@ using Autodesk.Revit.UI;
 using RevitCheck.Addin.Adapters;
 using RevitCheck.Core.Checks;
 using RevitCheck.Core.Ir;
+using RevitCheck.Core.Reporting;
 
 namespace RevitCheck.Addin.Commands;
 
@@ -16,26 +17,42 @@ namespace RevitCheck.Addin.Commands;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Standalone only for now, not dual-mode</b> - matches this codebase's
-/// own precedent: <see cref="PileModelScheduleConsistencyCommand"/> and
-/// <see cref="PileChainBearingConsistencyCommand"/> both started this way
-/// (PLANNING.md §16 Stage 2) before checking-session integration was added
-/// once real people were using them (Stage 3). Session/dimension-triage
-/// reconciliation is a deliberate, named follow-up here, not an oversight -
-/// this check's findings are keyed on Spot Elevation ElementIds, which
-/// genuinely can appear in a drafted-view rollup's own
-/// <c>drafted_dimension_ids</c> (unlike the pile-model-schedule check,
-/// which is keyed on pile ElementIds and never overlaps dimension triage at
-/// all), so real dual-mode integration here would need its own
-/// <c>RunWithScope</c>-style overload the way
-/// <see cref="PileChainBearingConsistencyCheck"/> has, not the pile-model-
-/// schedule check's simpler "stands alone" path.
+/// <b>Dual-mode from the start</b> - unlike both pile commands, which
+/// started standalone-only and gained session integration later (PLANNING.md
+/// §16 Stage 3), this one goes straight in: real machine confirmation
+/// (2026-09-02) already showed the standalone path working cleanly (3 of 3
+/// Spot Elevations confirmed, 0 issues, first real run), and this check's
+/// findings are dimension-ElementId-keyed from the start (unlike
+/// <see cref="PileModelScheduleConsistencyCommand"/>'s pile-keyed findings,
+/// which "stand alone" - see that class's own remarks), so no
+/// <c>ExpandByElementIdList</c>/rollup-unrolling step or view-context
+/// patching is needed the way <see cref="PileChainBearingConsistencyCommand"/>
+/// needs both: <see cref="AbutmentElevationConsistencyCheck.RunWithScope"/>'s
+/// issues already carry each Spot Elevation's own ElementId plus its real
+/// ViewId/ViewName/SheetNo (resolved via <c>RevitModel.ViewById</c> inside
+/// the check itself, since it operates per-dimension rather than
+/// whole-model the way chain reconstruction does).
 /// </para>
 /// <para>
-/// <b>Collection is scoped to the active view</b>, same reasoning both pile
-/// commands already give: a real solid-geometry walk per Spot Elevation is
-/// comparatively expensive, and checking the abutment view someone has open
-/// is the point, not sweeping the whole document.
+/// If <see cref="CheckingSessionHost.Session"/> is null, this command
+/// writes results directly - the original, standalone behaviour, same
+/// shape as <see cref="MetadataReconciliationCommand"/>, <c>writeBcf: true</c>
+/// (a confirmed mismatch here is already a verdict, not triage). If a
+/// session is active, results are routed into it via
+/// <see cref="CheckingSession.RecordInvestigation"/> instead - a genuine
+/// "couldn't determine" outcome (no nearby geometry, no drafted value)
+/// carries <see cref="InvestigationReconciliation.ManualReviewCategory"/>,
+/// not a plain coverage/geometry category, specifically so
+/// <c>InvestigationReconciliation.Reconcile</c> routes it to
+/// <c>NeedsManualReview</c> rather than wrongly auto-exporting it as a
+/// confirmed problem - see the check's own remarks on this.
+/// </para>
+/// <para>
+/// <b>Scoped to the active view, not the whole document</b> - same
+/// reasoning both pile commands already give: a real solid-geometry walk
+/// per Spot Elevation is comparatively expensive, and checking the
+/// abutment view someone has open is the point, not sweeping the whole
+/// document.
 /// </para>
 /// </remarks>
 [Transaction(TransactionMode.ReadOnly)]
@@ -87,13 +104,38 @@ public class AbutmentElevationConsistencyCommand : IExternalCommand
             ExtractionErrors = collected.ExtractionErrors,
         };
 
-        var issues = AbutmentElevationConsistencyCheck.Run(model, config);
+        var (issues, investigatedElementIds) = AbutmentElevationConsistencyCheck.RunWithScope(model, config);
         var spotCount = collected.Dimensions.Count(d => d.IsSpot);
 
         var summary = $"{issues.Count} issue(s) found ({spotCount} Spot Elevation(s) in view '{activeView.Name}')" +
             (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
             "." +
             ExtractionErrorSample.Format(model.ExtractionErrors);
+
+        if (CheckingSessionHost.Session is { } session)
+        {
+            var viewId = activeView.Id.Value;
+            session.RecordInvestigation(viewId, investigatedElementIds, issues);
+
+            var sessionNote = session.FindView(viewId) is not null
+                ? "\n\nRecorded against the active checking session - see the checklist window."
+                : "\n\nNo checklist row exists yet for this view (Dimension Triage found nothing to flag " +
+                  "here), so these results were not recorded in the session - informational only.";
+
+            try
+            {
+                CheckingSessionHost.Autosave();
+            }
+            catch (Exception ex)
+            {
+                sessionNote += $"\n\nThe session could not be saved to disk:\n\n{ExceptionMessage.Full(ex)}";
+            }
+
+            CheckingSessionHost.Window?.Refresh();
+
+            TaskDialog.Show("RevitCheck - Abutment Elevation", summary + sessionNote);
+            return Result.Succeeded;
+        }
 
         string? outputPath;
         try

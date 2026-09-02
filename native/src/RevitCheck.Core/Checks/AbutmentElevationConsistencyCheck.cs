@@ -1,5 +1,6 @@
 using RevitCheck.Core.Ir;
 using RevitCheck.Core.Issues;
+using RevitCheck.Core.Reporting;
 
 namespace RevitCheck.Core.Checks;
 
@@ -53,9 +54,29 @@ public static class AbutmentElevationConsistencyCheck
 {
     public const string RuleId = "revitcheck.abutment_elevation_consistency";
 
-    public static List<Issue> Run(RevitModel model, RuleConfig config)
+    public static List<Issue> Run(RevitModel model, RuleConfig config) => RunWithScope(model, config).Issues;
+
+    /// <summary>
+    /// Same as <see cref="Run"/>, but also returns every Spot Elevation
+    /// ElementId this check actually reached a verdict-attempt for -
+    /// confirmed, mismatched, <b>or</b> a genuine "couldn't determine"
+    /// outcome (no nearby geometry, no drafted value) all count as
+    /// investigated, since the point is whether the check looked at it,
+    /// not whether it managed to reach a confident automated answer -
+    /// mirrors <see cref="PileChainBearingConsistencyCheck.RunWithScope"/>'s
+    /// own reasoning. A Spot Elevation with <see cref="DimensionInfo.ShelfSearchPerformed"/>
+    /// false was never in scope for this check at all (not in the active
+    /// view when the search ran, or not opted into by the caller) and is
+    /// deliberately excluded - marking it "investigated" would be a false
+    /// claim of coverage. Added for the interactive checking session
+    /// (PLANNING.md §16 Stage 3 / §18): <c>InvestigationReconciliation.Reconcile</c>
+    /// needs this scope kept separate from issues, same reasoning as every
+    /// other investigation check in this codebase.
+    /// </summary>
+    public static (List<Issue> Issues, List<long> InvestigatedElementIds) RunWithScope(RevitModel model, RuleConfig config)
     {
         var issues = new List<Issue>();
+        var investigated = new List<long>();
         var spotDimensions = model.Dimensions.Where(d => d.IsSpot).ToList();
 
         if (spotDimensions.Count == 0)
@@ -67,7 +88,7 @@ public static class AbutmentElevationConsistencyCheck
                 Severity = "low",
                 Description = "No Spot Elevations were found in the captured scope, so this rule reported nothing because there was nothing to check.",
             });
-            return issues;
+            return (issues, investigated);
         }
 
         var searched = spotDimensions.Where(d => d.ShelfSearchPerformed).ToList();
@@ -82,6 +103,7 @@ public static class AbutmentElevationConsistencyCheck
         {
             var view = model.ViewById(dim.ViewId);
             var uniqueId = view?.SheetUniqueId ?? dim.UniqueId;
+            investigated.Add(dim.ElementId);
 
             if (dim.Origin is not { } origin)
             {
@@ -89,14 +111,20 @@ public static class AbutmentElevationConsistencyCheck
                 issues.Add(new Issue
                 {
                     RuleId = RuleId,
-                    Category = "coverage",
-                    Severity = "low",
+                    // manual_review, not coverage: this dimension WAS
+                    // investigated (it's in InvestigatedElementIds above),
+                    // just inconclusively - InvestigationReconciliation.Reconcile
+                    // treats any category other than ManualReviewCategory as
+                    // a confirmed problem, so a plain "coverage"/"geometry"
+                    // category here would wrongly auto-export this as one.
+                    Category = InvestigationReconciliation.ManualReviewCategory,
+                    Severity = "medium",
                     ElementId = dim.ElementId,
                     ViewId = dim.ViewId,
                     ViewName = view?.Name,
                     SheetNo = view?.SheetNo,
                     UniqueId = uniqueId,
-                    Description = $"Spot Elevation in {DimensionDescriptions.DescribeView(view)} has no Origin captured - its own drafted value could not be read, so it was not checked.",
+                    Description = $"Spot Elevation in {DimensionDescriptions.DescribeView(view)} has no Origin captured - its own drafted value could not be read. Needs a human to check against the drawing.",
                 });
                 continue;
             }
@@ -107,14 +135,14 @@ public static class AbutmentElevationConsistencyCheck
                 issues.Add(new Issue
                 {
                     RuleId = RuleId,
-                    Category = "geometry",
+                    Category = InvestigationReconciliation.ManualReviewCategory, // see the no-Origin branch above for why
                     Severity = "medium",
                     ElementId = dim.ElementId,
                     ViewId = dim.ViewId,
                     ViewName = view?.Name,
                     SheetNo = view?.SheetNo,
                     UniqueId = uniqueId,
-                    Description = $"Spot Elevation in {DimensionDescriptions.DescribeView(view)} is {FormatMm(origin.Z)}mm, but no real geometry was found nearby to verify it against - not checked, not assumed correct.",
+                    Description = $"Spot Elevation in {DimensionDescriptions.DescribeView(view)} is {FormatMm(origin.Z)}mm, but no real geometry was found nearby to verify it against. Needs a human to check against the drawing with this view open.",
                 });
                 continue;
             }
@@ -160,7 +188,7 @@ public static class AbutmentElevationConsistencyCheck
         }
 
         issues.Add(CoverageIssue(spotDimensions.Count, notSearched, confirmed, mismatched, noCandidate, noValue));
-        return issues;
+        return (issues, investigated);
     }
 
     private static Issue CoverageIssue(int total, int notSearched, int confirmed, int mismatched, int noCandidate, int noValue)
