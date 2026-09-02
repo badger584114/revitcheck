@@ -93,6 +93,25 @@ geometry and tag-to-tag), not one. The current build is unchanged since
 run 4's fix; if you're running this again, that's for a specific new
 question, not to re-chase the same one.
 
+**Extended 2026-09-02 for PLANNING.md §18's abutment bearing-shelf
+question, after two real runs found the same problem twice over:** a
+Spot Elevation's own `Reference` resolved cleanly to the real
+`Structural Framing` instance once and to a view-specific `FilledRegion`
+twice, and even where it did resolve, `Start Level Offset`/`End Level
+Offset` (the obvious parameter) turned out to be the profile's crest,
+not the bearing shelf a girder actually sits on — confirmed by the user,
+who also confirmed there's no reliable parameter name for "the shelf"
+specifically, since which real part of the abutment a given `Structural
+Framing` instance represents genuinely varies (a retaining-wall-style
+capping-beam extension vs. the bearing-shelf portion). New
+`_collect_structural_framing`/`_nearest_structural_framing`/
+`_horizontal_faces` sidestep both the Reference and any parameter:
+given a spot's own Origin, find the nearest `OST_StructuralFraming`
+element by 2D location, then walk its real solid geometry and list
+every roughly-horizontal `PlanarFace`'s actual Z. Every new Revit API
+member was verified against the real `RevitAPI.dll` before writing this.
+**Not yet run.**
+
 ## `InspectPileSetout.pushbutton`
 
 The follow-on diagnostic after run 7 pivoted the pile-setout question away

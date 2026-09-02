@@ -160,7 +160,33 @@ match this diagnostic exists to catch, not introduce.
 a model category (returns what the view would actually show, respecting
 its crop region and visibility/graphics overrides), so this reuses the
 same per-view scoping the dimension collection above already relies on,
-rather than adding a second, different mechanism. Not yet run.
+rather than adding a second, different mechanism.
+
+**Extended 2026-09-02 for PLANNING.md §18's abutment bearing-shelf
+question, after two real diagnostic runs against real Spot Elevations
+found the same problem twice over:** a spot elevation's own `Reference`
+resolved cleanly to a real `Structural Framing` instance once and to a
+view-specific `FilledRegion` (a 2D fill/hatch annotation) twice - and
+even in the one case that resolved to the model, `Start Level Offset`/
+`End Level Offset` (the obvious parameter) turned out to be the
+profile's crest, off by ~2m from the spot's own value, not the bearing
+shelf a girder actually sits on. Confirmed by the user: which real part
+of the abutment a given `Structural Framing` instance represents
+(a retaining-wall-style capping-beam extension vs. the bearing-shelf
+portion) genuinely varies, and there is no reliable parameter name for
+"the shelf" specifically. `_collect_structural_framing`/
+`_nearest_structural_framing`/`_horizontal_faces` (new) sidestep both
+the Reference and any parameter entirely: given a spot's own Origin,
+find the nearest `OST_StructuralFraming` element by 2D location (same
+technique `_nearest_pile` already uses, same reasoning for excluding Z
+from the search), then walk its *real solid geometry* and list every
+roughly-horizontal `PlanarFace`'s actual Z - geometry can't lie about
+where a horizontal surface is, so the shelf should show up directly in
+the list regardless of what the Reference or a parameter claims. Every
+new Revit API member (`Element.Geometry`, `Options`, `Solid.Faces`,
+`PlanarFace.Origin`/`FaceNormal`, `GeometryInstance.GetInstanceGeometry`)
+was verified against the real `RevitAPI.dll` before writing this, same
+discipline as everywhere else in `native/`. Not yet run.
 """
 
 import math
@@ -175,7 +201,11 @@ from Autodesk.Revit.DB import (
     ElementId,
     Face,
     FilteredElementCollector,
+    GeometryInstance,
+    Options,
     Outline,
+    PlanarFace,
+    Solid,
     SpotDimension,
     UV,
     XYZ,
@@ -431,6 +461,181 @@ def _pile_to_pile_distance_mm(pile_a, pile_b):
         "distance_3d_mm": _mm(math.sqrt(dx * dx + dy * dy + dz * dz)),
         "distance_2d_mm": _mm(math.sqrt(dx * dx + dy * dy)),
     }
+
+
+# --- Structural Framing horizontal-face probe (added 2026-09-02) - see
+# the module docstring's "Abutment bearing shelf" note for the real
+# question this answers. ---
+
+
+def _collect_structural_framing(view):
+    """Every OST_StructuralFraming element visible in `view`, with its own
+    Location point (or curve midpoint) for 2D proximity search - the full
+    element itself isn't kept here (geometry is comparatively expensive
+    to hold for every element up front; re-fetched by id only for
+    whichever one turns out to be nearest). Scoped to the view, same
+    reasoning `_collect_piles` already gives: a document-wide sweep would
+    also pick up framing belonging to unrelated structures elsewhere in
+    the model."""
+    framings = []
+    try:
+        collector = (
+            FilteredElementCollector(doc, view.Id)
+            .OfCategory(BuiltInCategory.OST_StructuralFraming)
+            .WhereElementIsNotElementType()
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"framings": [], "_error": str(exc)}
+
+    for element in collector:
+        point = None
+        try:
+            location = element.Location
+            point = getattr(location, "Point", None)
+            if point is None:
+                curve = getattr(location, "Curve", None)
+                if curve is not None:
+                    point = curve.Evaluate(0.5, True)
+        except Exception:  # noqa: BLE001
+            point = None
+        framings.append({"element_id": _eid(element.Id), "point": point})
+    return {"framings": framings}
+
+
+def _nearest_structural_framing(candidate_xyz, framings):
+    """2D (X/Y) nearest-neighbour pick from `framings`' own Location point
+    - same reasoning `_nearest_pile` already gives for why Z is excluded
+    as a search axis: a spot elevation's own Z is the very thing being
+    checked here, not a safe key to search by."""
+    if candidate_xyz is None or not framings:
+        return None
+    best = None
+    best_dist_ft = None
+    for framing in framings:
+        p = framing["point"]
+        if p is None:
+            continue
+        dx = candidate_xyz.X - p.X
+        dy = candidate_xyz.Y - p.Y
+        dist_ft = math.sqrt(dx * dx + dy * dy)
+        if best_dist_ft is None or dist_ft < best_dist_ft:
+            best_dist_ft = dist_ft
+            best = framing
+    return best
+
+
+def _horizontal_faces(element, near_xyz=None, max_listed=10):
+    """Every roughly-horizontal `PlanarFace` on `element`'s own real solid
+    geometry, sorted by 2D distance from `near_xyz` when given.
+
+    Added because neither a spot elevation's own `Reference` nor a named
+    parameter proved reliable for finding a bearing shelf (real finding,
+    2026-09-02): a spot's `Reference` resolved cleanly to the real
+    Structural Framing instance once and to a view-specific `FilledRegion`
+    twice, and even where it *did* resolve, `Start Level Offset`/`End
+    Level Offset` turned out to be the profile's crest, not the shelf a
+    girder actually sits on (confirmed by the user - this genuinely
+    varies by which real part of the abutment a given instance
+    represents: a retaining-wall-style capping-beam extension vs. the
+    bearing-shelf portion). Real geometry can't lie about where a
+    horizontal surface actually is, so this reads it directly instead of
+    trusting either the Reference or a parameter name.
+
+    `FamilyInstance` geometry is nested inside a `GeometryInstance` -
+    `GetInstanceGeometry()` (no `Transform` argument) already returns it
+    pre-transformed into world/project space, so no manual transform is
+    needed here. Every member used (`Element.Geometry`, `Options`,
+    `Solid.Faces`, `PlanarFace.Origin`/`FaceNormal`,
+    `GeometryInstance.GetInstanceGeometry`) was verified against the real
+    `RevitAPI.dll` (`System.Reflection.MetadataLoadContext`, no Revit
+    machine needed) before writing this, same discipline this project
+    uses everywhere else in `native/`.
+
+    `PlanarFace.Origin` is a point on the face's *underlying, untrimmed*
+    plane - not guaranteed to sit within the face's real (possibly
+    trimmed/non-convex) boundary - but every point on a horizontal
+    plane shares the same Z regardless of trimming, so it's still a
+    reliable source for the one number this diagnostic actually needs.
+    A separate bounding-box-centre `Evaluate` gives a best-effort
+    representative *point* (for the 2D distance sort/display only, not
+    for the Z value) - not guaranteed to land inside a non-convex face's
+    real boundary either, which is an accepted, documented limitation
+    for a throwaway diagnostic, not a claim this is exact.
+    """
+    faces = []
+    errors = []
+    try:
+        options = Options()
+        options.ComputeReferences = False
+        options.IncludeNonVisibleObjects = False
+        geom_element = element.get_Geometry(options)
+    except Exception as exc:  # noqa: BLE001
+        return {"faces": [], "_error": "Geometry: {0}".format(exc)}
+
+    def _face_entry(face):
+        if not isinstance(face, PlanarFace):
+            return None
+        try:
+            normal = face.FaceNormal
+        except Exception:  # noqa: BLE001
+            return None
+        if abs(normal.Z) < 0.9:  # not roughly horizontal - skip
+            return None
+        try:
+            z_mm = _mm(face.Origin.Z)
+        except Exception:  # noqa: BLE001
+            return None
+
+        representative_point = None
+        try:
+            bbox = face.GetBoundingBox()
+            mid_uv = UV((bbox.Min.U + bbox.Max.U) / 2.0, (bbox.Min.V + bbox.Max.V) / 2.0)
+            representative_point = face.Evaluate(mid_uv)
+        except Exception:  # noqa: BLE001 - best-effort only, see docstring
+            pass
+
+        entry = {
+            "z_mm": z_mm,
+            "facing": "up" if normal.Z > 0 else "down",
+            "representative_point_mm": _point(representative_point),
+        }
+        if near_xyz is not None and representative_point is not None:
+            dx = representative_point.X - near_xyz.X
+            dy = representative_point.Y - near_xyz.Y
+            entry["distance_2d_mm"] = _mm(math.sqrt(dx * dx + dy * dy))
+        return entry
+
+    def _walk(geom_obj):
+        if isinstance(geom_obj, Solid):
+            try:
+                if geom_obj.Faces is not None and geom_obj.Volume > 0:
+                    for face in geom_obj.Faces:
+                        entry = _face_entry(face)
+                        if entry is not None:
+                            faces.append(entry)
+            except Exception as exc:  # noqa: BLE001
+                errors.append("solid faces: {0}".format(exc))
+        elif isinstance(geom_obj, GeometryInstance):
+            try:
+                for sub in geom_obj.GetInstanceGeometry():
+                    _walk(sub)
+            except Exception as exc:  # noqa: BLE001
+                errors.append("instance geometry: {0}".format(exc))
+
+    if geom_element is not None:
+        try:
+            for obj in geom_element:
+                _walk(obj)
+        except Exception as exc:  # noqa: BLE001
+            errors.append("walk: {0}".format(exc))
+
+    if near_xyz is not None:
+        faces.sort(key=lambda e: e["distance_2d_mm"] if e.get("distance_2d_mm") is not None else float("inf"))
+
+    out = {"faces": faces[:max_listed], "total_horizontal_faces": len(faces)}
+    if errors:
+        out["_errors"] = errors
+    return out
 
 
 def _nearby_elements(global_point_xyz, exclude_element_id):
@@ -788,7 +993,7 @@ def _projection_candidate_xyz(dim):
     return None
 
 
-def _describe_dimension(dim, piles=None):
+def _describe_dimension(dim, piles=None, framings=None):
     entry = {
         "element_id": _eid(dim.Id),
         "unique_id": None,
@@ -800,6 +1005,7 @@ def _describe_dimension(dim, piles=None):
         "segments": [],
         "references": [],
         "pile_match": None,
+        "nearest_structural_framing": None,
     }
     errors = []
 
@@ -833,6 +1039,26 @@ def _describe_dimension(dim, piles=None):
         ]
     except Exception as exc:  # noqa: BLE001
         errors.append("references: {0}".format(exc))
+
+    # Structural Framing horizontal-face probe (added 2026-09-02) - see
+    # `_horizontal_faces`'s own docstring for why this doesn't rely on
+    # the reference resolution above. Spot dimensions only - an ordinary
+    # linear dimension's own reference-resolution path above already
+    # works (this project's real data, PLANNING.md §14); this is
+    # specifically for the case that path doesn't cover.
+    if entry["is_spot_dimension"] and framings and projection_candidate_xyz is not None:
+        try:
+            nearest = _nearest_structural_framing(projection_candidate_xyz, framings)
+            if nearest is not None:
+                framing_element = doc.GetElement(ElementId(nearest["element_id"]))
+                faces = _horizontal_faces(framing_element, near_xyz=projection_candidate_xyz) if framing_element is not None else {"faces": []}
+                entry["nearest_structural_framing"] = {
+                    "element_id": nearest["element_id"],
+                    "location_point_mm": _point(nearest["point"]),
+                }
+                entry["nearest_structural_framing"].update(faces)
+        except Exception as exc:  # noqa: BLE001
+            errors.append("nearest_structural_framing: {0}".format(exc))
 
     # Pile-to-pile comparison (added 2026-08-26) - see the module
     # docstring's "Extended" note. Only meaningful with exactly two
@@ -904,10 +1130,13 @@ if not dimensions:
 pile_collection = _collect_piles(doc.ActiveView)
 piles = pile_collection["piles"]
 
+framing_collection = _collect_structural_framing(doc.ActiveView)
+framings = framing_collection["framings"]
+
 view_cache = {}
 results = []
 for dim in dimensions:
-    entry = _describe_dimension(dim, piles=piles)
+    entry = _describe_dimension(dim, piles=piles, framings=framings)
     try:
         owner_view = doc.ActiveView
         view_key = _eid(owner_view.Id)
@@ -955,9 +1184,10 @@ if not path:
 import json  # noqa: E402 - after the early-exit paths above, same style as capture.py
 
 # Strip the raw XYZ objects (not JSON-serializable, and already captured
-# as point_mm) before writing - piles list itself stays in memory as-is
-# for the distance math above, this is only for the dump.
+# as point_mm) before writing - piles/framings lists themselves stay in
+# memory as-is for the distance math above, this is only for the dump.
 piles_for_json = [{k: v for k, v in pile.items() if k != "point"} for pile in piles]
+framings_for_json = [{k: v for k, v in framing.items() if k != "point"} for framing in framings]
 
 with open(path, "w") as f:
     json.dump(
@@ -965,6 +1195,8 @@ with open(path, "w") as f:
             "source": source,
             "piles": piles_for_json,
             "pile_collection_errors": pile_collection.get("_errors"),
+            "framings": framings_for_json,
+            "framing_collection_errors": framing_collection.get("_errors"),
             "dimensions": results,
         },
         f,
@@ -977,6 +1209,7 @@ output.print_md("`{0}`".format(path))
 output.print_md("")
 output.print_md("- {0} dimension(s) captured, from {1}".format(len(results), source))
 output.print_md("- {0} pile(s) collected document-wide for proximity matching".format(len(piles)))
+output.print_md("- {0} structural framing element(s) collected in the active view for the horizontal-face probe".format(len(framings)))
 output.print_md(
     "- Delete this file once you're done with it, and don't commit it — "
     "same caution as a real capture (PLANNING.md §2)."
