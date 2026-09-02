@@ -133,7 +133,24 @@ arbitrary point on the face's own untrimmed plane, wrong for a face with
 any real longitudinal grade/crossfall. Fixed by reusing
 `Face.Project(near_xyz)` - the same technique this file already proved
 for linear dimensions - to read Z at the real projected point nearest
-the spot. **Needs one more real run to confirm.**
+the spot. **Confirmed on a real re-run the same day: 2 of 3 spots
+matched exactly** (`delta=0.000mm`, `distance_2d_mm=0.0`) - the same
+precision bar the pile checks needed before being trusted.
+
+**Made category-agnostic the same day, before designing the real check
+- confirmed by the user directly: a category-filtered search "will fall
+over as soon as we put another model into it".** The real element
+carrying a bearing shelf could be a Generic Model, a two-point adaptive
+family, a dedicated Abutment category, or something not yet seen -
+Structural Framing is an old, being-phased-out modelling workflow on
+this project specifically, not a stable category to search by (this
+project's own "logic built on a client convention breaks" lesson, one
+level more specific: not even stable *within* one client's own project
+history). `_collect_structural_framing`/`_nearest_structural_framings`
+became `_collect_geometry_candidates` - a small 3D bounding-box search
+around each spot's own point, minus known noise categories/classes, not
+a category collector. **Needs one more real run to confirm the
+category-agnostic search still finds the same real matches.**
 
 ## `InspectPileSetout.pushbutton`
 

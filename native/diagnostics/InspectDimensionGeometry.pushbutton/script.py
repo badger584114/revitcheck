@@ -227,8 +227,35 @@ real shelf with any longitudinal grade/crossfall (common, for drainage),
 where `Origin` and the spot's own location can genuinely differ. Fixed
 by reusing `Face.Project(near_xyz)` - the exact technique this file
 already proved for linear dimensions above - to read Z at the real
-projected point nearest the spot, not an arbitrary one. **Needs one more
-real run to confirm.**
+projected point nearest the spot, not an arbitrary one.
+
+**Confirmed on a real re-run the same day - 2 of 3 spots matched
+exactly** (`delta=0.000mm`, `distance_2d_mm=0.0`,
+`z_read_at_projected_point=True`) - the same precision bar the pile
+checks needed before being trusted. The third came back 22mm off at
+1.2m because none of the (at the time) 3 nearest Structural Framing
+candidates by `Location` distance actually contained the real shelf
+face under it.
+
+**Made category-agnostic the same day, before designing the real
+check - a bigger correction than a wider candidate count, per the user
+directly:** a category-filtered search "will fall over as soon as we
+put another model into it" - the real element carrying a bearing shelf
+could be a Generic Model, a two-point adaptive family, a dedicated
+Abutment category, or something not yet seen; Structural Framing is an
+old, being-phased-out modelling workflow on this project specifically,
+not a stable category to search by (this project's own "logic built on
+a client convention breaks" lesson, CLAUDE.md, one level more specific:
+not even stable *within* one client's own project history).
+`_collect_structural_framing`/`_nearest_structural_framings` (category-
+filtered) became `_collect_geometry_candidates` (category-agnostic,
+minus the same noise-category/class exclusion `_nearby_elements` already
+uses) - a small 3D bounding-box search around each spot's own point
+(`SHELF_SEARCH_RADIUS_MM`), not a category collector. Real data already
+justified a small radius: the two exact matches above both had
+`distance_2d_mm=0.0` - the spot's own point can sit exactly on the real
+shelf face. **Needs one more real run to confirm the category-agnostic
+search still finds the same real matches.**
 """
 
 import math
@@ -506,82 +533,86 @@ def _pile_to_pile_distance_mm(pile_a, pile_b):
     }
 
 
-# --- Structural Framing horizontal-face probe (added 2026-09-02) - see
-# the module docstring's "Abutment bearing shelf" note for the real
-# question this answers. ---
+# --- Category-agnostic horizontal-face probe (added 2026-09-02, made
+# category-agnostic the same day) - see the module docstring's "Abutment
+# bearing shelf" note for the real question this answers. ---
+
+# How far around a spot elevation's own point to search for candidate
+# geometry, in 3D this time (not the 2D-only radius _nearby_elements
+# uses for its own, unrelated display purpose) - real data confirmed the
+# spot's own point can sit exactly on the real shelf face
+# (distance_2d_mm=0.0 twice, once Face.Project was reading the right
+# location), so this does not need to be large; kept a little more
+# generous than NEARBY_SEARCH_RADIUS_MM as a first real value, not a
+# calibrated one - may need tuning once more real data comes in.
+SHELF_SEARCH_RADIUS_MM = 1500.0
+SHELF_SEARCH_RADIUS_FT = SHELF_SEARCH_RADIUS_MM / MM_PER_FOOT
 
 
-def _collect_structural_framing(view):
-    """Every OST_StructuralFraming element visible in `view`, with its own
-    Location point (or curve midpoint) for 2D proximity search - the full
-    element itself isn't kept here (geometry is comparatively expensive
-    to hold for every element up front; re-fetched by id only for
-    whichever one turns out to be nearest). Scoped to the view, same
-    reasoning `_collect_piles` already gives: a document-wide sweep would
-    also pick up framing belonging to unrelated structures elsewhere in
-    the model."""
-    framings = []
+def _collect_geometry_candidates(view, near_xyz):
+    """Every element (any category, any class) whose bounding box
+    intersects a small region around `near_xyz`, minus known noise
+    (`_NOISE_CATEGORIES`/`_NOISE_CLASSES`, already built for
+    `_nearby_elements`'s own unrelated display purpose).
+
+    **Not filtered by category - confirmed by the user 2026-09-02: a
+    Structural Framing collector (this function's first version) "will
+    fall over as soon as we put another model into it" - the real
+    element carrying a bearing shelf could just as well be a Generic
+    Model, a two-point adaptive family, a dedicated Abutment category,
+    or something not yet seen. Structural Framing is an old, being-
+    phased-out modelling workflow on this project specifically, not a
+    stable category name to search by - the same "logic built on a
+    client convention breaks, logic built on a domain invariant survives"
+    lesson CLAUDE.md already names, one level more specific: not even
+    stable *within* one client's own project history.** The real
+    invariant is geometry itself, not what produced it - this searches
+    broadly and lets `_horizontal_faces` (which needs real solid
+    geometry regardless of category) filter out anything that has none.
+
+    Scoped to the view (same reasoning `_collect_piles` already gives)
+    and to a small 3D bounding box around the spot's own point, not
+    document-wide - a real signal already confirmed twice
+    (`distance_2d_mm=0.0`): the spot's own point can sit exactly on the
+    real shelf face, so a small radius is enough net without also
+    pulling in unrelated geometry elsewhere in the model.
+    """
     try:
+        min_pt = XYZ(near_xyz.X - SHELF_SEARCH_RADIUS_FT, near_xyz.Y - SHELF_SEARCH_RADIUS_FT, near_xyz.Z - SHELF_SEARCH_RADIUS_FT)
+        max_pt = XYZ(near_xyz.X + SHELF_SEARCH_RADIUS_FT, near_xyz.Y + SHELF_SEARCH_RADIUS_FT, near_xyz.Z + SHELF_SEARCH_RADIUS_FT)
+        outline = Outline(min_pt, max_pt)
         collector = (
             FilteredElementCollector(doc, view.Id)
-            .OfCategory(BuiltInCategory.OST_StructuralFraming)
+            .WherePasses(BoundingBoxIntersectsFilter(outline))
             .WhereElementIsNotElementType()
         )
     except Exception as exc:  # noqa: BLE001
-        return {"framings": [], "_error": str(exc)}
+        return {"candidates": [], "_error": str(exc)}
 
+    candidates = []
     for element in collector:
-        point = None
-        try:
-            location = element.Location
-            point = getattr(location, "Point", None)
-            if point is None:
-                curve = getattr(location, "Curve", None)
-                if curve is not None:
-                    point = curve.Evaluate(0.5, True)
-        except Exception:  # noqa: BLE001
-            point = None
-        framings.append({"element_id": _eid(element.Id), "point": point})
-    return {"framings": framings}
-
-
-# How many of the nearest Structural Framing elements (by their own
-# Location point) to walk geometry on, not just the single closest one -
-# widened 2026-09-02 after the first real run: a curved/chained abutment
-# is several adjacent Structural Framing instances, and a Location point
-# is a curve midpoint that can sit several metres from where a given spot
-# elevation actually is (real distances seen: 1.9-8m) - a single nearest
-# pick is too fragile to trust blindly for that shape, so this widens the
-# net rather than betting on one guess.
-STRUCTURAL_FRAMING_CANDIDATE_COUNT = 3
-
-
-def _nearest_structural_framings(candidate_xyz, framings, count=STRUCTURAL_FRAMING_CANDIDATE_COUNT):
-    """The `count` nearest `framings` by 2D (X/Y) distance from their own
-    Location point to `candidate_xyz` - same reasoning `_nearest_pile`
-    already gives for why Z is excluded as a search axis: a spot
-    elevation's own Z is the very thing being checked here, not a safe
-    key to search by. Returns a list, nearest first."""
-    if candidate_xyz is None or not framings:
-        return []
-    scored = []
-    for framing in framings:
-        p = framing["point"]
-        if p is None:
+        eid = _eid(element.Id)
+        if eid is None:
             continue
-        dx = candidate_xyz.X - p.X
-        dy = candidate_xyz.Y - p.Y
-        scored.append((math.sqrt(dx * dx + dy * dy), framing))
-    scored.sort(key=lambda pair: pair[0])
-    return [framing for _dist, framing in scored[:count]]
+        class_name = type(element).__name__
+        category_name = None
+        try:
+            if element.Category is not None:
+                category_name = element.Category.Name
+        except Exception:  # noqa: BLE001
+            pass
+        if class_name in _NOISE_CLASSES or category_name in _NOISE_CATEGORIES:
+            continue
+        candidates.append({"element_id": eid, "category": category_name, "class_name": class_name})
+    return {"candidates": candidates}
 
 
 def _horizontal_faces(element, near_xyz=None):
     """Every roughly-horizontal `PlanarFace` on `element`'s own real solid
     geometry, sorted by 2D distance from `near_xyz` when given. Returns
-    the full list (uncapped) - the caller merges results across several
-    candidate elements (see `STRUCTURAL_FRAMING_CANDIDATE_COUNT`'s own
-    remarks) and truncates once, over the merged set, not per element.
+    the full list (uncapped) - the caller merges results across every
+    candidate `_collect_geometry_candidates` finds and truncates once,
+    over the merged set, not per element.
 
     Added because neither a spot elevation's own `Reference` nor a named
     parameter proved reliable for finding a bearing shelf (real finding,
@@ -1098,7 +1129,7 @@ def _projection_candidate_xyz(dim):
     return None
 
 
-def _describe_dimension(dim, piles=None, framings=None):
+def _describe_dimension(dim, view, piles=None):
     entry = {
         "element_id": _eid(dim.Id),
         "unique_id": None,
@@ -1110,7 +1141,7 @@ def _describe_dimension(dim, piles=None, framings=None):
         "segments": [],
         "references": [],
         "pile_match": None,
-        "nearest_structural_framing": None,
+        "nearby_shelf_candidates": None,
     }
     errors = []
 
@@ -1145,27 +1176,28 @@ def _describe_dimension(dim, piles=None, framings=None):
     except Exception as exc:  # noqa: BLE001
         errors.append("references: {0}".format(exc))
 
-    # Structural Framing horizontal-face probe (added 2026-09-02, widened
-    # the same day after the first real run) - see `_horizontal_faces`'s
-    # own docstring for why this doesn't rely on the reference resolution
-    # above. Spot dimensions only - an ordinary linear dimension's own
-    # reference-resolution path above already works (this project's real
-    # data, PLANNING.md §14); this is specifically for the case that path
-    # doesn't cover. Walks the several nearest candidates
-    # (`STRUCTURAL_FRAMING_CANDIDATE_COUNT`), not just the single closest
-    # one, and merges their faces into one list sorted by 2D distance -
-    # see `_nearest_structural_framings`'s own remarks for why one
-    # nearest pick proved too fragile on the first real run.
-    if entry["is_spot_dimension"] and framings and projection_candidate_xyz is not None:
+    # Category-agnostic horizontal-face probe (added 2026-09-02, made
+    # category-agnostic the same day - see `_collect_geometry_candidates`'s
+    # own remarks for why: a category-filtered search "will fall over as
+    # soon as we put another model into it", confirmed by the user).
+    # See `_horizontal_faces`'s own docstring for why this doesn't rely
+    # on the reference resolution above. Spot dimensions only - an
+    # ordinary linear dimension's own reference-resolution path above
+    # already works (this project's real data, PLANNING.md §14); this is
+    # specifically for the case that path doesn't cover. Walks every
+    # candidate within `SHELF_SEARCH_RADIUS_MM`, not just one guess, and
+    # merges their faces into one list sorted by 2D distance.
+    if entry["is_spot_dimension"] and projection_candidate_xyz is not None:
         try:
-            candidates = _nearest_structural_framings(projection_candidate_xyz, framings)
+            candidate_result = _collect_geometry_candidates(view, projection_candidate_xyz)
+            candidates = candidate_result.get("candidates", [])
             merged_faces = []
-            candidate_errors = []
+            candidate_errors = [candidate_result["_error"]] if candidate_result.get("_error") else []
             for candidate in candidates:
-                framing_element = doc.GetElement(ElementId(candidate["element_id"]))
-                if framing_element is None:
+                geom_element = doc.GetElement(ElementId(candidate["element_id"]))
+                if geom_element is None:
                     continue
-                result = _horizontal_faces(framing_element, near_xyz=projection_candidate_xyz)
+                result = _horizontal_faces(geom_element, near_xyz=projection_candidate_xyz)
                 merged_faces.extend(result["faces"])
                 if result.get("_error"):
                     candidate_errors.append("{0}: {1}".format(candidate["element_id"], result["_error"]))
@@ -1176,16 +1208,16 @@ def _describe_dimension(dim, piles=None, framings=None):
 
             merged_faces.sort(key=lambda e: e["distance_2d_mm"] if e.get("distance_2d_mm") is not None else float("inf"))
 
-            entry["nearest_structural_framing"] = {
+            entry["nearby_shelf_candidates"] = {
                 "candidate_element_ids": [c["element_id"] for c in candidates],
-                "candidate_location_points_mm": [_point(c["point"]) for c in candidates],
+                "search_radius_mm": SHELF_SEARCH_RADIUS_MM,
                 "faces": merged_faces[:MAX_NEARBY_ELEMENTS_LISTED],
                 "total_horizontal_faces": len(merged_faces),
             }
             if candidate_errors:
-                entry["nearest_structural_framing"]["_errors"] = candidate_errors
+                entry["nearby_shelf_candidates"]["_errors"] = candidate_errors
         except Exception as exc:  # noqa: BLE001
-            errors.append("nearest_structural_framing: {0}".format(exc))
+            errors.append("nearby_shelf_candidates: {0}".format(exc))
 
     # Pile-to-pile comparison (added 2026-08-26) - see the module
     # docstring's "Extended" note. Only meaningful with exactly two
@@ -1257,13 +1289,10 @@ if not dimensions:
 pile_collection = _collect_piles(doc.ActiveView)
 piles = pile_collection["piles"]
 
-framing_collection = _collect_structural_framing(doc.ActiveView)
-framings = framing_collection["framings"]
-
 view_cache = {}
 results = []
 for dim in dimensions:
-    entry = _describe_dimension(dim, piles=piles, framings=framings)
+    entry = _describe_dimension(dim, doc.ActiveView, piles=piles)
     try:
         owner_view = doc.ActiveView
         view_key = _eid(owner_view.Id)
@@ -1311,10 +1340,14 @@ if not path:
 import json  # noqa: E402 - after the early-exit paths above, same style as capture.py
 
 # Strip the raw XYZ objects (not JSON-serializable, and already captured
-# as point_mm) before writing - piles/framings lists themselves stay in
-# memory as-is for the distance math above, this is only for the dump.
+# as point_mm) before writing - piles list itself stays in memory as-is
+# for the distance math above, this is only for the dump. The shelf
+# probe's own candidates are collected per-spot now (a bounding-box
+# search around each spot's own point, not a single document/view-wide
+# collection reused across all dimensions the way piles are), so their
+# only record is already inside each dimension's own
+# nearby_shelf_candidates entry - nothing extra to strip here.
 piles_for_json = [{k: v for k, v in pile.items() if k != "point"} for pile in piles]
-framings_for_json = [{k: v for k, v in framing.items() if k != "point"} for framing in framings]
 
 with open(path, "w") as f:
     json.dump(
@@ -1322,8 +1355,6 @@ with open(path, "w") as f:
             "source": source,
             "piles": piles_for_json,
             "pile_collection_errors": pile_collection.get("_errors"),
-            "framings": framings_for_json,
-            "framing_collection_errors": framing_collection.get("_errors"),
             "dimensions": results,
         },
         f,
@@ -1336,7 +1367,6 @@ output.print_md("`{0}`".format(path))
 output.print_md("")
 output.print_md("- {0} dimension(s) captured, from {1}".format(len(results), source))
 output.print_md("- {0} pile(s) collected document-wide for proximity matching".format(len(piles)))
-output.print_md("- {0} structural framing element(s) collected in the active view for the horizontal-face probe".format(len(framings)))
 output.print_md(
     "- Delete this file once you're done with it, and don't commit it — "
     "same caution as a real capture (PLANNING.md §2)."
