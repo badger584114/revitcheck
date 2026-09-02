@@ -1018,9 +1018,13 @@ stable within one client's own project history.
   solid-geometry walk per spot is comparatively expensive.
 
 `dotnet build` clean across the whole solution including the net48 Addin,
-343 Core tests passing. **Confirmed on a real machine run, 2026-09-02: 3
-Spot Elevations in view, all 3 confirmed, 0 issues** - the first check in
-this project's history to work cleanly on its very first real run, no bugs
-found or fixed afterward.
+343 Core tests passing. **Confirmed standalone on a real machine run,
+2026-09-02: 3 Spot Elevations in view, all 3 confirmed, 0 issues** - the
+first check in this project's history to work cleanly on its very first
+real run in that path.
 
-**Session integration itself found a real bug on its first real run: all 3 confirmed-clean Spot Elevations showed up as confirmed problems in the checklist.** `RunWithScope`'s own whole-check coverage summary Issue (no `ElementId`) was being added to `CheckingSession.RecordInvestigation`'s `InvestigationIssues` unfiltered - `InvestigationReconciliation.Reconcile` categorizes anything without `ManualReviewCategory` as a confirmed problem, and the existing supersede-on-rerun fix only matched issues with an `ElementId`, so the phantom entry was never cleaned up either. Fixed generally, not just for this one check: `RecordInvestigation` now drops any null-`ElementId` issue from its dimension-linked path entirely - a whole-check summary belongs in standalone output, not per-dimension reconciliation. Two new regression tests (confirmed to actually fail without the fix), 345 Core tests passing.
+**Session integration itself found a real bug on its first real run: all 3 confirmed-clean Spot Elevations showed up as confirmed problems in the checklist.** `RunWithScope`'s own whole-check coverage summary Issue (no `ElementId`) was being added to `CheckingSession.RecordInvestigation`'s `InvestigationIssues` unfiltered - `InvestigationReconciliation.Reconcile` categorizes anything without `ManualReviewCategory` as a confirmed problem, and the existing supersede-on-rerun fix only matched issues with an `ElementId`, so the phantom entry was never cleaned up either. Fixed generally, not just for this one check: `RecordInvestigation` now drops any null-`ElementId` issue from its dimension-linked path entirely - a whole-check summary belongs in standalone output, not per-dimension reconciliation. Two new regression tests (confirmed to actually fail without the fix), 345 Core tests passing. **Not yet re-confirmed against a real checking session on the Revit machine** - that's the next real validation step.
+
+**Renamed from "Abutment Elevation" the same day** - see PLANNING.md §18's final entries for the full reasoning: nothing about this check is actually abutment-specific, and the real organizing axis for this project's checking tools is dimension type plus how a dimension's provenance resolves, not element type or view type.
+
+**Two real, named-but-unbuilt follow-ups surfaced the same day**, from the same real abutment view this check was validated against: 3 ordinary linear dimensions dimensioning to `DetailLine`s that nothing currently investigates (a different verification mechanism - a measured distance between two witness points, not one point's Z against one face - and should be named generically, not by element type, from the start); and a per-view dimension-type breakdown in the checklist (e.g. "3 linear, 3 spot") so a reviewer knows which button to run.
