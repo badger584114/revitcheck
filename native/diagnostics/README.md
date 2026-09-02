@@ -149,8 +149,10 @@ level more specific: not even stable *within* one client's own project
 history). `_collect_structural_framing`/`_nearest_structural_framings`
 became `_collect_geometry_candidates` - a small 3D bounding-box search
 around each spot's own point, minus known noise categories/classes, not
-a category collector. **Needs one more real run to confirm the
-category-agnostic search still finds the same real matches.**
+a category collector. **Confirmed on a real re-run: all 3 spots now
+match** (2 exact at `delta=0.000mm`, the third improved from 22mm off
+to 2.3mm off once the right, non-Structural-Framing element was found)
+- complete, clean validation, ready to design the real Core check.
 
 ## `InspectPileSetout.pushbutton`
 
