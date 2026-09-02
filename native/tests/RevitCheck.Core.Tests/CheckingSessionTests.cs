@@ -64,6 +64,25 @@ public class CheckingSessionTests
         Description = $"Dimension {dimensionElementId}: ambiguous nearest pile.",
     };
 
+    /// <summary>
+    /// A whole-check coverage summary with no single element to anchor to -
+    /// the real shape SpotElevationConsistencyCheck.RunWithScope always
+    /// appends, even on a clean run (CLAUDE.md's "report a coverage
+    /// indicator, never fail silently"). Real bug, 2026-09-02: passed into
+    /// RecordInvestigation unfiltered, this used to be categorized as a
+    /// confirmed problem by Reconcile (no ManualReviewCategory), silently
+    /// flagging a genuinely clean view - and, since the supersede fix only
+    /// matches issues with an ElementId, it was never cleaned up on re-run
+    /// either.
+    /// </summary>
+    private static Issue InvestigationCoverageNote(string ruleId = "revitcheck.spot_elevation_consistency") => new()
+    {
+        RuleId = ruleId,
+        Category = "coverage",
+        Severity = "low",
+        Description = "3 Spot Elevation(s) found; 3 had a geometry search performed (3 confirmed, 0 mismatched, 0 with no nearby geometry, 0 with no drafted value to check).",
+    };
+
     private static Issue PileScheduleFinding(long pileElementId) => new()
     {
         RuleId = "revitcheck.pile_model_schedule_consistency",
@@ -146,6 +165,42 @@ public class CheckingSessionTests
         Assert.Equal(ViewInvestigationStatus.Resolved, session.FindView(100)!.Status);
         Assert.Empty(session.ExportableConfirmedProblems());
         Assert.Empty(session.ExportableStillOpenTriage().Where(i => i.ElementId == 10));
+    }
+
+    [Fact]
+    public void RecordInvestigation_a_whole_check_coverage_note_does_not_flag_an_otherwise_clean_view()
+    {
+        // Real bug, 2026-09-02: a coverage-style issue with no ElementId
+        // (the shape SpotElevationConsistencyCheck.RunWithScope always
+        // appends) used to be silently promoted to a confirmed problem,
+        // flagging a view that was actually clean. See
+        // InvestigationCoverageNote's own remarks.
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: new[] { InvestigationCoverageNote() });
+
+        Assert.Equal(ViewInvestigationStatus.Resolved, session.FindView(100)!.Status);
+        Assert.Empty(session.ExportableConfirmedProblems());
+    }
+
+    [Fact]
+    public void RecordInvestigation_a_whole_check_coverage_note_does_not_accumulate_across_repeated_runs()
+    {
+        // The supersede fix (RecordInvestigation_supersedes_a_stale_verdict...
+        // below) only ever matched issues with an ElementId, so a
+        // null-element coverage note was never being cleaned up on re-run -
+        // re-running the same check kept adding another one. Now it's never
+        // added to InvestigationIssues at all, so this can't recur.
+        var triage = new[] { PerDimensionTriage(10, viewId: 100) };
+        var session = CheckingSession.Start(triage, new RuleConfig());
+
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: new[] { InvestigationCoverageNote() });
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: new[] { InvestigationCoverageNote() });
+        session.RecordInvestigation(100, investigatedElementIds: new long[] { 10 }, investigationIssues: new[] { InvestigationCoverageNote() });
+
+        Assert.Equal(ViewInvestigationStatus.Resolved, session.FindView(100)!.Status);
+        Assert.Empty(session.ExportableConfirmedProblems());
     }
 
     [Fact]

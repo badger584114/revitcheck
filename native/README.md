@@ -1021,6 +1021,6 @@ stable within one client's own project history.
 343 Core tests passing. **Confirmed on a real machine run, 2026-09-02: 3
 Spot Elevations in view, all 3 confirmed, 0 issues** - the first check in
 this project's history to work cleanly on its very first real run, no bugs
-found or fixed afterward. Session/dimension-triage reconciliation
-(`RunWithScope` + `RecordInvestigation`) is built but not yet confirmed
-against a real checking session - that's the next real validation step.
+found or fixed afterward.
+
+**Session integration itself found a real bug on its first real run: all 3 confirmed-clean Spot Elevations showed up as confirmed problems in the checklist.** `RunWithScope`'s own whole-check coverage summary Issue (no `ElementId`) was being added to `CheckingSession.RecordInvestigation`'s `InvestigationIssues` unfiltered - `InvestigationReconciliation.Reconcile` categorizes anything without `ManualReviewCategory` as a confirmed problem, and the existing supersede-on-rerun fix only matched issues with an `ElementId`, so the phantom entry was never cleaned up either. Fixed generally, not just for this one check: `RecordInvestigation` now drops any null-`ElementId` issue from its dimension-linked path entirely - a whole-check summary belongs in standalone output, not per-dimension reconciliation. Two new regression tests (confirmed to actually fail without the fix), 345 Core tests passing.
