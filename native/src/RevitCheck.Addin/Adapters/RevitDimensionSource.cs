@@ -395,7 +395,7 @@ public static class RevitDimensionSource
                         // dimension's own reference-resolution path already
                         // works (PLANNING.md §14); this is specifically for
                         // the case that path doesn't cover
-                        // (revitcheck.abutment_elevation_consistency,
+                        // (revitcheck.spot_elevation_consistency,
                         // PLANNING.md §18). Real solid-geometry walk per
                         // spot, so only performed when a caller opts in.
                         if (isSpot && shelfSearchView is not null && rawOrigin is not null)
@@ -725,7 +725,7 @@ public static class RevitDimensionSource
     // --- Category-agnostic bearing-shelf geometry probe (added
     // 2026-09-02, PLANNING.md §18) - ports real, validated diagnostic work
     // (native/diagnostics/InspectDimensionGeometry.pushbutton/script.py)
-    // for revitcheck.abutment_elevation_consistency. See NearbyFaceInfo's
+    // for revitcheck.spot_elevation_consistency. See NearbyFaceInfo's
     // own remarks for why this doesn't rely on a Spot Elevation's own
     // Reference or any named parameter, and why the search is deliberately
     // NOT filtered by category - confirmed by the user directly: the real
@@ -736,7 +736,7 @@ public static class RevitDimensionSource
     // is for piles.
 
     // First real value, not a calibrated one (see RuleConfig.
-    // AbutmentElevationToleranceMm's own remarks) - real data confirmed a
+    // SpotElevationToleranceMm's own remarks) - real data confirmed a
     // spot's own point can sit exactly on the real shelf face
     // (distance_2d_mm=0.0, more than once), so this does not need to be
     // large.

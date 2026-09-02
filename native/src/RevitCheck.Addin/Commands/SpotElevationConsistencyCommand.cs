@@ -9,13 +9,24 @@ using RevitCheck.Core.Reporting;
 namespace RevitCheck.Addin.Commands;
 
 /// <summary>
-/// Wires <c>revitcheck.abutment_elevation_consistency</c> up to a real
-/// Revit document - the second element-type check in the per-element-type
-/// pattern the two pile checks established (PLANNING.md §16/§18), and the
-/// first to verify against raw solid geometry rather than a schedule or a
-/// live parameter.
+/// Wires <c>revitcheck.spot_elevation_consistency</c> up to a real
+/// Revit document - the first check to verify against raw solid geometry
+/// rather than a schedule or a live parameter (PLANNING.md §16/§18).
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>Renamed from "Abutment Elevation", 2026-09-02, per the user's own
+/// direction.</b> Built and proven against abutments, but nothing about it
+/// is abutment-specific - it checks any Spot Elevation in the active view
+/// against any real nearby geometry, no category filter anywhere (see
+/// <see cref="SpotElevationConsistencyCheck"/>'s own remarks). The real
+/// organizing axis for this project's checking tools isn't element type
+/// (piles vs. abutments vs. deck) or view type (plan vs. section) - it's
+/// dimension type plus how its provenance resolves (Spot vs. linear;
+/// direct-to-geometry vs. witness-line), which is what actually determines
+/// the verification technique. Naming this "Abutment Elevation" implied a
+/// scope restriction that was never really there.
+/// </para>
 /// <para>
 /// <b>Dual-mode from the start</b> - unlike both pile commands, which
 /// started standalone-only and gained session integration later (PLANNING.md
@@ -27,7 +38,7 @@ namespace RevitCheck.Addin.Commands;
 /// which "stand alone" - see that class's own remarks), so no
 /// <c>ExpandByElementIdList</c>/rollup-unrolling step or view-context
 /// patching is needed the way <see cref="PileChainBearingConsistencyCommand"/>
-/// needs both: <see cref="AbutmentElevationConsistencyCheck.RunWithScope"/>'s
+/// needs both: <see cref="SpotElevationConsistencyCheck.RunWithScope"/>'s
 /// issues already carry each Spot Elevation's own ElementId plus its real
 /// ViewId/ViewName/SheetNo (resolved via <c>RevitModel.ViewById</c> inside
 /// the check itself, since it operates per-dimension rather than
@@ -51,12 +62,11 @@ namespace RevitCheck.Addin.Commands;
 /// <b>Scoped to the active view, not the whole document</b> - same
 /// reasoning both pile commands already give: a real solid-geometry walk
 /// per Spot Elevation is comparatively expensive, and checking the
-/// abutment view someone has open is the point, not sweeping the whole
-/// document.
+/// view someone has open is the point, not sweeping the whole document.
 /// </para>
 /// </remarks>
 [Transaction(TransactionMode.ReadOnly)]
-public class AbutmentElevationConsistencyCommand : IExternalCommand
+public class SpotElevationConsistencyCommand : IExternalCommand
 {
     public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
     {
@@ -71,7 +81,7 @@ public class AbutmentElevationConsistencyCommand : IExternalCommand
         var activeView = uiDoc!.ActiveView;
         if (activeView is null)
         {
-            message = "No active view - open the abutment elevation/section view to check before running this.";
+            message = "No active view - open a view showing the Spot Elevations you want to check before running this.";
             return Result.Failed;
         }
 
@@ -89,7 +99,7 @@ public class AbutmentElevationConsistencyCommand : IExternalCommand
         }
         catch (Exception ex)
         {
-            TaskDialog.Show("RevitCheck - Abutment Elevation", $"Could not collect the model:\n\n{ExceptionMessage.Full(ex)}");
+            TaskDialog.Show("RevitCheck - Spot Elevation", $"Could not collect the model:\n\n{ExceptionMessage.Full(ex)}");
             return Result.Failed;
         }
 
@@ -104,7 +114,7 @@ public class AbutmentElevationConsistencyCommand : IExternalCommand
             ExtractionErrors = collected.ExtractionErrors,
         };
 
-        var (issues, investigatedElementIds) = AbutmentElevationConsistencyCheck.RunWithScope(model, config);
+        var (issues, investigatedElementIds) = SpotElevationConsistencyCheck.RunWithScope(model, config);
         var spotCount = collected.Dimensions.Count(d => d.IsSpot);
 
         var summary = $"{issues.Count} issue(s) found ({spotCount} Spot Elevation(s) in view '{activeView.Name}')" +
@@ -133,29 +143,29 @@ public class AbutmentElevationConsistencyCommand : IExternalCommand
 
             CheckingSessionHost.Window?.Refresh();
 
-            TaskDialog.Show("RevitCheck - Abutment Elevation", summary + sessionNote);
+            TaskDialog.Show("RevitCheck - Spot Elevation", summary + sessionNote);
             return Result.Succeeded;
         }
 
         string? outputPath;
         try
         {
-            outputPath = IssueOutput.WriteNextToModel(doc, issues, "abutment_elevation_consistency", "RevitCheck - Abutment Elevation");
+            outputPath = IssueOutput.WriteNextToModel(doc, issues, "spot_elevation_consistency", "RevitCheck - Spot Elevation");
         }
         catch (Exception ex)
         {
-            TaskDialog.Show("RevitCheck - Abutment Elevation",
+            TaskDialog.Show("RevitCheck - Spot Elevation",
                 $"{summary}\n\nBut the results file could not be written:\n\n{ExceptionMessage.Full(ex)}");
             return Result.Succeeded;
         }
 
         if (outputPath is null)
         {
-            TaskDialog.Show("RevitCheck - Abutment Elevation", $"{summary}\n\nSave cancelled - nothing written.");
+            TaskDialog.Show("RevitCheck - Spot Elevation", $"{summary}\n\nSave cancelled - nothing written.");
             return Result.Succeeded;
         }
 
-        TaskDialog.Show("RevitCheck - Abutment Elevation",
+        TaskDialog.Show("RevitCheck - Spot Elevation",
             $"{summary}\n\nWritten to (JSON, CSV and BCF, same folder):\n{outputPath}");
 
         return Result.Succeeded;

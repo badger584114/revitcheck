@@ -198,7 +198,7 @@ public sealed class RuleConfig
     /// </summary>
     public int PileChainMinimumPiles { get; init; } = 2;
 
-    // --- revitcheck.abutment_elevation_consistency ---
+    // --- revitcheck.spot_elevation_consistency ---
     //
     // Compares a Spot Elevation's own drafted value (DimensionInfo.Origin.Z -
     // Value/ValueOverride are confirmed unreliable for this Spot Dimension
@@ -223,5 +223,5 @@ public sealed class RuleConfig
     /// case seen so far, not a tight figure calibrated against a known-bad
     /// case - no real wrong-elevation example has been seen yet.
     /// </summary>
-    public double AbutmentElevationToleranceMm { get; init; } = 10.0;
+    public double SpotElevationToleranceMm { get; init; } = 10.0;
 }

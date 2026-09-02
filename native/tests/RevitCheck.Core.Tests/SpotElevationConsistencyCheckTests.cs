@@ -5,13 +5,13 @@ using Xunit;
 
 namespace RevitCheck.Core.Tests;
 
-public class AbutmentElevationConsistencyCheckTests
+public class SpotElevationConsistencyCheckTests
 {
     private static List<Issues.Issue> Run(RevitModel model, RuleConfig? config = null) =>
-        AbutmentElevationConsistencyCheck.Run(model, config ?? new RuleConfig());
+        SpotElevationConsistencyCheck.Run(model, config ?? new RuleConfig());
 
     private static (List<Issues.Issue> Issues, List<long> InvestigatedElementIds) RunWithScope(RevitModel model, RuleConfig? config = null) =>
-        AbutmentElevationConsistencyCheck.RunWithScope(model, config ?? new RuleConfig());
+        SpotElevationConsistencyCheck.RunWithScope(model, config ?? new RuleConfig());
 
     private static DimensionInfo SpotDimension(
         long elementId,
@@ -64,7 +64,7 @@ public class AbutmentElevationConsistencyCheckTests
         var issues = Run(model);
 
         Assert.Equal(2, issues.Count);
-        var finding = issues.Single(i => i.RuleId == AbutmentElevationConsistencyCheck.RuleId && i.ElementId == 1);
+        var finding = issues.Single(i => i.RuleId == SpotElevationConsistencyCheck.RuleId && i.ElementId == 1);
         // manual_review, not coverage - this dimension WAS investigated,
         // just inconclusively (see the check's own remarks on why plain
         // coverage/geometry here would wrongly auto-export as confirmed).
@@ -165,10 +165,10 @@ public class AbutmentElevationConsistencyCheckTests
         var dims = new List<DimensionInfo> { SpotDimension(1, originZMm: 5000.0, faces: faces) };
         var model = new RevitModel { Dimensions = dims };
 
-        var loose = Run(model, new RuleConfig { AbutmentElevationToleranceMm = 10.0 });
+        var loose = Run(model, new RuleConfig { SpotElevationToleranceMm = 10.0 });
         Assert.Equal(1, Coverage(loose).SuggestedFix!["confirmed"]);
 
-        var strict = Run(model, new RuleConfig { AbutmentElevationToleranceMm = 5.0 });
+        var strict = Run(model, new RuleConfig { SpotElevationToleranceMm = 5.0 });
         Assert.Equal(1, Coverage(strict).SuggestedFix!["mismatched"]);
     }
 

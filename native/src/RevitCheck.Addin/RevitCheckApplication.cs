@@ -18,11 +18,13 @@ namespace RevitCheck.Addin;
 /// per-reference LocalPoint, TextNotes, schedule reading) was built
 /// (PLANNING.md §16 Stage 2). The two dimension buttons were replaced by
 /// one combined Dimension Triage button, and the pile buttons gained
-/// dual-mode session integration, in PLANNING.md §16 Stage 3. Abutment
-/// Elevation - the second element-type check, verifying a Spot Elevation
-/// against real solid geometry rather than a schedule or parameter - was
-/// added standalone-only (PLANNING.md §18), the same way both pile buttons
-/// started before Stage 3 gave them dual-mode.
+/// dual-mode session integration, in PLANNING.md §16 Stage 3. Spot
+/// Elevation - the first check verifying against real solid geometry
+/// rather than a schedule or parameter (PLANNING.md §18) - went dual-mode
+/// from the start, real machine confirmation already in hand before the
+/// button existed. Built and proven against abutments, renamed from
+/// "Abutment Elevation" the same day once real use showed nothing about it
+/// is actually abutment-specific.
 /// </summary>
 public class RevitCheckApplication : IExternalApplication
 {
@@ -125,25 +127,26 @@ public class RevitCheckApplication : IExternalApplication
 
         panel.AddItem(pileChainBearingButton);
 
-        var abutmentElevationButton = new PushButtonData(
-            "RevitCheck.AbutmentElevationConsistency",
-            "Abutment\nElevation",
+        var spotElevationButton = new PushButtonData(
+            "RevitCheck.SpotElevationConsistency",
+            "Spot\nElevation",
             assemblyPath,
-            typeof(AbutmentElevationConsistencyCommand).FullName)
+            typeof(SpotElevationConsistencyCommand).FullName)
         {
             ToolTip = "For each Spot Elevation visible in the active view, searches nearby real solid " +
                       "geometry (any category - not filtered, since no single category is stable enough " +
                       "across this project's own history, let alone across clients) and compares the " +
-                      "drafted value against the nearest real horizontal face. Open the abutment " +
-                      "elevation/section view before running this.",
+                      "drafted value against the nearest real horizontal face. Open the view you want " +
+                      "to check before running this - works on any Spot Elevation, not tied to any " +
+                      "particular structure type.",
         };
 
-        // Reuses the Pile Chain Bearing icon - no dedicated Abutment
-        // Elevation icon exists yet (cosmetic, not blocking), same
-        // precedent Dimension Triage set reusing Dimension Provenance's.
-        SetIcons(abutmentElevationButton, "PileChainBearing");
+        // Reuses the Pile Chain Bearing icon - no dedicated Spot Elevation
+        // icon exists yet (cosmetic, not blocking), same precedent
+        // Dimension Triage set reusing Dimension Provenance's.
+        SetIcons(spotElevationButton, "PileChainBearing");
 
-        panel.AddItem(abutmentElevationButton);
+        panel.AddItem(spotElevationButton);
 
         var metadataButton = new PushButtonData(
             "RevitCheck.MetadataReconciliation",

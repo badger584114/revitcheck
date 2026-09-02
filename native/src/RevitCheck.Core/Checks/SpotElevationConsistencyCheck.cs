@@ -50,9 +50,9 @@ namespace RevitCheck.Core.Checks;
 /// not whether some face somewhere nearby happens to match.
 /// </para>
 /// </remarks>
-public static class AbutmentElevationConsistencyCheck
+public static class SpotElevationConsistencyCheck
 {
-    public const string RuleId = "revitcheck.abutment_elevation_consistency";
+    public const string RuleId = "revitcheck.spot_elevation_consistency";
 
     public static List<Issue> Run(RevitModel model, RuleConfig config) => RunWithScope(model, config).Issues;
 
@@ -154,7 +154,7 @@ public static class AbutmentElevationConsistencyCheck
                 .First();
 
             var deltaMm = origin.Z - nearest.ZMm;
-            if (Math.Abs(deltaMm) <= config.AbutmentElevationToleranceMm)
+            if (Math.Abs(deltaMm) <= config.SpotElevationToleranceMm)
             {
                 confirmed++;
                 continue;
@@ -174,7 +174,7 @@ public static class AbutmentElevationConsistencyCheck
                 Description =
                     $"Spot Elevation in {DimensionDescriptions.DescribeView(view)} is {FormatMm(origin.Z)}mm, but the " +
                     $"nearest real geometry ({FormatMm(nearest.Distance2DMm ?? 0)}mm away in plan) is {FormatMm(nearest.ZMm)}mm " +
-                    $"({FormatSigned(deltaMm)}mm) - beyond the {FormatMm(config.AbutmentElevationToleranceMm)}mm tolerance.",
+                    $"({FormatSigned(deltaMm)}mm) - beyond the {FormatMm(config.SpotElevationToleranceMm)}mm tolerance.",
                 SuggestedFix = new Dictionary<string, object?>
                 {
                     ["drafted_mm"] = Math.Round(origin.Z, 3),
@@ -182,7 +182,7 @@ public static class AbutmentElevationConsistencyCheck
                     ["delta_mm"] = Math.Round(deltaMm, 3),
                     ["distance_2d_mm"] = nearest.Distance2DMm is { } d ? Math.Round(d, 3) : null,
                     ["source_element_id"] = nearest.SourceElementId,
-                    ["tolerance_mm"] = config.AbutmentElevationToleranceMm,
+                    ["tolerance_mm"] = config.SpotElevationToleranceMm,
                 },
             });
         }

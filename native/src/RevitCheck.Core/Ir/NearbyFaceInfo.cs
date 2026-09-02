@@ -3,7 +3,7 @@ namespace RevitCheck.Core.Ir;
 /// <summary>
 /// One roughly-horizontal real face found near a Spot Elevation's own
 /// point - the raw geometric fact
-/// <see cref="RevitCheck.Core.Checks.AbutmentElevationConsistencyCheck"/> judges against.
+/// <see cref="RevitCheck.Core.Checks.SpotElevationConsistencyCheck"/> judges against.
 /// Populated by the adapter's own solid-geometry walk
 /// (<c>RevitDimensionSource.NearbyHorizontalFaces</c>): a small,
 /// category-agnostic bounding-box search around the spot's point, then
