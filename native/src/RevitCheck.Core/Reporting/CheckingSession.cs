@@ -226,6 +226,30 @@ public sealed class CheckingSession
     /// verdict for a given dimension always wins, whether that verdict came
     /// from an automated check re-run or a human's own manual click.
     /// </remarks>
+    /// <remarks>
+    /// <b>An <see cref="Issue"/> with no <see cref="Issue.ElementId"/> is
+    /// dropped from the dimension-linked path entirely</b> - a real bug
+    /// found on the Revit machine, 2026-09-02
+    /// (<c>AbutmentElevationConsistencyCommand</c>'s first real dual-mode
+    /// run). CLAUDE.md's "report a coverage indicator, never fail
+    /// silently" means an investigation check may reasonably append one
+    /// whole-check summary Issue (no single element to anchor it to) even
+    /// on a clean run, the way <c>AbutmentElevationConsistencyCheck.RunWithScope</c>
+    /// does - but <see cref="InvestigationReconciliation.Reconcile"/>
+    /// categorizes *any* issue not carrying
+    /// <see cref="InvestigationReconciliation.ManualReviewCategory"/> as a
+    /// confirmed problem, with no per-element key to make sense of, so a
+    /// clean run's own coverage note was silently flipping the view to
+    /// <see cref="ViewInvestigationStatus.Flagged"/>. Worse, the
+    /// supersede fix directly above only matches issues that <i>have</i> an
+    /// <see cref="Issue.ElementId"/>, so a null-element issue was never
+    /// being cleaned up either - re-running the same check kept adding
+    /// another one. A whole-check summary belongs in the standalone
+    /// JSON/CSV/BCF output and the command's own on-screen summary text,
+    /// not in a session's per-dimension reconciliation, which has no
+    /// meaningful bucket for it - so it never reaches
+    /// <see cref="ViewChecklistEntry.InvestigationIssues"/> at all.
+    /// </remarks>
     public void RecordInvestigation(
         long viewId,
         IReadOnlyCollection<long> investigatedElementIds,
@@ -255,9 +279,14 @@ public sealed class CheckingSession
             }
         }
 
+        // See this method's own remarks on why a null-ElementId issue is
+        // dropped here rather than accumulated - Reconcile has no
+        // meaningful per-dimension bucket for one.
+        var dimensionLinkedIssues = issuesList.Where(i => i.ElementId is not null).ToList();
+
         var investigatedNow = new HashSet<long>(investigatedElementIds);
         entry.InvestigationIssues.RemoveAll(i => i.ElementId is { } id && investigatedNow.Contains(id));
-        entry.InvestigationIssues.AddRange(issuesList);
+        entry.InvestigationIssues.AddRange(dimensionLinkedIssues);
         entry.LastReconciliation = InvestigationReconciliation.Reconcile(
             entry.TriageIssues, entry.InvestigatedElementIds, entry.InvestigationIssues);
     }
