@@ -858,8 +858,17 @@ Also open, carried over from PLANNING.md:
   retaining walls are not.
 - **Abutment beam placement**, specifically real-world height/elevation
   (bearing seat / soffit level) — this tool's responsibility, not the
-  roads team's, and awaiting a real sample. Deck geometry is confirmed
-  **out of scope** (roads team's).
+  roads team's. Deck geometry is confirmed **out of scope** (roads
+  team's). **Investigation started 2026-09-02 (PLANNING.md §18), same
+  diagnostic-first discipline as piles** — no new code yet, since the
+  two existing generic diagnostics (`InspectElements.pushbutton`,
+  `InspectDimensionGeometry.pushbutton`) already name this scope in
+  their own docstrings. Real ground truth (element/category, whether an
+  elevation is a parameter or has to come from geometry, whether a spot
+  elevation's reference resolves via `Face.Project` or hits the same
+  DetailLine/Detail-Component snap-workaround §17 found on plan-view
+  coordinate spots) still needed before any comparison logic gets
+  written — see §18 for the exact open questions.
 - **Porting the drafting checks** — glossaries, en-GB variants and the
   precise check definitions carry over as data and semantics; the
   extraction layer does not. See ARCHIVE-pdf-dwg.md.
