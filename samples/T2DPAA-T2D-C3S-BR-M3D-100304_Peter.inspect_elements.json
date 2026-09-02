@@ -4,7 +4,7 @@
       "builtin_category": -2001320,
       "category": "Structural Framing",
       "class_name": "FamilyInstance",
-      "element_id": 4999722,
+      "element_id": 5005779,
       "family_name": "03_SFR_ACS_Abutment_CS",
       "has_sub_components": false,
       "host_element_id": null,
@@ -98,10 +98,10 @@
           "storage_type": "String"
         },
         "Abutment_HeadstockLength": {
-          "display_string": "13201.663",
+          "display_string": "14015.414",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 43.31254214514638,
+          "numeric_value": 45.98232776365332,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -258,10 +258,10 @@
           "storage_type": "String"
         },
         "Cut Length": {
-          "display_string": "13274.449",
+          "display_string": "14075.047",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 43.55134207599441,
+          "numeric_value": 46.17797419460429,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -322,11 +322,11 @@
           "storage_type": "String"
         },
         "DIT_LocationHierarchyCode": {
-          "display_string": "NCRN005-N232-SN003",
+          "display_string": "NCRN005-N232-SN002",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "NCRN005-N232-SN003",
+          "raw_string": "NCRN005-N232-SN002",
           "storage_type": "String"
         },
         "DIT_PrimaryParent": {
@@ -338,11 +338,11 @@
           "storage_type": "String"
         },
         "DIT_SiteID": {
-          "display_string": "ABT232102",
+          "display_string": "ABT232101",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABT232102",
+          "raw_string": "ABT232101",
           "storage_type": "String"
         },
         "DIT_StartEasting": {
@@ -498,10 +498,10 @@
           "storage_type": "Double"
         },
         "End Level Offset": {
-          "display_string": "21877.046",
+          "display_string": "21642.130",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 71.77508525236242,
+          "numeric_value": 71.00436231728456,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -539,7 +539,7 @@
         },
         "Family": {
           "display_string": "03_SFR_ACS_Abutment_CS",
-          "element_id_value": 4741573,
+          "element_id_value": 5020156,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -554,8 +554,8 @@
           "storage_type": "String"
         },
         "Family and Type": {
-          "display_string": "03_SFR_ACS_Abutment_CS: ABUTMENT SOUTHBOUND_BR8_5",
-          "element_id_value": 4741573,
+          "display_string": "03_SFR_ACS_Abutment_CS: ABUTMENT NORTHBOUND_BR8_2",
+          "element_id_value": 5020156,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -610,11 +610,11 @@
           "storage_type": "String"
         },
         "IfcGUID": {
-          "display_string": "0D2RX$WSPDQ9ZBO_xxZN9K",
+          "display_string": "3uzY03h_D9MBw2r4g6bTOw",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "0D2RX$WSPDQ9ZBO_xxZN9K",
+          "raw_string": "3uzY03h_D9MBw2r4g6bTOw",
           "storage_type": "String"
         },
         "Image": {
@@ -690,19 +690,19 @@
           "storage_type": "String"
         },
         "LocationHierarchyDescription": {
-          "display_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
+          "display_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
+          "raw_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 1",
           "storage_type": "String"
         },
         "LocationID": {
-          "display_string": "MI41J2",
+          "display_string": "YD77T1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "MI41J2",
+          "raw_string": "YD77T1",
           "storage_type": "String"
         },
         "LocationParentID": {
@@ -714,19 +714,19 @@
           "storage_type": "String"
         },
         "LocationReferenceCode": {
-          "display_string": "SN003",
+          "display_string": "SN002",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "SN003",
+          "raw_string": "SN002",
           "storage_type": "String"
         },
         "LocationReferenceDescription": {
-          "display_string": "Abutment 2",
+          "display_string": "Abutment 1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "Abutment 2",
+          "raw_string": "Abutment 1",
           "storage_type": "String"
         },
         "MF Material Class": {
@@ -762,11 +762,11 @@
           "storage_type": "String"
         },
         "Mark": {
-          "display_string": "ABUTMENT B",
+          "display_string": "ABUTMENT A",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABUTMENT B",
+          "raw_string": "ABUTMENT A",
           "storage_type": "String"
         },
         "NO OF INTERNAL DIAPHRAGMS": {
@@ -938,10 +938,10 @@
           "storage_type": "Double"
         },
         "Start Level Offset": {
-          "display_string": "21593.672",
+          "display_string": "21386.608",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 70.8453805774278,
+          "numeric_value": 70.16603674540683,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -970,11 +970,11 @@
           "storage_type": "String"
         },
         "SubLocationCodeDescription": {
-          "display_string": "Abutment 2",
+          "display_string": "Abutment 1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "Abutment 2",
+          "raw_string": "Abutment 1",
           "storage_type": "String"
         },
         "Suitability ": {
@@ -1034,11 +1034,11 @@
           "storage_type": "String"
         },
         "T2D_DesignTag": {
-          "display_string": "ABUTMENT B",
+          "display_string": "ABUTMENT A",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABUTMENT B",
+          "raw_string": "ABUTMENT A",
           "storage_type": "String"
         },
         "T2D_Diameter": {
@@ -1058,11 +1058,11 @@
           "storage_type": "String"
         },
         "T2D_Height": {
-          "display_string": "3714",
+          "display_string": "3680",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "3714",
+          "raw_string": "3680",
           "storage_type": "String"
         },
         "T2D_IsMaintainable": {
@@ -1074,11 +1074,11 @@
           "storage_type": "String"
         },
         "T2D_Length": {
-          "display_string": "13.20",
+          "display_string": "14.02",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "13.20",
+          "raw_string": "14.02",
           "storage_type": "String"
         },
         "T2D_MaterialCat": {
@@ -1154,11 +1154,11 @@
           "storage_type": "String"
         },
         "T2D_Volume": {
-          "display_string": "71.832",
+          "display_string": "76.201",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "71.832",
+          "raw_string": "76.201",
           "storage_type": "String"
         },
         "T2D_Width": {
@@ -1194,16 +1194,16 @@
           "storage_type": "String"
         },
         "Type": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_5",
-          "element_id_value": 4741573,
+          "display_string": "ABUTMENT NORTHBOUND_BR8_2",
+          "element_id_value": 5020156,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
           "storage_type": "ElementId"
         },
         "Type Id": {
-          "display_string": "4741573",
-          "element_id_value": 4741573,
+          "display_string": "5020156",
+          "element_id_value": 5020156,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -1330,10 +1330,10 @@
           "storage_type": "String"
         },
         "Volume": {
-          "display_string": "71.832 m\u00b3",
+          "display_string": "76.201 m\u00b3",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 2536.710473528664,
+          "numeric_value": 2690.999469621628,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -1386,7 +1386,7 @@
           "storage_type": "Double"
         }
       },
-      "type_name": "ABUTMENT SOUTHBOUND_BR8_5",
+      "type_name": "ABUTMENT NORTHBOUND_BR8_2",
       "type_parameters": {
         "Abutment_BallastWallCrossfallAngle_A": {
           "display_string": "0\u00b0 00' 00\"",
@@ -1597,18 +1597,18 @@
           "storage_type": "Double"
         },
         "Abutment_HeadstockEndKickAngle_A": {
-          "display_string": "91\u00b0 13' 48\"",
+          "display_string": "91\u00b0 00' 28\"",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 1.5922638765944253,
+          "numeric_value": 1.588385367145549,
           "raw_string": null,
           "storage_type": "Double"
         },
         "Abutment_HeadstockEndKickAngle_B": {
-          "display_string": "88\u00b0 46' 12\"",
+          "display_string": "88\u00b0 59' 32\"",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 1.5493287769953648,
+          "numeric_value": 1.5532072864442412,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -2309,11 +2309,11 @@
           "storage_type": "String"
         },
         "Type IfcGUID": {
-          "display_string": "2SSmX$d6v7LhPFy4U$KiQS",
+          "display_string": "2WcXGtYdj13gKFK8Tqwj8o",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "2SSmX$d6v7LhPFy4U$KiQS",
+          "raw_string": "2WcXGtYdj13gKFK8Tqwj8o",
           "storage_type": "String"
         },
         "Type Image": {
@@ -2333,11 +2333,11 @@
           "storage_type": "String"
         },
         "Type Name": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_5",
+          "display_string": "ABUTMENT NORTHBOUND_BR8_2",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABUTMENT SOUTHBOUND_BR8_5",
+          "raw_string": "ABUTMENT NORTHBOUND_BR8_2",
           "storage_type": "String"
         },
         "URL": {
@@ -2453,2468 +2453,13 @@
           "storage_type": "String"
         }
       },
-      "unique_id": "0d09b87f-81c6-4d68-98cb-63eefbc1387e-004c4a2a"
+      "unique_id": "f8f62003-afe3-4958-be82-d44a86d9b7e9-004c61d3"
     },
     {
       "builtin_category": -2001320,
       "category": "Structural Framing",
       "class_name": "FamilyInstance",
-      "element_id": 5026293,
-      "family_name": "03_SFR_ACS_Abutment_CS1",
-      "has_sub_components": false,
-      "host_element_id": null,
-      "instance_parameters": {
-        "+'VE'": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "-'VE'": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ATM_Asset_Identifier": {
-          "display_string": "Abutment",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment",
-          "storage_type": "String"
-        },
-        "ATM_Attribute_Flag": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_LastAutoNote": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_LastAutoTime": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_SequenceNumber": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_1": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_2": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_3": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_4": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "Abutment_HeadstockLength": {
-          "display_string": "11778.148",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 38.64221872350398,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Asset Class": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Asset Component": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Asset Identifier (Label)": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Asset Tag": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Bottom Left Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Bottom Right Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "CLADDING ARC LENGTH": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "CLADDING BOTTOM LENGTH C": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "CLADDING CUTOUTS BOTTOM LENGTH C": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Category": {
-          "display_string": "Structural Framing",
-          "element_id_value": -2001320,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Chainage end": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Chainage start": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments_01_Jacobs": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments_02_Jacobs": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments_03_Jacobs": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Cricticality": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Cross-Section Rotation": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Current Design Stage": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Cut Length": {
-          "display_string": "11841.147",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 38.84890772007131,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "DESCRIPTION": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "DIT_AssetCategory": {
-          "display_string": "Point Asset",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Point Asset",
-          "storage_type": "String"
-        },
-        "DIT_AssetClass": {
-          "display_string": "01.04 Structures",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "01.04 Structures",
-          "storage_type": "String"
-        },
-        "DIT_AssetComponent": {
-          "display_string": "01.04.01.01.02 Abutment Structure",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "01.04.01.01.02 Abutment Structure",
-          "storage_type": "String"
-        },
-        "DIT_AssetType": {
-          "display_string": "ABT",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABT",
-          "storage_type": "String"
-        },
-        "DIT_CommsParent": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "DIT_ElectricalParent": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "DIT_LocationHierarchyCode": {
-          "display_string": "NCRN005-N232-SN003",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "NCRN005-N232-SN003",
-          "storage_type": "String"
-        },
-        "DIT_PrimaryParent": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "DIT_SiteID": {
-          "display_string": "ABT232102",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABT232102",
-          "storage_type": "String"
-        },
-        "DIT_StartEasting": {
-          "display_string": "278220.626",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "278220.626",
-          "storage_type": "String"
-        },
-        "DIT_StartNorthing": {
-          "display_string": "6130222.245",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "6130222.245",
-          "storage_type": "String"
-        },
-        "DIT_SupplyIsolationID": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "Date of Revision": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Dept Asset ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Design Option": {
-          "display_string": "-1",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Design Package Name": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Design Package Number": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ESTIMATED HOG AT 60 DAYS": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ESTIMATED HOG AT TRANSFER": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Easting": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Edited by": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "ElementGrouping": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ElementLocation": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ElementMark": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ElementUsage": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Elevation at Bottom": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Elevation at Top": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "End Extension": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "End Level Offset": {
-          "display_string": "21689.985",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 71.16136811023622,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Exclude From Schedule": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Exclude from schedule_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Export to IFC": {
-          "display_string": "By Type",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Export to IFC As": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Family": {
-          "display_string": "03_SFR_ACS_Abutment_CS1",
-          "element_id_value": 5026750,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Family Name": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Family and Type": {
-          "display_string": "03_SFR_ACS_Abutment_CS1: ABUTMENT SOUTHBOUND_BR8_3",
-          "element_id_value": 5026750,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Filter object_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "GUID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "GeometryPlacementText_Vis": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Has Association": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Host Id": {
-          "display_string": "-1",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "IFC Predefined Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "IfcGUID": {
-          "display_string": "21ApUDzvj67BoWralyNCfd",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "21ApUDzvj67BoWralyNCfd",
-          "storage_type": "String"
-        },
-        "Image": {
-          "display_string": null,
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Infrastructure Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Join Status": {
-          "display_string": "Both joins enabled",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "LEFT SIDE": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Length": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Level": {
-          "display_string": "",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Localised location code": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "LocationCodeDescription": {
-          "display_string": "Everard Avenue Bridge (Over North South Motorway) (BR08)",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Everard Avenue Bridge (Over North South Motorway) (BR08)",
-          "storage_type": "String"
-        },
-        "LocationHeirarchyKey": {
-          "display_string": "3BAB",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "3BAB",
-          "storage_type": "String"
-        },
-        "LocationHierarchyDescription": {
-          "display_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
-          "storage_type": "String"
-        },
-        "LocationID": {
-          "display_string": "MI41J2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "MI41J2",
-          "storage_type": "String"
-        },
-        "LocationParentID": {
-          "display_string": "GM18B1",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "GM18B1",
-          "storage_type": "String"
-        },
-        "LocationReferenceCode": {
-          "display_string": "SN003",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "SN003",
-          "storage_type": "String"
-        },
-        "LocationReferenceDescription": {
-          "display_string": "Abutment 2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment 2",
-          "storage_type": "String"
-        },
-        "MF Material Class": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "MF Mould Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "MPDId": {
-          "display_string": "580",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "580",
-          "storage_type": "String"
-        },
-        "Managed": {
-          "display_string": "Yes",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Yes",
-          "storage_type": "String"
-        },
-        "Mark": {
-          "display_string": "ABUTMENT B",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABUTMENT B",
-          "storage_type": "String"
-        },
-        "NO OF INTERNAL DIAPHRAGMS": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Northing": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Parent ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ParentLocationReference": {
-          "display_string": "N232",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N232",
-          "storage_type": "String"
-        },
-        "Phase Created": {
-          "display_string": "New Construction",
-          "element_id_value": 0,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Phase Demolished": {
-          "display_string": "None",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Project Road Code": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ProjectRdDescription": {
-          "display_string": "Everard Avenue",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Everard Avenue",
-          "storage_type": "String"
-        },
-        "RIGHT HAND SIDE": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "RIGHT SIDE": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Rebar Cover - Bottom Face": {
-          "display_string": "Rebar Cover 25 <25 mm>",
-          "element_id_value": 315975,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Rebar Cover - Other Faces": {
-          "display_string": "Rebar Cover 25 <25 mm>",
-          "element_id_value": 315975,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Rebar Cover - Top Face": {
-          "display_string": "Rebar Cover 25 <25 mm>",
-          "element_id_value": 315975,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Reference Level": {
-          "display_string": "Datum 0",
-          "element_id_value": 188289,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Reference Level Elevation": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.4376358714880047e-12,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Review required_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "ShapeField": {
-          "display_string": "Point",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Point",
-          "storage_type": "String"
-        },
-        "Site ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "SiteIDLocationReference": {
-          "display_string": "2321-2322",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "2321-2322",
-          "storage_type": "String"
-        },
-        "SiteID_Drawings": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "No",
-          "storage_type": "String"
-        },
-        "Start Extension": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Start Level Offset": {
-          "display_string": "21905.041",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 71.86693241469817,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Structural Material": {
-          "display_string": "<By Category>",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Structural Usage": {
-          "display_string": "Other",
-          "element_id_value": null,
-          "integer_value": 6,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Sub Location code": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "SubLocationCodeDescription": {
-          "display_string": "Abutment 2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment 2",
-          "storage_type": "String"
-        },
-        "Suitability ": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Supplementary Cementitous Material": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Supply Isolation Asset ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "T2D_Area": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_ClashGroup": {
-          "display_string": "120",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "120",
-          "storage_type": "String"
-        },
-        "T2D_CoordSystem": {
-          "display_string": "Local MGA Planar",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Local MGA Planar",
-          "storage_type": "String"
-        },
-        "T2D_Date": {
-          "display_string": "23.06.26",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "23.06.26",
-          "storage_type": "String"
-        },
-        "T2D_DesignTag": {
-          "display_string": "ABUTMENT B",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABUTMENT B",
-          "storage_type": "String"
-        },
-        "T2D_Diameter": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_DisciplineCode": {
-          "display_string": "BR",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "BR",
-          "storage_type": "String"
-        },
-        "T2D_Height": {
-          "display_string": "3640",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "3640",
-          "storage_type": "String"
-        },
-        "T2D_IsMaintainable": {
-          "display_string": "Yes",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Yes",
-          "storage_type": "String"
-        },
-        "T2D_Length": {
-          "display_string": "11.78",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "11.78",
-          "storage_type": "String"
-        },
-        "T2D_MaterialCat": {
-          "display_string": "Concrete",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Concrete",
-          "storage_type": "String"
-        },
-        "T2D_MaterialSubCat": {
-          "display_string": "50MPa",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "50MPa",
-          "storage_type": "String"
-        },
-        "T2D_PackageCode": {
-          "display_string": "C3S-BR-160304",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "C3S-BR-160304",
-          "storage_type": "String"
-        },
-        "T2D_PackageName": {
-          "display_string": "BR08: Everard Avenue",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "BR08: Everard Avenue",
-          "storage_type": "String"
-        },
-        "T2D_Perimeter": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_RevisionNo": {
-          "display_string": "0",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "0",
-          "storage_type": "String"
-        },
-        "T2D_Stage": {
-          "display_string": "IFC",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "IFC",
-          "storage_type": "String"
-        },
-        "T2D_Suitability": {
-          "display_string": "A1",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "A1",
-          "storage_type": "String"
-        },
-        "T2D_Thickness": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_Volume": {
-          "display_string": "63.847",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "63.847",
-          "storage_type": "String"
-        },
-        "T2D_Width": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_Zone": {
-          "display_string": "C3S",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "C3S",
-          "storage_type": "String"
-        },
-        "Top Left Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Top Right Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_3",
-          "element_id_value": 5026750,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Type Id": {
-          "display_string": "5026750",
-          "element_id_value": 5026750,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Type Name": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Uniclass 2015 Description": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Uniclass 2015 Number": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Uniclass_CoCode": {
-          "display_string": "Co_80",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Co_80",
-          "storage_type": "String"
-        },
-        "Uniclass_CoTitle": {
-          "display_string": "Transport complexes",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Transport complexes",
-          "storage_type": "String"
-        },
-        "Uniclass_EfCode": {
-          "display_string": "EF_20_50_01",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "EF_20_50_01",
-          "storage_type": "String"
-        },
-        "Uniclass_EfTitle": {
-          "display_string": "Abutments",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutments",
-          "storage_type": "String"
-        },
-        "Uniclass_EnCode": {
-          "display_string": "En_80_94_30",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "En_80_94_30",
-          "storage_type": "String"
-        },
-        "Uniclass_EnTitle": {
-          "display_string": "Fixed bridges",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Fixed bridges",
-          "storage_type": "String"
-        },
-        "Uniclass_PrCode": {
-          "display_string": "Pr_20_93_71",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Pr_20_93_71",
-          "storage_type": "String"
-        },
-        "Uniclass_PrTitle": {
-          "display_string": "Retaining wall units",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Retaining wall units",
-          "storage_type": "String"
-        },
-        "Uniclass_SLCode": {
-          "display_string": "SL_80_94",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "SL_80_94",
-          "storage_type": "String"
-        },
-        "Uniclass_SLTitle": {
-          "display_string": "Bridge and structure spaces",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Bridge and structure spaces",
-          "storage_type": "String"
-        },
-        "Uniclass_SsCode": {
-          "display_string": "Ss_20_50_10",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Ss_20_50_10",
-          "storage_type": "String"
-        },
-        "Uniclass_SsTitle": {
-          "display_string": "Abutment systems",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment systems",
-          "storage_type": "String"
-        },
-        "Volume": {
-          "display_string": "63.847 m\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 2254.748685524656,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Workset": {
-          "display_string": "Workset1",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "y Justification": {
-          "display_string": "Origin",
-          "element_id_value": null,
-          "integer_value": 2,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "y Offset Value": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "yz Justification": {
-          "display_string": "Uniform",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "z Justification": {
-          "display_string": "Top",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "z Offset Value": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        }
-      },
-      "type_name": "ABUTMENT SOUTHBOUND_BR8_3",
-      "type_parameters": {
-        "Abutment_BallastWallCrossfallAngle_A": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallCrossfallAngle_B": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallCrownOffset_From_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallCrownSkewAngle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight": {
-          "display_string": "1890.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.200787401574803,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_A": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_B": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndA_Calc": {
-          "display_string": "1890.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.200787401574803,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndA_Extended_Calc": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndB_Calc": {
-          "display_string": "1890.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.200787401574803,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndB_Extended_Calc": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_A_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_B": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_B_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_Rear": {
-          "display_string": "1440.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.724409448818897,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallSkewAngle_A": {
-          "display_string": "90\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.570796326794895,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallSkewAngle_B": {
-          "display_string": "90\u00b0 04' 02\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.57196957590318,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallWidth": {
-          "display_string": "1440.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.724409448818897,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWall_CrossSectionAngle_Correction_EndA_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWall_CrossSectionAngle_Correction_EndB_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_CrossSectionAngle_Correction_EndA_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_CrossSectionAngle_Correction_EndB_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockCrossfallAngle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockCrossfallAngle_Calc": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": -0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockCrossfallHeight": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockEndKickAngle_A": {
-          "display_string": "88\u00b0 57' 14\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.55253824356431,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockEndKickAngle_B": {
-          "display_string": "91\u00b0 02' 46\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.58905441002548,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockHeight": {
-          "display_string": "1500.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.921259842519685,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockHeight_EndA_Calc": {
-          "display_string": "1500.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.921259842519685,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockHeight_EndB_Calc": {
-          "display_string": "1500.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.921259842519685,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfHeight": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfHeight_EndA_Calc": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfHeight_EndB_Calc": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfWidth": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockSkewAngle_A": {
-          "display_string": "90\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.570796326794895,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockSkewAngle_B": {
-          "display_string": "90\u00b0 04' 02\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.57196957590318,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockWidth": {
-          "display_string": "1870.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.135170603674541,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_Headstock_FallDirection_EndA": {
-          "display_string": "Yes",
-          "element_id_value": null,
-          "integer_value": 1,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Abutment_KeeperWallHeight": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallHeight_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallHeight_B": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_A_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_B": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_B_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_A": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_A_Calc": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_B": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_B_Calc": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_MassDensity": {
-          "display_string": "0.000 kg/m\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Assembly Code": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Assembly Description": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Category": {
-          "display_string": "Structural Framing",
-          "element_id_value": -2001320,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Centroid Horizontal": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Centroid Vertical": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Clash_Test_Code[Type]": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Classification.Uniclass.Pr.Description": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Classification.Uniclass.Pr.Number": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Code Name": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Cost": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "CreatedBy": {
-          "display_string": "M.Holberton",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "M.Holberton",
-          "storage_type": "String"
-        },
-        "CreatedDate": {
-          "display_string": "18.12.19",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "18.12.19",
-          "storage_type": "String"
-        },
-        "Current_LOD[Type]": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Description": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Design Option": {
-          "display_string": "-1",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Edited by": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Elastic Modulus strong axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Elastic Modulus weak axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Export Type to IFC": {
-          "display_string": "Default",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Export Type to IFC As": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Family Name": {
-          "display_string": "03_SFR_ACS_Abutment_CS1",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "03_SFR_ACS_Abutment_CS1",
-          "storage_type": "String"
-        },
-        "Fire Rating": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Height": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "JacobsHelpFile_URL": {
-          "display_string": "na",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "na",
-          "storage_type": "String"
-        },
-        "JacobsRegion": {
-          "display_string": "APAC",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "APAC",
-          "storage_type": "String"
-        },
-        "Keynote": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "MS Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Manufacturer": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Model": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ModificationReason": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "ModifiedBy": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "ModifiedDate": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Moment of Inertia strong axis": {
-          "display_string": "0.00 cm\u2074",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Moment of Inertia weak axis": {
-          "display_string": "0.00 cm\u2074",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Nominal Weight": {
-          "display_string": "0.00 kgf/m",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "OmniClass Number": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "OmniClass Title": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Override_HeadstockFallAngle": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Override_HeadstockShelfLongitudinalFallAngle": {
-          "display_string": "2\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.034906585039886556,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Override_HeadstockShelfLongitudinalFallAngle_EndA_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Override_HeadstockShelfLongitudinalFallAngle_EndB_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Override_HeadstockSillLongitudinalFallAngle": {
-          "display_string": "2\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.034906585039886556,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Perimeter": {
-          "display_string": "0.00 m\u00b2/m",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Plastic Modulus strong axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Plastic Modulus weak axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Principal Axes Angle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "ProfileOffset_EndA": {
-          "display_string": "1935.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.348425196850394,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "ProfileOffset_EndB": {
-          "display_string": "1935.001",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.348427308137849,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Section Area": {
-          "display_string": "0.0 mm\u00b2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Section Name Key": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Section Shape": {
-          "display_string": "User Defined",
-          "element_id_value": null,
-          "integer_value": 30,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Shear Area strong axis": {
-          "display_string": "0.0 mm\u00b2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Shear Area weak axis": {
-          "display_string": "0.0 mm\u00b2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "StructuralElement_Descriptor": {
-          "display_string": "ACS",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ACS",
-          "storage_type": "String"
-        },
-        "StructuralElement_Prefix": {
-          "display_string": "A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "A",
-          "storage_type": "String"
-        },
-        "StructuralElement_SubElement": {
-          "display_string": "CS",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "CS",
-          "storage_type": "String"
-        },
-        "Tag_Code_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Target_LOD[Type]": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Torsional Modulus": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Torsional Moment of Inertia": {
-          "display_string": "0.00 cm\u2074",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Type Comments": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type IFC Predefined Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type IfcGUID": {
-          "display_string": "21ApUDzvj67BoWralyNCWi",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "21ApUDzvj67BoWralyNCWi",
-          "storage_type": "String"
-        },
-        "Type Image": {
-          "display_string": null,
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Type Mark": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type Name": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABUTMENT SOUTHBOUND_BR8_3",
-          "storage_type": "String"
-        },
-        "URL": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Warping Constant": {
-          "display_string": "0.0 cm\u2076",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Width": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Workset": {
-          "display_string": "Family  : Structural Framing : 03_SFR_ACS_Abutment_CS1",
-          "element_id_value": null,
-          "integer_value": 6319,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "___BallastWall Parameters___": {
-          "display_string": "___BallastWall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___BallastWall Parameters___",
-          "storage_type": "String"
-        },
-        "___BallastWall Skew/Fall Parameters___": {
-          "display_string": "___BallastWall Skew/Fall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___BallastWall Skew/Fall Parameters___",
-          "storage_type": "String"
-        },
-        "___Calculations_BallastWall___": {
-          "display_string": "___Calculations_BallastWall___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_BallastWall___",
-          "storage_type": "String"
-        },
-        "___Calculations_EndA___": {
-          "display_string": "___Calculations_EndA___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_EndA___",
-          "storage_type": "String"
-        },
-        "___Calculations_EndB___": {
-          "display_string": "___Calculations_EndB___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_EndB___",
-          "storage_type": "String"
-        },
-        "___Calculations_KeeperWall___": {
-          "display_string": "___Calculations_KeeperWall___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_KeeperWall___",
-          "storage_type": "String"
-        },
-        "___Geometry_AdditionalControl_Overrides_Warnings___": {
-          "display_string": "___Geometry_AdditionalControl_Overrides_Warnings___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Geometry_AdditionalControl_Overrides_Warnings___",
-          "storage_type": "String"
-        },
-        "___Headstock Parameters___": {
-          "display_string": "___Headstock Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Headstock Parameters___",
-          "storage_type": "String"
-        },
-        "___Headstock Skew/Fall Parameters___": {
-          "display_string": "___Headstock Skew/Fall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Headstock Skew/Fall Parameters___",
-          "storage_type": "String"
-        },
-        "___KeeperWall Parameters___": {
-          "display_string": "___KeeperWall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___KeeperWall Parameters___",
-          "storage_type": "String"
-        }
-      },
-      "unique_id": "812b378d-f79b-461c-bca0-d64bfc107b92-004cb1f5"
-    },
-    {
-      "builtin_category": -2001320,
-      "category": "Structural Framing",
-      "class_name": "FamilyInstance",
-      "element_id": 5889408,
+      "element_id": 5006919,
       "family_name": "03_SFR_ACS_Abutment_CS",
       "has_sub_components": false,
       "host_element_id": null,
@@ -5008,10 +2553,10 @@
           "storage_type": "String"
         },
         "Abutment_HeadstockLength": {
-          "display_string": "3369.068",
+          "display_string": "16755.761",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 11.053373315614841,
+          "numeric_value": 54.97296894219113,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -5168,10 +2713,10 @@
           "storage_type": "String"
         },
         "Cut Length": {
-          "display_string": "3441.854",
+          "display_string": "16829.040",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 11.292173242238896,
+          "numeric_value": 55.2133872609961,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -5232,11 +2777,11 @@
           "storage_type": "String"
         },
         "DIT_LocationHierarchyCode": {
-          "display_string": "NCRN005-N232-SN003",
+          "display_string": "NCRN005-N232-SN002",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "NCRN005-N232-SN003",
+          "raw_string": "NCRN005-N232-SN002",
           "storage_type": "String"
         },
         "DIT_PrimaryParent": {
@@ -5248,11 +2793,11 @@
           "storage_type": "String"
         },
         "DIT_SiteID": {
-          "display_string": "ABT232102",
+          "display_string": "ABT232101",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABT232102",
+          "raw_string": "ABT232101",
           "storage_type": "String"
         },
         "DIT_StartEasting": {
@@ -5407,19 +2952,11 @@
           "raw_string": null,
           "storage_type": "Double"
         },
-        "End Join Cutback": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
         "End Level Offset": {
-          "display_string": "21949.363",
+          "display_string": "21279.474",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 72.01234580052494,
+          "numeric_value": 69.81454724409448,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -5457,7 +2994,7 @@
         },
         "Family": {
           "display_string": "03_SFR_ACS_Abutment_CS",
-          "element_id_value": 5889495,
+          "element_id_value": 5020179,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -5472,8 +3009,8 @@
           "storage_type": "String"
         },
         "Family and Type": {
-          "display_string": "03_SFR_ACS_Abutment_CS: ABUTMENT SOUTHBOUND_BR8_4",
-          "element_id_value": 5889495,
+          "display_string": "03_SFR_ACS_Abutment_CS: ABUTMENT NORTHBOUND_BR8_3",
+          "element_id_value": 5020179,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -5528,11 +3065,11 @@
           "storage_type": "String"
         },
         "IfcGUID": {
-          "display_string": "0cBeZNfADFIQMniCP5ieR_",
+          "display_string": "3uzY03h_D9MBw2r4g6bT6k",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "0cBeZNfADFIQMniCP5ieR_",
+          "raw_string": "3uzY03h_D9MBw2r4g6bT6k",
           "storage_type": "String"
         },
         "Image": {
@@ -5608,19 +3145,19 @@
           "storage_type": "String"
         },
         "LocationHierarchyDescription": {
-          "display_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
+          "display_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
+          "raw_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 1",
           "storage_type": "String"
         },
         "LocationID": {
-          "display_string": "MI41J2",
+          "display_string": "YD77T1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "MI41J2",
+          "raw_string": "YD77T1",
           "storage_type": "String"
         },
         "LocationParentID": {
@@ -5632,19 +3169,19 @@
           "storage_type": "String"
         },
         "LocationReferenceCode": {
-          "display_string": "SN003",
+          "display_string": "SN002",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "SN003",
+          "raw_string": "SN002",
           "storage_type": "String"
         },
         "LocationReferenceDescription": {
-          "display_string": "Abutment 2",
+          "display_string": "Abutment 1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "Abutment 2",
+          "raw_string": "Abutment 1",
           "storage_type": "String"
         },
         "MF Material Class": {
@@ -5680,11 +3217,11 @@
           "storage_type": "String"
         },
         "Mark": {
-          "display_string": "ABUTMENT B",
+          "display_string": "ABUTMENT A",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABUTMENT B",
+          "raw_string": "ABUTMENT A",
           "storage_type": "String"
         },
         "NO OF INTERNAL DIAPHRAGMS": {
@@ -5768,8 +3305,8 @@
           "storage_type": "String"
         },
         "Rebar Cover - Bottom Face": {
-          "display_string": null,
-          "element_id_value": -1,
+          "display_string": "Rebar Cover 25 <25 mm>",
+          "element_id_value": 315975,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -5784,8 +3321,8 @@
           "storage_type": "ElementId"
         },
         "Rebar Cover - Top Face": {
-          "display_string": null,
-          "element_id_value": -1,
+          "display_string": "Rebar Cover 25 <25 mm>",
+          "element_id_value": 315975,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -5856,10 +3393,10 @@
           "storage_type": "Double"
         },
         "Start Level Offset": {
-          "display_string": "21877.046",
+          "display_string": "21641.955",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 71.77508530183727,
+          "numeric_value": 71.00379062942336,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -5888,11 +3425,11 @@
           "storage_type": "String"
         },
         "SubLocationCodeDescription": {
-          "display_string": "Abutment 2",
+          "display_string": "Abutment 1",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "Abutment 2",
+          "raw_string": "Abutment 1",
           "storage_type": "String"
         },
         "Suitability ": {
@@ -5952,11 +3489,11 @@
           "storage_type": "String"
         },
         "T2D_DesignTag": {
-          "display_string": "ABUTMENT B",
+          "display_string": "ABUTMENT A",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABUTMENT B",
+          "raw_string": "ABUTMENT A",
           "storage_type": "String"
         },
         "T2D_Diameter": {
@@ -5976,11 +3513,11 @@
           "storage_type": "String"
         },
         "T2D_Height": {
-          "display_string": "3803",
+          "display_string": "3794",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "3803",
+          "raw_string": "3794",
           "storage_type": "String"
         },
         "T2D_IsMaintainable": {
@@ -5992,11 +3529,11 @@
           "storage_type": "String"
         },
         "T2D_Length": {
-          "display_string": "3.37",
+          "display_string": "16.76",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "3.37",
+          "raw_string": "16.76",
           "storage_type": "String"
         },
         "T2D_MaterialCat": {
@@ -6072,11 +3609,11 @@
           "storage_type": "String"
         },
         "T2D_Volume": {
-          "display_string": "18.119",
+          "display_string": "90.470",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "18.119",
+          "raw_string": "90.470",
           "storage_type": "String"
         },
         "T2D_Width": {
@@ -6112,16 +3649,16 @@
           "storage_type": "String"
         },
         "Type": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_4",
-          "element_id_value": 5889495,
+          "display_string": "ABUTMENT NORTHBOUND_BR8_3",
+          "element_id_value": 5020179,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
           "storage_type": "ElementId"
         },
         "Type Id": {
-          "display_string": "5889495",
-          "element_id_value": 5889495,
+          "display_string": "5020179",
+          "element_id_value": 5020179,
           "integer_value": null,
           "numeric_value": null,
           "raw_string": null,
@@ -6248,10 +3785,10 @@
           "storage_type": "String"
         },
         "Volume": {
-          "display_string": "18.119 m\u00b3",
+          "display_string": "90.470 m\u00b3",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 639.8712927614549,
+          "numeric_value": 3194.9319839502455,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -6304,7 +3841,7 @@
           "storage_type": "Double"
         }
       },
-      "type_name": "ABUTMENT SOUTHBOUND_BR8_4",
+      "type_name": "ABUTMENT NORTHBOUND_BR8_3",
       "type_parameters": {
         "Abutment_BallastWallCrossfallAngle_A": {
           "display_string": "0\u00b0 00' 00\"",
@@ -6515,18 +4052,18 @@
           "storage_type": "Double"
         },
         "Abutment_HeadstockEndKickAngle_A": {
-          "display_string": "91\u00b0 13' 48\"",
+          "display_string": "88\u00b0 45' 42\"",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 1.5922638765944253,
+          "numeric_value": 1.549183332891032,
           "raw_string": null,
           "storage_type": "Double"
         },
         "Abutment_HeadstockEndKickAngle_B": {
-          "display_string": "88\u00b0 46' 12\"",
+          "display_string": "91\u00b0 14' 18\"",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 1.5493287769953648,
+          "numeric_value": 1.592409320698758,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -6555,34 +4092,34 @@
           "storage_type": "Double"
         },
         "Abutment_HeadstockShelfHeight": {
-          "display_string": "0.000",
+          "display_string": "1.000",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 0.0,
+          "numeric_value": 0.0032808398950131233,
           "raw_string": null,
           "storage_type": "Double"
         },
         "Abutment_HeadstockShelfHeight_EndA_Calc": {
-          "display_string": "0.000",
+          "display_string": "1.000",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 0.0,
+          "numeric_value": 0.0032808398950131233,
           "raw_string": null,
           "storage_type": "Double"
         },
         "Abutment_HeadstockShelfHeight_EndB_Calc": {
-          "display_string": "0.000",
+          "display_string": "1.000",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 0.0,
+          "numeric_value": 0.0032808398950131233,
           "raw_string": null,
           "storage_type": "Double"
         },
         "Abutment_HeadstockShelfWidth": {
-          "display_string": "0.000",
+          "display_string": "1.000",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 0.0,
+          "numeric_value": 0.0032808398950131233,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -7227,11 +4764,11 @@
           "storage_type": "String"
         },
         "Type IfcGUID": {
-          "display_string": "0cBeZNfADFIQMniCP5ieQf",
+          "display_string": "2WcXGtYdj13gKFK8Tqwj7T",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "0cBeZNfADFIQMniCP5ieQf",
+          "raw_string": "2WcXGtYdj13gKFK8Tqwj7T",
           "storage_type": "String"
         },
         "Type Image": {
@@ -7251,11 +4788,11 @@
           "storage_type": "String"
         },
         "Type Name": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_4",
+          "display_string": "ABUTMENT NORTHBOUND_BR8_3",
           "element_id_value": null,
           "integer_value": null,
           "numeric_value": null,
-          "raw_string": "ABUTMENT SOUTHBOUND_BR8_4",
+          "raw_string": "ABUTMENT NORTHBOUND_BR8_3",
           "storage_type": "String"
         },
         "URL": {
@@ -7371,2476 +4908,13 @@
           "storage_type": "String"
         }
       },
-      "unique_id": "262e88d7-a4a3-4f49-a5b1-b0c645eb5b7e-0059dd80"
-    },
-    {
-      "builtin_category": -2001320,
-      "category": "Structural Framing",
-      "class_name": "FamilyInstance",
-      "element_id": 5889420,
-      "family_name": "03_SFR_ACS_Abutment_CS",
-      "has_sub_components": false,
-      "host_element_id": null,
-      "instance_parameters": {
-        "+'VE'": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "-'VE'": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ATM_Asset_Identifier": {
-          "display_string": "Abutment",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment",
-          "storage_type": "String"
-        },
-        "ATM_Attribute_Flag": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_LastAutoNote": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_LastAutoTime": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_SequenceNumber": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_1": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_2": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_3": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "ATM_Val_Holder_4": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "Abutment_HeadstockLength": {
-          "display_string": "2434.162",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 7.986095926936692,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Asset Class": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Asset Component": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Asset Identifier (Label)": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Asset Tag": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Bottom Left Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Bottom Right Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "CLADDING ARC LENGTH": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "CLADDING BOTTOM LENGTH C": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "CLADDING CUTOUTS BOTTOM LENGTH C": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Category": {
-          "display_string": "Structural Framing",
-          "element_id_value": -2001320,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Chainage end": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Chainage start": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments_01_Jacobs": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments_02_Jacobs": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Comments_03_Jacobs": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Cricticality": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Cross-Section Rotation": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Current Design Stage": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Cut Length": {
-          "display_string": "2496.064",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 8.189185880132797,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "DESCRIPTION": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "DIT_AssetCategory": {
-          "display_string": "Point Asset",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Point Asset",
-          "storage_type": "String"
-        },
-        "DIT_AssetClass": {
-          "display_string": "01.04 Structures",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "01.04 Structures",
-          "storage_type": "String"
-        },
-        "DIT_AssetComponent": {
-          "display_string": "01.04.01.01.02 Abutment Structure",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "01.04.01.01.02 Abutment Structure",
-          "storage_type": "String"
-        },
-        "DIT_AssetType": {
-          "display_string": "ABT",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABT",
-          "storage_type": "String"
-        },
-        "DIT_CommsParent": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "DIT_ElectricalParent": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "DIT_LocationHierarchyCode": {
-          "display_string": "NCRN005-N232-SN003",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "NCRN005-N232-SN003",
-          "storage_type": "String"
-        },
-        "DIT_PrimaryParent": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "DIT_SiteID": {
-          "display_string": "ABT232102",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABT232102",
-          "storage_type": "String"
-        },
-        "DIT_StartEasting": {
-          "display_string": "278220.626",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "278220.626",
-          "storage_type": "String"
-        },
-        "DIT_StartNorthing": {
-          "display_string": "6130222.245",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "6130222.245",
-          "storage_type": "String"
-        },
-        "DIT_SupplyIsolationID": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "Date of Revision": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Dept Asset ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Design Option": {
-          "display_string": "-1",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Design Package Name": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Design Package Number": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ESTIMATED HOG AT 60 DAYS": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ESTIMATED HOG AT TRANSFER": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Easting": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Edited by": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "ElementGrouping": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ElementLocation": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ElementMark": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ElementUsage": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Elevation at Bottom": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Elevation at Top": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "End Extension": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "End Level Offset": {
-          "display_string": "21905.042",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 71.86693569553807,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Exclude From Schedule": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Exclude from schedule_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Export to IFC": {
-          "display_string": "By Type",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Export to IFC As": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Family": {
-          "display_string": "03_SFR_ACS_Abutment_CS",
-          "element_id_value": 5889553,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Family Name": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Family and Type": {
-          "display_string": "03_SFR_ACS_Abutment_CS: ABUTMENT SOUTHBOUND_BR8_3a",
-          "element_id_value": 5889553,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Filter object_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "GUID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "GeometryPlacementText_Vis": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Has Association": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Host Id": {
-          "display_string": "-1",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "IFC Predefined Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "IfcGUID": {
-          "display_string": "0cBeZNfADFIQMniCP5ieRo",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "0cBeZNfADFIQMniCP5ieRo",
-          "storage_type": "String"
-        },
-        "Image": {
-          "display_string": null,
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Infrastructure Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Join Status": {
-          "display_string": "Both joins enabled",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "LEFT SIDE": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Length": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Level": {
-          "display_string": "",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Localised location code": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "LocationCodeDescription": {
-          "display_string": "Everard Avenue Bridge (Over North South Motorway) (BR08)",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Everard Avenue Bridge (Over North South Motorway) (BR08)",
-          "storage_type": "String"
-        },
-        "LocationHeirarchyKey": {
-          "display_string": "3BAB",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "3BAB",
-          "storage_type": "String"
-        },
-        "LocationHierarchyDescription": {
-          "display_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Everard Avenue;Everard Avenue Bridge (Over North South Motorway) (BR08);Abutment 2",
-          "storage_type": "String"
-        },
-        "LocationID": {
-          "display_string": "MI41J2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "MI41J2",
-          "storage_type": "String"
-        },
-        "LocationParentID": {
-          "display_string": "GM18B1",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "GM18B1",
-          "storage_type": "String"
-        },
-        "LocationReferenceCode": {
-          "display_string": "SN003",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "SN003",
-          "storage_type": "String"
-        },
-        "LocationReferenceDescription": {
-          "display_string": "Abutment 2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment 2",
-          "storage_type": "String"
-        },
-        "MF Material Class": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "MF Mould Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "MPDId": {
-          "display_string": "580",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "580",
-          "storage_type": "String"
-        },
-        "Managed": {
-          "display_string": "Yes",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Yes",
-          "storage_type": "String"
-        },
-        "Mark": {
-          "display_string": "ABUTMENT B",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABUTMENT B",
-          "storage_type": "String"
-        },
-        "NO OF INTERNAL DIAPHRAGMS": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Northing": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Parent ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ParentLocationReference": {
-          "display_string": "N232",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N232",
-          "storage_type": "String"
-        },
-        "Phase Created": {
-          "display_string": "New Construction",
-          "element_id_value": 0,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Phase Demolished": {
-          "display_string": "None",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Project Road Code": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ProjectRdDescription": {
-          "display_string": "Everard Avenue",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Everard Avenue",
-          "storage_type": "String"
-        },
-        "RIGHT HAND SIDE": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "RIGHT SIDE": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Rebar Cover - Bottom Face": {
-          "display_string": "Rebar Cover 25 <25 mm>",
-          "element_id_value": 315975,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Rebar Cover - Other Faces": {
-          "display_string": "Rebar Cover 25 <25 mm>",
-          "element_id_value": 315975,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Rebar Cover - Top Face": {
-          "display_string": "Rebar Cover 25 <25 mm>",
-          "element_id_value": 315975,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Reference Level": {
-          "display_string": "Datum 0",
-          "element_id_value": 188289,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Reference Level Elevation": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.4376358714880047e-12,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Review required_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "ShapeField": {
-          "display_string": "Point",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Point",
-          "storage_type": "String"
-        },
-        "Site ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "SiteIDLocationReference": {
-          "display_string": "2321-2322",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "2321-2322",
-          "storage_type": "String"
-        },
-        "SiteID_Drawings": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "No",
-          "storage_type": "String"
-        },
-        "Start Extension": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Start Join Cutback": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Start Level Offset": {
-          "display_string": "21949.485",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 72.01274606299212,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Structural Material": {
-          "display_string": "<By Category>",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Structural Usage": {
-          "display_string": "Other",
-          "element_id_value": null,
-          "integer_value": 6,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Sub Location code": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "SubLocationCodeDescription": {
-          "display_string": "Abutment 2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment 2",
-          "storage_type": "String"
-        },
-        "Suitability ": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Supplementary Cementitous Material": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Supply Isolation Asset ID": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "T2D_Area": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_ClashGroup": {
-          "display_string": "120",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "120",
-          "storage_type": "String"
-        },
-        "T2D_CoordSystem": {
-          "display_string": "Local MGA Planar",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Local MGA Planar",
-          "storage_type": "String"
-        },
-        "T2D_Date": {
-          "display_string": "23.06.26",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "23.06.26",
-          "storage_type": "String"
-        },
-        "T2D_DesignTag": {
-          "display_string": "ABUTMENT B",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABUTMENT B",
-          "storage_type": "String"
-        },
-        "T2D_Diameter": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_DisciplineCode": {
-          "display_string": "BR",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "BR",
-          "storage_type": "String"
-        },
-        "T2D_Height": {
-          "display_string": "3769",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "3769",
-          "storage_type": "String"
-        },
-        "T2D_IsMaintainable": {
-          "display_string": "Yes",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Yes",
-          "storage_type": "String"
-        },
-        "T2D_Length": {
-          "display_string": "2.43",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "2.43",
-          "storage_type": "String"
-        },
-        "T2D_MaterialCat": {
-          "display_string": "Concrete",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Concrete",
-          "storage_type": "String"
-        },
-        "T2D_MaterialSubCat": {
-          "display_string": "50MPa",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "50MPa",
-          "storage_type": "String"
-        },
-        "T2D_PackageCode": {
-          "display_string": "C3S-BR-160304",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "C3S-BR-160304",
-          "storage_type": "String"
-        },
-        "T2D_PackageName": {
-          "display_string": "BR08: Everard Avenue",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "BR08: Everard Avenue",
-          "storage_type": "String"
-        },
-        "T2D_Perimeter": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_RevisionNo": {
-          "display_string": "0",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "0",
-          "storage_type": "String"
-        },
-        "T2D_Stage": {
-          "display_string": "IFC",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "IFC",
-          "storage_type": "String"
-        },
-        "T2D_Suitability": {
-          "display_string": "A1",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "A1",
-          "storage_type": "String"
-        },
-        "T2D_Thickness": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_Volume": {
-          "display_string": "13.274",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "13.274",
-          "storage_type": "String"
-        },
-        "T2D_Width": {
-          "display_string": "N/A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "N/A",
-          "storage_type": "String"
-        },
-        "T2D_Zone": {
-          "display_string": "C3S",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "C3S",
-          "storage_type": "String"
-        },
-        "Top Left Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Top Right Panel Distance": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_3a",
-          "element_id_value": 5889553,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Type Id": {
-          "display_string": "5889553",
-          "element_id_value": 5889553,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Type Name": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Uniclass 2015 Description": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Uniclass 2015 Number": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Uniclass_CoCode": {
-          "display_string": "Co_80",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Co_80",
-          "storage_type": "String"
-        },
-        "Uniclass_CoTitle": {
-          "display_string": "Transport complexes",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Transport complexes",
-          "storage_type": "String"
-        },
-        "Uniclass_EfCode": {
-          "display_string": "EF_20_50_01",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "EF_20_50_01",
-          "storage_type": "String"
-        },
-        "Uniclass_EfTitle": {
-          "display_string": "Abutments",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutments",
-          "storage_type": "String"
-        },
-        "Uniclass_EnCode": {
-          "display_string": "En_80_94_30",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "En_80_94_30",
-          "storage_type": "String"
-        },
-        "Uniclass_EnTitle": {
-          "display_string": "Fixed bridges",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Fixed bridges",
-          "storage_type": "String"
-        },
-        "Uniclass_PrCode": {
-          "display_string": "Pr_20_93_71",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Pr_20_93_71",
-          "storage_type": "String"
-        },
-        "Uniclass_PrTitle": {
-          "display_string": "Retaining wall units",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Retaining wall units",
-          "storage_type": "String"
-        },
-        "Uniclass_SLCode": {
-          "display_string": "SL_80_94",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "SL_80_94",
-          "storage_type": "String"
-        },
-        "Uniclass_SLTitle": {
-          "display_string": "Bridge and structure spaces",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Bridge and structure spaces",
-          "storage_type": "String"
-        },
-        "Uniclass_SsCode": {
-          "display_string": "Ss_20_50_10",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Ss_20_50_10",
-          "storage_type": "String"
-        },
-        "Uniclass_SsTitle": {
-          "display_string": "Abutment systems",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "Abutment systems",
-          "storage_type": "String"
-        },
-        "Volume": {
-          "display_string": "13.274 m\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 468.7844181671318,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Workset": {
-          "display_string": "Workset1",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "y Justification": {
-          "display_string": "Origin",
-          "element_id_value": null,
-          "integer_value": 2,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "y Offset Value": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "yz Justification": {
-          "display_string": "Uniform",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "z Justification": {
-          "display_string": "Top",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "z Offset Value": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        }
-      },
-      "type_name": "ABUTMENT SOUTHBOUND_BR8_3a",
-      "type_parameters": {
-        "Abutment_BallastWallCrossfallAngle_A": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallCrossfallAngle_B": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallCrownOffset_From_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallCrownSkewAngle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight": {
-          "display_string": "1890.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.200787401574803,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_A": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_B": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndA_Calc": {
-          "display_string": "1890.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.200787401574803,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndA_Extended_Calc": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndB_Calc": {
-          "display_string": "1890.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.200787401574803,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallHeight_EndB_Extended_Calc": {
-          "display_string": "1200.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.937007874015748,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_A_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_B": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_B_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallOffset_Rear": {
-          "display_string": "1440.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.724409448818897,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallSkewAngle_A": {
-          "display_string": "90\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.570796326794895,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallSkewAngle_B": {
-          "display_string": "90\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.570796326794895,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWallWidth": {
-          "display_string": "1440.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.724409448818897,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWall_CrossSectionAngle_Correction_EndA_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_BallastWall_CrossSectionAngle_Correction_EndB_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_CrossSectionAngle_Correction_EndA_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_CrossSectionAngle_Correction_EndB_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockCrossfallAngle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockCrossfallAngle_Calc": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": -0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockCrossfallHeight": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockEndKickAngle_A": {
-          "display_string": "88\u00b0 57' 14\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.55253824356431,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockEndKickAngle_B": {
-          "display_string": "91\u00b0 02' 46\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.58905441002548,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockHeight": {
-          "display_string": "1500.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.921259842519685,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockHeight_EndA_Calc": {
-          "display_string": "1500.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.921259842519685,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockHeight_EndB_Calc": {
-          "display_string": "1500.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 4.921259842519685,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfHeight": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfHeight_EndA_Calc": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfHeight_EndB_Calc": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockShelfWidth": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockSkewAngle_A": {
-          "display_string": "90\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.570796326794895,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockSkewAngle_B": {
-          "display_string": "90\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.570796326794895,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_HeadstockWidth": {
-          "display_string": "1870.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.135170603674541,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_Headstock_FallDirection_EndA": {
-          "display_string": "Yes",
-          "element_id_value": null,
-          "integer_value": 1,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Abutment_KeeperWallHeight": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallHeight_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallHeight_B": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_A": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_A_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_B": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallThickness_B_Calc": {
-          "display_string": "1.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0032808398950131233,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth": {
-          "display_string": "0.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_A": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_A_Calc": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_B": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_KeeperWallWidth_B_Calc": {
-          "display_string": "430.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 1.4107611548556438,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Abutment_MassDensity": {
-          "display_string": "0.000 kg/m\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Assembly Code": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Assembly Description": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Category": {
-          "display_string": "Structural Framing",
-          "element_id_value": -2001320,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Centroid Horizontal": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Centroid Vertical": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Clash_Test_Code[Type]": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Classification.Uniclass.Pr.Description": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Classification.Uniclass.Pr.Number": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Code Name": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Cost": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "CreatedBy": {
-          "display_string": "M.Holberton",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "M.Holberton",
-          "storage_type": "String"
-        },
-        "CreatedDate": {
-          "display_string": "18.12.19",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "18.12.19",
-          "storage_type": "String"
-        },
-        "Current_LOD[Type]": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Description": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Design Option": {
-          "display_string": "-1",
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Edited by": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Elastic Modulus strong axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Elastic Modulus weak axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Export Type to IFC": {
-          "display_string": "Default",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Export Type to IFC As": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Family Name": {
-          "display_string": "03_SFR_ACS_Abutment_CS",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "03_SFR_ACS_Abutment_CS",
-          "storage_type": "String"
-        },
-        "Fire Rating": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Height": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "JacobsHelpFile_URL": {
-          "display_string": "na",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "na",
-          "storage_type": "String"
-        },
-        "JacobsRegion": {
-          "display_string": "APAC",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "APAC",
-          "storage_type": "String"
-        },
-        "Keynote": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "MS Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Manufacturer": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Model": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "ModificationReason": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "ModifiedBy": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "ModifiedDate": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Moment of Inertia strong axis": {
-          "display_string": "0.00 cm\u2074",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Moment of Inertia weak axis": {
-          "display_string": "0.00 cm\u2074",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Nominal Weight": {
-          "display_string": "0.00 kgf/m",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "OmniClass Number": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "OmniClass Title": {
-          "display_string": "",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "",
-          "storage_type": "String"
-        },
-        "Override_HeadstockFallAngle": {
-          "display_string": "No",
-          "element_id_value": null,
-          "integer_value": 0,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Override_HeadstockShelfLongitudinalFallAngle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Override_HeadstockShelfLongitudinalFallAngle_EndA_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Override_HeadstockShelfLongitudinalFallAngle_EndB_Calc": {
-          "display_string": "180\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 3.14159265358979,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Override_HeadstockSillLongitudinalFallAngle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Perimeter": {
-          "display_string": "0.00 m\u00b2/m",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Plastic Modulus strong axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Plastic Modulus weak axis": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Principal Axes Angle": {
-          "display_string": "0\u00b0 00' 00\"",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "ProfileOffset_EndA": {
-          "display_string": "1935.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.348425196850394,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "ProfileOffset_EndB": {
-          "display_string": "1935.000",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 6.348425196850394,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Section Area": {
-          "display_string": "0.0 mm\u00b2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Section Name Key": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Section Shape": {
-          "display_string": "User Defined",
-          "element_id_value": null,
-          "integer_value": 30,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "Shear Area strong axis": {
-          "display_string": "0.0 mm\u00b2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Shear Area weak axis": {
-          "display_string": "0.0 mm\u00b2",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "StructuralElement_Descriptor": {
-          "display_string": "ACS",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ACS",
-          "storage_type": "String"
-        },
-        "StructuralElement_Prefix": {
-          "display_string": "A",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "A",
-          "storage_type": "String"
-        },
-        "StructuralElement_SubElement": {
-          "display_string": "CS",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "CS",
-          "storage_type": "String"
-        },
-        "Tag_Code_WB": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Target_LOD[Type]": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Torsional Modulus": {
-          "display_string": "0.0 cm\u00b3",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Torsional Moment of Inertia": {
-          "display_string": "0.00 cm\u2074",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Type Comments": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type IFC Predefined Type": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type IfcGUID": {
-          "display_string": "0cBeZNfADFIQMniCP5ieLl",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "0cBeZNfADFIQMniCP5ieLl",
-          "storage_type": "String"
-        },
-        "Type Image": {
-          "display_string": null,
-          "element_id_value": -1,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "ElementId"
-        },
-        "Type Mark": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Type Name": {
-          "display_string": "ABUTMENT SOUTHBOUND_BR8_3a",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "ABUTMENT SOUTHBOUND_BR8_3a",
-          "storage_type": "String"
-        },
-        "URL": {
-          "display_string": null,
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "String"
-        },
-        "Warping Constant": {
-          "display_string": "0.0 cm\u2076",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Width": {
-          "display_string": "0.0 mm",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": 0.0,
-          "raw_string": null,
-          "storage_type": "Double"
-        },
-        "Workset": {
-          "display_string": "Family  : Structural Framing : 03_SFR_ACS_Abutment_CS",
-          "element_id_value": null,
-          "integer_value": 6681,
-          "numeric_value": null,
-          "raw_string": null,
-          "storage_type": "Integer"
-        },
-        "___BallastWall Parameters___": {
-          "display_string": "___BallastWall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___BallastWall Parameters___",
-          "storage_type": "String"
-        },
-        "___BallastWall Skew/Fall Parameters___": {
-          "display_string": "___BallastWall Skew/Fall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___BallastWall Skew/Fall Parameters___",
-          "storage_type": "String"
-        },
-        "___Calculations_BallastWall___": {
-          "display_string": "___Calculations_BallastWall___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_BallastWall___",
-          "storage_type": "String"
-        },
-        "___Calculations_EndA___": {
-          "display_string": "___Calculations_EndA___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_EndA___",
-          "storage_type": "String"
-        },
-        "___Calculations_EndB___": {
-          "display_string": "___Calculations_EndB___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_EndB___",
-          "storage_type": "String"
-        },
-        "___Calculations_KeeperWall___": {
-          "display_string": "___Calculations_KeeperWall___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Calculations_KeeperWall___",
-          "storage_type": "String"
-        },
-        "___Geometry_AdditionalControl_Overrides_Warnings___": {
-          "display_string": "___Geometry_AdditionalControl_Overrides_Warnings___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Geometry_AdditionalControl_Overrides_Warnings___",
-          "storage_type": "String"
-        },
-        "___Headstock Parameters___": {
-          "display_string": "___Headstock Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Headstock Parameters___",
-          "storage_type": "String"
-        },
-        "___Headstock Skew/Fall Parameters___": {
-          "display_string": "___Headstock Skew/Fall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___Headstock Skew/Fall Parameters___",
-          "storage_type": "String"
-        },
-        "___KeeperWall Parameters___": {
-          "display_string": "___KeeperWall Parameters___",
-          "element_id_value": null,
-          "integer_value": null,
-          "numeric_value": null,
-          "raw_string": "___KeeperWall Parameters___",
-          "storage_type": "String"
-        }
-      },
-      "unique_id": "262e88d7-a4a3-4f49-a5b1-b0c645eb5b7e-0059dd8c"
+      "unique_id": "f8f62003-afe3-4958-be82-d44a86d9b7e9-004c6647"
     },
     {
       "builtin_category": -2000263,
       "category": "Spot Elevations",
       "class_name": "SpotDimension",
-      "element_id": 6825741,
+      "element_id": 5392639,
       "family_name": null,
       "has_sub_components": false,
       "host_element_id": null,
@@ -9950,10 +5024,10 @@
           "storage_type": "ElementId"
         },
         "Single/Upper Value": {
-          "display_string": "19800.285",
+          "display_string": "19389.916",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 64.96156371129707,
+          "numeric_value": 63.615210984256905,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -9998,9 +5072,9 @@
           "storage_type": "String"
         },
         "Workset": {
-          "display_string": "View \"Section: DRG-2873064 - ABUTMENT B ELEVATION\"",
+          "display_string": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\"",
           "element_id_value": null,
-          "integer_value": 9156,
+          "integer_value": 9074,
           "numeric_value": null,
           "raw_string": null,
           "storage_type": "Integer"
@@ -10297,13 +5371,13 @@
           "storage_type": "Integer"
         }
       },
-      "unique_id": "ac97234f-6ee1-4fdb-9108-bb561e96c748-0068270d"
+      "unique_id": "fdd8f852-015f-495b-9e0e-a7da6e9a808c-005248ff"
     },
     {
       "builtin_category": -2000263,
       "category": "Spot Elevations",
       "class_name": "SpotDimension",
-      "element_id": 6825752,
+      "element_id": 9324248,
       "family_name": null,
       "has_sub_components": false,
       "host_element_id": null,
@@ -10413,10 +5487,10 @@
           "storage_type": "ElementId"
         },
         "Single/Upper Value": {
-          "display_string": "19704.107",
+          "display_string": "19752.423",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 64.64602183502137,
+          "numeric_value": 64.80453640362889,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -10461,9 +5535,9 @@
           "storage_type": "String"
         },
         "Workset": {
-          "display_string": "View \"Section: DRG-2873064 - ABUTMENT B ELEVATION\"",
+          "display_string": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\"",
           "element_id_value": null,
-          "integer_value": 9156,
+          "integer_value": 9074,
           "numeric_value": null,
           "raw_string": null,
           "storage_type": "Integer"
@@ -10760,13 +5834,13 @@
           "storage_type": "Integer"
         }
       },
-      "unique_id": "ac97234f-6ee1-4fdb-9108-bb561e96c748-00682718"
+      "unique_id": "8dadb25b-175d-4d14-9547-899e500571e7-008e46d8"
     },
     {
       "builtin_category": -2000263,
       "category": "Spot Elevations",
       "class_name": "SpotDimension",
-      "element_id": 9324286,
+      "element_id": 9332887,
       "family_name": null,
       "has_sub_components": false,
       "host_element_id": null,
@@ -10876,10 +5950,10 @@
           "storage_type": "ElementId"
         },
         "Single/Upper Value": {
-          "display_string": "20059.813",
+          "display_string": "19496.915",
           "element_id_value": null,
           "integer_value": null,
-          "numeric_value": 65.81303489939336,
+          "numeric_value": 63.96625521314114,
           "raw_string": null,
           "storage_type": "Double"
         },
@@ -10924,9 +5998,9 @@
           "storage_type": "String"
         },
         "Workset": {
-          "display_string": "View \"Section: DRG-2873064 - ABUTMENT B ELEVATION\"",
+          "display_string": "View \"Section: DRG-2873062 - ABUTMENT A ELEVATION\"",
           "element_id_value": null,
-          "integer_value": 9156,
+          "integer_value": 9074,
           "numeric_value": null,
           "raw_string": null,
           "storage_type": "Integer"
@@ -11223,7 +6297,7 @@
           "storage_type": "Integer"
         }
       },
-      "unique_id": "8dadb25b-175d-4d14-9547-899e500571e7-008e46fe"
+      "unique_id": "d4c1ad29-b383-4a20-b149-0ed3b88a393b-008e6897"
     }
   ]
 }
