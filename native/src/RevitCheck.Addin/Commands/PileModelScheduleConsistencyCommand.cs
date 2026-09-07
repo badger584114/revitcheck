@@ -131,9 +131,14 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
                 schedules = RevitScheduleSource.Collect(
                     doc,
                     scheduleErrors,
-                    config.PileScheduleIdHeaders,
-                    config.PileScheduleEastingHeaders,
-                    config.PileScheduleNorthingHeaders);
+                    // No id-header requirement: rows carry their own element
+                    // (ScheduleRow.ElementId), so a schedule without a
+                    // recognised id column is still perfectly usable. A real
+                    // 2026-09-07 run on a second model captured zero rows
+                    // purely because its id column was headed differently.
+                    idHeaderCandidates: null,
+                    eastingHeaderCandidates: config.PileScheduleEastingHeaders,
+                    northingHeaderCandidates: config.PileScheduleNorthingHeaders);
             }
             finally
             {
@@ -253,11 +258,16 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
 
         var lines = candidates.Select(s =>
         {
-            var idHeader = s.ResolveHeader(config.PileScheduleIdHeaders)!;
-            var firstRowId = s.Rows.Count > 0 && s.Rows[0].TryGetValue(idHeader, out var value)
-                ? $"'{value}'"
-                : "(no rows captured)";
-            return $"- '{s.Name}': {s.Rows.Count} row(s) captured, id header '{idHeader}', first row's id = {firstRowId}";
+            var idHeader = s.ResolveHeader(config.PileScheduleIdHeaders);
+            var firstRow = s.Rows.Count > 0 ? s.Rows[0] : null;
+            var firstRowId = firstRow is null
+                ? "(no rows captured)"
+                : idHeader is not null && firstRow.Value(idHeader) is { } value
+                    ? $"'{value}'"
+                    : "(no id column - joined by element id)";
+            var elementIdCount = s.Rows.Count(r => r.ElementId is not null);
+            return $"- '{s.Name}': {s.Rows.Count} row(s) captured, {elementIdCount} carrying an element id, " +
+                $"id header '{idHeader ?? "(none)"}', first row's id = {firstRowId}";
         });
 
         return "\n\nCandidate schedule(s):\n" + string.Join("\n", lines) + CharacterCheck(piles, candidates, config);
@@ -281,8 +291,9 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
         foreach (var schedule in candidates.Where(s => s.Rows.Count > 0))
         {
             var idHeader = schedule.ResolveHeader(config.PileScheduleIdHeaders);
-            if (idHeader is null || !schedule.Rows[0].TryGetValue(idHeader, out var rowId))
+            if (idHeader is null || schedule.Rows[0].Value(idHeader) is not { } rowId)
             {
+                // No id column to compare - the identity join needs none.
                 continue;
             }
 
@@ -334,16 +345,16 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
         var eastingHeader = schedule.ResolveHeader(config.PileScheduleEastingHeaders);
         var northingHeader = schedule.ResolveHeader(config.PileScheduleNorthingHeaders);
         var row = schedule.Rows.FirstOrDefault(r =>
-            eastingHeader is not null && r.TryGetValue(eastingHeader, out _) &&
-            northingHeader is not null && r.TryGetValue(northingHeader, out _));
+            eastingHeader is not null && r.Value(eastingHeader) is not null &&
+            northingHeader is not null && r.Value(northingHeader) is not null);
 
         if (eastingHeader is null || northingHeader is null || row is null)
         {
             return "\n\nPosition check: could not find the matched pile's own row again to inspect Easting/Northing.";
         }
 
-        row.TryGetValue(eastingHeader, out var rawEasting);
-        row.TryGetValue(northingHeader, out var rawNorthing);
+        var rawEasting = row.Value(eastingHeader);
+        var rawNorthing = row.Value(northingHeader);
         var eastingParses = double.TryParse((rawEasting ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var eastingMetres);
         var northingParses = double.TryParse((rawNorthing ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var northingMetres);
 

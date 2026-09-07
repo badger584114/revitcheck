@@ -62,32 +62,13 @@ public static class PileModelScheduleConsistencyCheck
     {
         var issues = new List<Issue>();
 
-        var pileElements = model.Elements
-            .Where(e => string.Equals(e.Category, config.PileCategoryName, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (pileElements.Count == 0)
-        {
-            // Mirrors the old pipeline's own fix for this exact silent-empty
-            // case (ARCHIVE-pdf-dwg.md, geometry.ifc_setout_consistency
-            // review point 2): zero elements to check must not look
-            // identical to "checked every pile, all fine."
-            issues.Add(new Issue
-            {
-                RuleId = RuleId,
-                Category = "coverage",
-                Severity = "low",
-                Description =
-                    $"No captured elements have category '{config.PileCategoryName}' - nothing was checked " +
-                    "against the pile schedule. Confirm the category name matches this project's convention " +
-                    "if piles were expected.",
-            });
-            return issues;
-        }
-
+        // Easting/Northing are the only columns this check still has to
+        // recognise by heading text. The id column is no longer required at
+        // all: rows carry their own element (ScheduleRow.ElementId), so the
+        // pile-to-row link is read from the model rather than reconstructed
+        // by matching two rendered strings.
         var candidateSchedules = model.Schedules
             .Where(s =>
-                s.ResolveHeader(config.PileScheduleIdHeaders) is not null &&
                 s.ResolveHeader(config.PileScheduleEastingHeaders) is not null &&
                 s.ResolveHeader(config.PileScheduleNorthingHeaders) is not null)
             .ToList();
@@ -100,27 +81,117 @@ public static class PileModelScheduleConsistencyCheck
                 Category = "coverage",
                 Severity = "medium",
                 Description =
-                    $"{pileElements.Count} pile element(s) were captured, but no schedule with the expected " +
-                    "setout columns (id/Easting/Northing) was found - nothing could be checked against a schedule.",
+                    "No schedule with the expected setout columns (Easting/Northing) was found - nothing " +
+                    "could be checked against a schedule.",
             });
             return issues;
         }
 
+        var elementsById = model.Elements
+            .GroupBy(e => e.ElementId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var categoryElements = model.Elements
+            .Where(e => string.Equals(e.Category, config.PileCategoryName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        // Anything a candidate schedule actually lists is in scope whatever
+        // category it was modelled in - this is what stops a project that
+        // models its piles as Generic Models (or a two-point adaptive
+        // family, or anything else) from being silently skipped.
+        var scheduledElements = candidateSchedules
+            .SelectMany(s => s.Rows)
+            .Select(r => r.ElementId)
+            .Where(id => id is not null && elementsById.ContainsKey(id.Value))
+            .Select(id => elementsById[id!.Value])
+            .ToList();
+
+        var toCheck = new List<ElementMetadata>();
+        var seen = new HashSet<long>();
+        foreach (var element in categoryElements.Concat(scheduledElements))
+        {
+            if (seen.Add(element.ElementId))
+            {
+                toCheck.Add(element);
+            }
+        }
+
+        if (toCheck.Count == 0)
+        {
+            // Mirrors the old pipeline's own fix for this exact silent-empty
+            // case (ARCHIVE-pdf-dwg.md, geometry.ifc_setout_consistency
+            // review point 2): zero elements to check must not look
+            // identical to "checked every pile, all fine."
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = "coverage",
+                Severity = "low",
+                Description =
+                    $"No captured elements have category '{config.PileCategoryName}', and no captured schedule " +
+                    "lists an element in this capture - nothing was checked against the pile schedule.",
+            });
+            return issues;
+        }
+
+        if (categoryElements.Count == 0)
+        {
+            // Real 2026-09-07 case: piles modelled as Generic Models. The
+            // check carried on via schedule membership rather than
+            // returning nothing, but a reviewer still needs to know the
+            // configured category matched nothing, since it's what the
+            // model-side completeness check below depends on.
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = "coverage",
+                Severity = "low",
+                Description =
+                    $"No captured elements have category '{config.PileCategoryName}', so scope came from " +
+                    $"schedule membership instead ({toCheck.Count} element(s)). Any pile missing from the " +
+                    "schedule entirely cannot be detected this way - set the category for this project if " +
+                    "that matters.",
+            });
+        }
+
         var blankKeyElementIds = new List<long>();
 
-        foreach (var pile in pileElements)
+        foreach (var pile in toCheck)
         {
-            var keyValue = ResolveKeyValue(pile, config);
-            if (keyValue is null)
+            // Identity first: the model already states which row belongs to
+            // which element (ScheduleRow.ElementId).
+            var matches = candidateSchedules
+                .SelectMany(s => s.RowsForElement(pile.ElementId).Select(row => (Schedule: s, Row: row)))
+                .ToList();
+
+            if (matches.Count == 0)
             {
-                blankKeyElementIds.Add(pile.ElementId);
-                continue;
+                // Only rows with no element of their own can be joined by
+                // key - a row that names a different element has already
+                // answered the question, and overriding that with a text
+                // match would be exactly the fragility this replaced.
+                var keyValue = ResolveKeyValue(pile, config);
+                if (keyValue is null)
+                {
+                    blankKeyElementIds.Add(pile.ElementId);
+                    continue;
+                }
+
+                foreach (var schedule in candidateSchedules)
+                {
+                    var idHeader = schedule.ResolveHeader(config.PileScheduleIdHeaders);
+                    if (idHeader is null)
+                    {
+                        continue;
+                    }
+
+                    matches.AddRange(schedule.RowsForKey(idHeader, keyValue)
+                        .Where(row => row.ElementId is null)
+                        .Select(row => (Schedule: schedule, Row: row)));
+                }
             }
 
-            var matches = candidateSchedules
-                .SelectMany(s => s.RowsForKey(s.ResolveHeader(config.PileScheduleIdHeaders)!, keyValue)
-                    .Select(row => (Schedule: s, Row: row)))
-                .ToList();
+            var label = PileLabel(pile, config);
 
             if (matches.Count == 0)
             {
@@ -131,8 +202,7 @@ public static class PileModelScheduleConsistencyCheck
                     Severity = "medium",
                     ElementId = pile.ElementId,
                     UniqueId = pile.UniqueId,
-                    Description =
-                        $"Pile has key '{keyValue}' but no matching row was found in any captured pile schedule.",
+                    Description = $"{label} has no matching row in any captured pile schedule.",
                 });
                 continue;
             }
@@ -147,14 +217,14 @@ public static class PileModelScheduleConsistencyCheck
                     ElementId = pile.ElementId,
                     UniqueId = pile.UniqueId,
                     Description =
-                        $"Pile has key '{keyValue}', matching {matches.Count} schedule rows across the captured " +
+                        $"{label} matches {matches.Count} schedule rows across the captured " +
                         "schedules - genuinely ambiguous, so this pile was not checked rather than compared " +
                         "against an arbitrarily chosen row.",
                 });
                 continue;
             }
 
-            ComparePosition(pile, keyValue, matches[0].Schedule, matches[0].Row, config, issues);
+            ComparePosition(pile, label, matches[0].Schedule, matches[0].Row, config, issues);
         }
 
         if (blankKeyElementIds.Count > 0)
@@ -163,6 +233,21 @@ public static class PileModelScheduleConsistencyCheck
         }
 
         return issues;
+    }
+
+    /// <summary>
+    /// How a finding names an element: its ElementId always (the thing a
+    /// reviewer types into Select by ID), plus the project's own key
+    /// parameter when it has one, since that is what a person reads off the
+    /// drawing. The key is descriptive here - it is no longer what the join
+    /// depends on.
+    /// </summary>
+    private static string PileLabel(ElementMetadata pile, RuleConfig config)
+    {
+        var key = ResolveKeyValue(pile, config);
+        return key is null
+            ? $"Pile {pile.ElementId}"
+            : $"Pile {pile.ElementId} ('{key}')";
     }
 
     private static string? ResolveKeyValue(ElementMetadata pile, RuleConfig config)
@@ -178,16 +263,16 @@ public static class PileModelScheduleConsistencyCheck
 
     private static void ComparePosition(
         ElementMetadata pile,
-        string keyValue,
+        string label,
         ScheduleInfo schedule,
-        IReadOnlyDictionary<string, string> row,
+        ScheduleRow row,
         RuleConfig config,
         List<Issue> issues)
     {
         if (pile.ProjectPositionEastingMm is not { } pileEastingMm)
         {
             issues.Add(CoverageIssue(pile,
-                $"Pile has key '{keyValue}' but no live position was captured for it " +
+                $"{label} has no live position captured " +
                 "(ElementMetadata.ProjectPositionEastingMm is null) - Easting could not be checked."));
             return;
         }
@@ -195,7 +280,7 @@ public static class PileModelScheduleConsistencyCheck
         if (pile.ProjectPositionNorthingMm is not { } pileNorthingMm)
         {
             issues.Add(CoverageIssue(pile,
-                $"Pile has key '{keyValue}' but no live position was captured for it " +
+                $"{label} has no live position captured " +
                 "(ElementMetadata.ProjectPositionNorthingMm is null) - Northing could not be checked."));
             return;
         }
@@ -206,7 +291,7 @@ public static class PileModelScheduleConsistencyCheck
         if (!TryParseMetresToMm(row, eastingHeader, config, out var scheduleEastingMm))
         {
             issues.Add(CoverageIssue(pile,
-                $"Pile has key '{keyValue}' but its schedule row's '{eastingHeader}' value could not be read " +
+                $"{label}'s schedule row has an '{eastingHeader}' value that could not be read " +
                 "as a number - Easting could not be checked."));
             return;
         }
@@ -214,7 +299,7 @@ public static class PileModelScheduleConsistencyCheck
         if (!TryParseMetresToMm(row, northingHeader, config, out var scheduleNorthingMm))
         {
             issues.Add(CoverageIssue(pile,
-                $"Pile has key '{keyValue}' but its schedule row's '{northingHeader}' value could not be read " +
+                $"{label}'s schedule row has a '{northingHeader}' value that could not be read " +
                 "as a number - Northing could not be checked."));
             return;
         }
@@ -240,7 +325,7 @@ public static class PileModelScheduleConsistencyCheck
             ElementId = pile.ElementId,
             UniqueId = pile.UniqueId,
             Description =
-                $"Pile '{keyValue}': live model position is {FormatMm(deltaMm)}mm from the schedule's " +
+                $"{label}: live model position is {FormatMm(deltaMm)}mm from the schedule's " +
                 $"'{schedule.Name}' row (live model E/N {FormatMm(pileEastingMm)}/{FormatMm(pileNorthingMm)}mm, schedule " +
                 $"{FormatMm(scheduleEastingMm)}/{FormatMm(scheduleNorthingMm)}mm) - beyond the " +
                 $"{FormatMm(config.PileSetoutToleranceMm)}mm tolerance. Either the pile moved after the " +
@@ -257,10 +342,10 @@ public static class PileModelScheduleConsistencyCheck
     }
 
     private static bool TryParseMetresToMm(
-        IReadOnlyDictionary<string, string> row, string header, RuleConfig config, out double mm)
+        ScheduleRow row, string header, RuleConfig config, out double mm)
     {
         mm = 0;
-        if (!row.TryGetValue(header, out var raw))
+        if (row.Value(header) is not { } raw)
         {
             return false;
         }

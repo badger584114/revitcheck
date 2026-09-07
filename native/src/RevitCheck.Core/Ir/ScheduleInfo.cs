@@ -25,7 +25,20 @@ public sealed class ScheduleInfo
 
     public required IReadOnlyList<string> Headers { get; init; }
 
-    public required IReadOnlyList<IReadOnlyDictionary<string, string>> Rows { get; init; }
+    public required IReadOnlyList<ScheduleRow> Rows { get; init; }
+
+    /// <summary>The ViewSchedule's own ElementId - stable identity for naming this schedule in config, where its name is display text that a project can rename freely.</summary>
+    public long? ElementId { get; init; }
+
+    /// <summary>
+    /// Every row whose backing element is <paramref name="elementId"/> -
+    /// the identity join, and the one that should be preferred over
+    /// <see cref="RowsForKey"/> wherever rows carry an element. Needs no id
+    /// column, no key parameter and no agreement between two rendered
+    /// strings; see <see cref="ScheduleRow.ElementId"/>'s remarks.
+    /// </summary>
+    public List<ScheduleRow> RowsForElement(long elementId) =>
+        Rows.Where(row => row.ElementId == elementId).ToList();
 
     /// <summary>
     /// Every row whose value in <paramref name="keyColumn"/> equals
@@ -34,10 +47,8 @@ public sealed class ScheduleInfo
     /// More than one row for the same key is a real, reportable ambiguity,
     /// left to the caller - same split <c>CsvTable.RowsForKey</c> uses.
     /// </summary>
-    public List<IReadOnlyDictionary<string, string>> RowsForKey(string keyColumn, string keyValue) =>
-        Rows.Where(row =>
-                row.TryGetValue(keyColumn, out var value) &&
-                string.Equals(value?.Trim(), keyValue.Trim(), StringComparison.Ordinal))
+    public List<ScheduleRow> RowsForKey(string keyColumn, string keyValue) =>
+        Rows.Where(row => string.Equals(row.Value(keyColumn)?.Trim(), keyValue.Trim(), StringComparison.Ordinal))
             .ToList();
 
     /// <summary>

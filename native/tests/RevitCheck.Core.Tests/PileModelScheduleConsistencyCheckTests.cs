@@ -130,14 +130,111 @@ public class PileModelScheduleConsistencyCheckTests
     [Fact]
     public void No_pile_category_elements_reports_low_severity_coverage()
     {
+        // A real candidate schedule is present, so "no schedule to compare
+        // against" is not the blocker here - the scope is genuinely empty.
+        // (Before the 2026-09-07 identity join this model needed no
+        // schedule at all to reach this branch; scope now depends on
+        // schedule membership too, so an empty-schedule model reports the
+        // missing schedule instead, which is the more useful answer.)
         var model = RevitCheckTestBuilders.Model(
-            elements: new[] { RevitCheckTestBuilders.Element(1, category: "Structural Framing") });
+            elements: new[] { RevitCheckTestBuilders.Element(1, category: "Structural Framing") },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileSchedule("PILE SETOUT", new[] { ("PIL000001", "278198.0", "6130233.0") }),
+            });
 
         var issues = PileModelScheduleConsistencyCheck.Run(model, new RuleConfig());
 
         var issue = Assert.Single(issues);
         Assert.Equal("low", issue.Severity);
         Assert.Equal("coverage", issue.Category);
+    }
+
+    /// <summary>
+    /// The real 2026-09-07 failure: a second bridge model whose piles are
+    /// modelled as Generic Models, not Structural Foundations. The
+    /// configured category matched nothing and the whole check returned
+    /// without comparing anything. Scope now comes from schedule membership
+    /// as well, so the pile is checked on its identity regardless of what
+    /// category it happens to be modelled in.
+    /// </summary>
+    [Fact]
+    public void A_pile_modelled_in_an_unexpected_category_is_still_checked_via_schedule_membership()
+    {
+        var pile = RevitCheckTestBuilders.Pile(
+            5009495, "PIL232132", 278198410.59, 6130233357.011, category: "Generic Models");
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pile },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "PILE SETOUT", new[] { (5009495L, "278198.410590", "6130233.357011") }),
+            });
+
+        var issues = PileModelScheduleConsistencyCheck.Run(model, new RuleConfig());
+
+        // One low-severity note that the configured category matched
+        // nothing - and crucially no "nothing was checked", and no false
+        // mismatch: the pile agrees with its own row.
+        var issue = Assert.Single(issues);
+        Assert.Equal("low", issue.Severity);
+        Assert.Contains("scope came from schedule membership", issue.Description);
+    }
+
+    /// <summary>
+    /// The other half of the same real failure: the join no longer needs an
+    /// id column or a key parameter to agree textually. Here the schedule
+    /// carries no id column at all and the pile carries no key parameter,
+    /// and the moved pile is still caught.
+    /// </summary>
+    [Fact]
+    public void A_moved_pile_is_caught_with_no_id_column_and_no_key_parameter()
+    {
+        var pile = RevitCheckTestBuilders.Element(
+            5009495,
+            category: "Structural Foundations",
+            projectPositionEastingMm: 278198410.59 + 250.0,
+            projectPositionNorthingMm: 6130233357.011);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pile },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "PILE SETOUT", new[] { (5009495L, "278198.410590", "6130233.357011") }),
+            });
+
+        var issue = Assert.Single(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
+
+        Assert.Equal("high", issue.Severity);
+        Assert.Equal("geometry", issue.Category);
+        Assert.Equal(5009495, issue.ElementId);
+    }
+
+    /// <summary>
+    /// Identity must win over text: a row that names a different element is
+    /// never re-joined by key, even when the key would match. Otherwise the
+    /// fragile path could still silently override the reliable one.
+    /// </summary>
+    [Fact]
+    public void A_row_naming_a_different_element_is_not_re_joined_by_key()
+    {
+        var pile = RevitCheckTestBuilders.Pile(111, "PIL232132", 278198410.59, 6130233357.011);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pile },
+            schedules: new[]
+            {
+                // Same key text, but the row belongs to element 999.
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "PILE SETOUT", new[] { (999L, "278198.410590", "6130233.357011") }, siteId: "PIL232132"),
+            });
+
+        var issue = Assert.Single(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
+
+        Assert.Equal("geometry", issue.Category);
+        Assert.Contains("no matching row", issue.Description);
     }
 
     [Fact]
@@ -152,7 +249,7 @@ public class PileModelScheduleConsistencyCheckTests
                 {
                     Name = "UNRELATED SCHEDULE",
                     Headers = new List<string> { "SITE ID", "EASTING (m)" },
-                    Rows = new List<IReadOnlyDictionary<string, string>>(),
+                    Rows = new List<Ir.ScheduleRow>(),
                 },
             });
 
