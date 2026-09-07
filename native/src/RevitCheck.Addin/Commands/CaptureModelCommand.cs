@@ -1,3 +1,5 @@
+using System.IO;
+using RevitCheck.Core.Checks;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -79,6 +81,16 @@ public class CaptureModelCommand : IExternalCommand
         var extractionErrors = new List<string>(collectedMetadata.ExtractionErrors);
         extractionErrors.AddRange(collectedDimensions.ExtractionErrors);
 
+        // Schedule HEADERS only - three empty candidate lists mean "no
+        // schedule qualifies for a body read" (RevitScheduleSource's own
+        // null-vs-empty distinction), which is all the starter config needs
+        // and avoids the expensive per-cell read that a ReadOnly
+        // transaction cannot perform anyway (PLANNING.md §16).
+        var scheduleErrors = new List<string>();
+        var collectedSchedules = RevitScheduleSource.Collect(
+            doc, scheduleErrors, new List<string>(), new List<string>(), new List<string>());
+        extractionErrors.AddRange(scheduleErrors);
+
         var model = new RevitModel
         {
             DocTitle = doc.Title,
@@ -88,6 +100,7 @@ public class CaptureModelCommand : IExternalCommand
             Sheets = collectedDimensions.Sheets,
             Views = collectedDimensions.Views,
             Dimensions = collectedDimensions.Dimensions,
+            Schedules = collectedSchedules,
             ExtractionErrors = extractionErrors,
             ExcludedWorksets = collectedDimensions.ExcludedWorksets,
         };
@@ -108,11 +121,14 @@ public class CaptureModelCommand : IExternalCommand
             return Result.Failed;
         }
 
+        var starterNote = WriteStarterConfig(doc, model);
+
         TaskDialog.Show("RevitCheck - Capture Model",
             $"{collectedMetadata.Elements.Count} element(s), {collectedDimensions.Sheets.Count} sheet(s), " +
-            $"{collectedDimensions.Views.Count} view(s), {collectedDimensions.Dimensions.Count} dimension(s) captured" +
+            $"{collectedDimensions.Views.Count} view(s), {collectedDimensions.Dimensions.Count} dimension(s), " +
+            $"{collectedSchedules.Count} schedule(s) captured" +
             (extractionErrors.Count > 0 ? $", {extractionErrors.Count} extraction error(s)" : "") +
-            $".\n\nWritten to:\n{savePath}\n\n" +
+            $".\n\nWritten to:\n{savePath}\n\n{starterNote}\n\n" +
             "Treat this file like a real model capture (PLANNING.md §2) - it contains real " +
             "parameter values from a real project.");
 
@@ -123,6 +139,50 @@ public class CaptureModelCommand : IExternalCommand
     {
         var dialog = new OpenFileDialog { Title = title, Filter = filter, CheckFileExists = true };
         return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    /// <summary>
+    /// Writes a starter <see cref="RuleConfig"/> for this model if it
+    /// hasn't got one, so the checks can be configured for a new project by
+    /// editing a file rather than rebuilding the add-in. Never overwrites
+    /// an existing one - a person's own edits outrank anything derived
+    /// automatically.
+    /// </summary>
+    /// <remarks>
+    /// This is the loop metadata reconciliation has always had (capture the
+    /// model, build a per-model mapping from it, let a human finish it) and
+    /// which the checks built afterwards never joined - see
+    /// <see cref="RuleConfigStarter"/>'s remarks.
+    /// </remarks>
+    private static string WriteStarterConfig(Document doc, RevitModel model)
+    {
+        string path;
+        try
+        {
+            path = RuleConfigSource.PathFor(doc);
+        }
+        catch (Exception ex)
+        {
+            return $"No starter config written (could not resolve a path: {ex.Message}).";
+        }
+
+        if (File.Exists(path))
+        {
+            return $"This model already has a config, left untouched:\n{path}";
+        }
+
+        try
+        {
+            var starter = RuleConfigStarter.Build(model);
+            RuleConfigSerializer.Save(starter.Config, path);
+            return
+                $"Starter config written to:\n{path}\n\nReview it before trusting a run - " +
+                string.Join("\n\n", starter.Diagnostics);
+        }
+        catch (Exception ex)
+        {
+            return $"No starter config written: {ExceptionMessage.Full(ex)}";
+        }
     }
 
     private static string? PromptForSaveLocation(Document doc)

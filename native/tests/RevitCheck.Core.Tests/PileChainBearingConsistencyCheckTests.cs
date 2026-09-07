@@ -1,4 +1,5 @@
 using RevitCheck.Core.Checks;
+using RevitCheck.Core.Reporting;
 using RevitCheck.Core.Tests.Fixtures;
 using Xunit;
 
@@ -340,4 +341,112 @@ public class PileChainBearingConsistencyCheckTests
         Assert.Single(issues);
         Assert.Empty(investigated);
     }
+
+    /// <summary>
+    /// The real 2026-09-07 false positive, reproduced with this project's
+    /// own real bearing figures: two setout lines (165°13'26" and
+    /// 165°07'01", both real calls on DRG-2873041 - PILE LAYOUT, only 6'25"
+    /// apart) meeting at a shared pile. Tag-to-tag dimensioning connects
+    /// them into one topologically simple chain, and the old
+    /// endpoint-to-endpoint bearing measured straight across the corner:
+    /// 165°10'13", which is 192.5 arcseconds from BOTH real calls - well
+    /// beyond the 60-arcsecond tolerance, so a correct drawing got flagged.
+    /// Each leg must now be checked against its own call instead, with the
+    /// corner itself reported for a human rather than silently averaged.
+    /// </summary>
+    [Fact]
+    public void Two_setout_lines_meeting_at_a_shared_pile_are_not_flagged_as_one_wrong_bearing()
+    {
+        // Leg A: piles 1→2→3 on 165°13'26". Leg B: piles 3→4→5 on
+        // 165°07'01". Pile 3 is the shared corner.
+        var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0.0, 0.0);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 765.1278858813357, -2900.7894301804736);
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 1530.2557717626714, -5801.578860360947);
+        var p4 = RevitCheckTestBuilders.Pile(4, "P4", 2300.796739915849, -8700.935102080402);
+        var p5 = RevitCheckTestBuilders.Pile(5, "P5", 3071.337708069026, -11600.291343799858);
+
+        var dims = new[]
+        {
+            Edge(101, p1, p2, 201, 202),
+            Edge(102, p2, p3, 203, 204),
+            Edge(103, p3, p4, 205, 206),
+            Edge(104, p4, p5, 207, 208),
+        };
+
+        // One real bearing call beside each leg, each nearest to its own.
+        var noteA = RevitCheckTestBuilders.TextNote(301, 1, "165° 13' 26\"", RevitCheckTestBuilders.Pt(100.0, 0.0));
+        var noteB = RevitCheckTestBuilders.TextNote(302, 1, "165° 07' 01\"", RevitCheckTestBuilders.Pt(3171.337708069026, -11600.291343799858));
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { p1, p2, p3, p4, p5 },
+            dimensions: dims,
+            textNotes: new[] { noteA, noteB });
+
+        var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig());
+
+        // The regression: neither leg disagrees with its own call, so
+        // nothing here is a confirmed bearing problem.
+        Assert.DoesNotContain(issues, i => i.Category == "geometry");
+
+        // The corner is reported instead - for a human, since only a person
+        // can say whether two setout lines legitimately meet here or a pile
+        // is off its line.
+        var bend = Assert.Single(issues, i => i.Category == InvestigationReconciliation.ManualReviewCategory);
+        Assert.Equal(3, bend.ElementId);
+        Assert.Contains("changes direction", bend.Description);
+    }
+
+    /// <summary>
+    /// The other half of the same defect, and the more dangerous one: a
+    /// line through exactly two points fits with zero residual, so the old
+    /// endpoint-to-endpoint bearing could never detect an interior pile
+    /// sitting off the line - it reported such a chain clean. Here the
+    /// middle pile is 50mm off a due-north run and the printed call says
+    /// due north, which the old measurement matched exactly.
+    /// </summary>
+    [Fact]
+    public void A_pile_sitting_off_its_line_is_no_longer_reported_clean()
+    {
+        var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 50, 1000);   // 50mm off the line
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+
+        var dims = new[] { Edge(101, p1, p2, 201, 202), Edge(102, p2, p3, 203, 204) };
+        var note = RevitCheckTestBuilders.TextNote(301, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(100, 1000));
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { p1, p2, p3 }, dimensions: dims, textNotes: new[] { note });
+
+        var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig());
+
+        Assert.NotEmpty(issues);
+        var bend = Assert.Single(issues, i => i.Category == InvestigationReconciliation.ManualReviewCategory);
+        Assert.Equal(2, bend.ElementId);
+    }
+
+    /// <summary>A genuinely straight multi-pile chain must still come back completely clean - the fix must not turn ordinary real chains into bend findings.</summary>
+    [Fact]
+    public void A_genuinely_straight_multi_pile_chain_reports_no_bend()
+    {
+        var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var p4 = RevitCheckTestBuilders.Pile(4, "P4", 0, 3000);
+
+        var dims = new[] { Edge(101, p1, p2, 201, 202), Edge(102, p2, p3, 203, 204), Edge(103, p3, p4, 205, 206) };
+        var note = RevitCheckTestBuilders.TextNote(301, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(50, 1500));
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { p1, p2, p3, p4 }, dimensions: dims, textNotes: new[] { note });
+
+        Assert.Empty(PileChainBearingConsistencyCheck.Run(model, new RuleConfig()));
+    }
+
+    /// <summary>A tag-to-tag dimension between two piles, tags sitting exactly on their own pile (the real placement confirmed 2026-08-26).</summary>
+    private static Ir.DimensionInfo Edge(
+        long dimensionId, Ir.ElementMetadata from, Ir.ElementMetadata to, long tagA, long tagB) =>
+        RevitCheckTestBuilders.PileChainDimension(
+            dimensionId, 1,
+            RevitCheckTestBuilders.TagRef(tagA, RevitCheckTestBuilders.Pt(from.LocalPoint!.X, from.LocalPoint!.Y)),
+            RevitCheckTestBuilders.TagRef(tagB, RevitCheckTestBuilders.Pt(to.LocalPoint!.X, to.LocalPoint!.Y)));
 }

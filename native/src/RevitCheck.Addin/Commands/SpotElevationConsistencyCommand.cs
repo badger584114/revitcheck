@@ -85,7 +85,10 @@ public class SpotElevationConsistencyCommand : IExternalCommand
             return Result.Failed;
         }
 
-        var config = new RuleConfig();
+        // Per-model config if this project has one, compiled defaults
+        // otherwise - either way the run's own output says which
+        // (RuleConfigSource's remarks).
+        var (config, configDescription) = RuleConfigSource.Resolve(doc);
 
         DimensionCollectionResult collected;
         try
@@ -121,6 +124,7 @@ public class SpotElevationConsistencyCommand : IExternalCommand
             (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
             "." +
             ExtractionErrorSample.Format(model.ExtractionErrors);
+        summary += "\n\n" + configDescription;
 
         if (CheckingSessionHost.Session is { } session)
         {

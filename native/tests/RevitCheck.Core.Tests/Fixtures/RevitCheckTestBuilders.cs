@@ -167,6 +167,43 @@ internal static class RevitCheckTestBuilders
         LocalPoint = localPoint,
     };
 
+    /// <summary>
+    /// A pile schedule whose rows carry their real backing element, the
+    /// shape the element-parameter read path actually produces
+    /// (RevitScheduleSource.TryReadDataRowsFromElements) - so a test
+    /// exercises the identity join rather than the text fallback. Omits the
+    /// id column entirely unless <paramref name="siteId"/> is given, since
+    /// the identity join does not need one.
+    /// </summary>
+    internal static ScheduleInfo PileScheduleForElements(
+        string name,
+        IEnumerable<(long ElementId, string EastingM, string NorthingM)> rows,
+        string? siteId = null)
+        => new()
+        {
+            Name = name,
+            ElementId = 900001,
+            Headers = siteId is null
+                ? new List<string> { "EASTING (m)", "NORTHING (m)" }
+                : new List<string> { "SITE ID", "EASTING (m)", "NORTHING (m)" },
+            Rows = rows
+                .Select(r =>
+                {
+                    var values = new Dictionary<string, string>
+                    {
+                        ["EASTING (m)"] = r.EastingM,
+                        ["NORTHING (m)"] = r.NorthingM,
+                    };
+                    if (siteId is not null)
+                    {
+                        values["SITE ID"] = siteId;
+                    }
+
+                    return new ScheduleRow { ElementId = r.ElementId, Values = values };
+                })
+                .ToList(),
+        };
+
     /// <summary>A pile schedule with the real 2026-08-26 column shape: SITE ID / EASTING (m) / NORTHING (m), values as printed metres text.</summary>
     internal static ScheduleInfo PileSchedule(
         string name,
@@ -176,11 +213,14 @@ internal static class RevitCheckTestBuilders
             Name = name,
             Headers = new List<string> { "SITE ID", "LOCATION", "EASTING (m)", "NORTHING (m)" },
             Rows = rows
-                .Select(r => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+                .Select(r => new ScheduleRow
                 {
-                    ["SITE ID"] = r.SiteId,
-                    ["EASTING (m)"] = r.EastingM,
-                    ["NORTHING (m)"] = r.NorthingM,
+                    Values = new Dictionary<string, string>
+                    {
+                        ["SITE ID"] = r.SiteId,
+                        ["EASTING (m)"] = r.EastingM,
+                        ["NORTHING (m)"] = r.NorthingM,
+                    },
                 })
                 .ToList(),
         };

@@ -158,4 +158,77 @@ public class PileChainReconstructionTests
         Assert.Empty(result.Chains);
         Assert.Single(result.AmbiguousComponents);
     }
+
+    [Fact]
+    public void SplitIntoStraightRuns_leaves_a_straight_chain_as_one_run_with_no_bends()
+    {
+        var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var p4 = RevitCheckTestBuilders.Pile(4, "P4", 0, 3000);
+
+        var chain = Assert.Single(PileChainReconstruction.BuildChains(
+            new List<PileChainEdge> { new(p1, p2, 101), new(p2, p3, 102), new(p3, p4, 103) }).Chains);
+
+        var split = PileChainReconstruction.SplitIntoStraightRuns(chain, new RuleConfig());
+
+        Assert.False(split.PositionsIncomplete);
+        Assert.Empty(split.Bends);
+        var run = Assert.Single(split.Runs);
+        Assert.Equal(4, run.PilesInOrder.Count);
+        Assert.Equal(new long[] { 101, 102, 103 }, run.DimensionElementIds.OrderBy(id => id).ToArray());
+    }
+
+    [Fact]
+    public void SplitIntoStraightRuns_splits_at_a_corner_and_attributes_each_run_its_own_dimensions()
+    {
+        // The two real adjacent setout lines from DRG-2873041 - PILE LAYOUT
+        // (165°13'26" and 165°07'01", 6'25" apart) meeting at pile 3.
+        var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0.0, 0.0);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 765.1278858813357, -2900.7894301804736);
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 1530.2557717626714, -5801.578860360947);
+        var p4 = RevitCheckTestBuilders.Pile(4, "P4", 2300.796739915849, -8700.935102080402);
+        var p5 = RevitCheckTestBuilders.Pile(5, "P5", 3071.337708069026, -11600.291343799858);
+
+        var chain = Assert.Single(PileChainReconstruction.BuildChains(
+            new List<PileChainEdge> { new(p1, p2, 101), new(p2, p3, 102), new(p3, p4, 103), new(p4, p5, 104) }).Chains);
+
+        var split = PileChainReconstruction.SplitIntoStraightRuns(chain, new RuleConfig());
+
+        var bend = Assert.Single(split.Bends);
+        Assert.Equal(3, bend.Pile.ElementId);
+        // 6'25" between the two real calls - the real separation this
+        // tolerance has to stay well below to tell them apart at all.
+        Assert.Equal(385.0, bend.DeviationDegrees * 3600.0, 3);
+
+        Assert.Equal(2, split.Runs.Count);
+        Assert.Equal(new long[] { 1, 2, 3 }, split.Runs[0].PilesInOrder.Select(x => x.ElementId).ToArray());
+        Assert.Equal(new long[] { 3, 4, 5 }, split.Runs[1].PilesInOrder.Select(x => x.ElementId).ToArray());
+        Assert.Equal(new long[] { 101, 102 }, split.Runs[0].DimensionElementIds.OrderBy(id => id).ToArray());
+        Assert.Equal(new long[] { 103, 104 }, split.Runs[1].DimensionElementIds.OrderBy(id => id).ToArray());
+    }
+
+    [Fact]
+    public void SplitIntoStraightRuns_reports_incomplete_positions_rather_than_an_empty_bend_list()
+    {
+        // A pile with no live GetProjectPosition makes straightness
+        // unknowable, which must never read as "straight, no bends".
+        var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var p3 = RevitCheckTestBuilders.Element(
+            3,
+            category: "Structural Foundations",
+            projectPositionEastingMm: null,
+            projectPositionNorthingMm: null,
+            localPoint: RevitCheckTestBuilders.Pt(0, 2000));
+
+        var chain = Assert.Single(PileChainReconstruction.BuildChains(
+            new List<PileChainEdge> { new(p1, p2, 101), new(p2, p3, 102) }).Chains);
+
+        var split = PileChainReconstruction.SplitIntoStraightRuns(chain, new RuleConfig());
+
+        Assert.True(split.PositionsIncomplete);
+        Assert.Empty(split.Runs);
+        Assert.Empty(split.Bends);
+    }
 }

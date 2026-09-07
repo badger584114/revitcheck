@@ -141,10 +141,10 @@ public static class RevitScheduleSource
                      ResolvesHeader(headers, eastingCandidates) &&
                      ResolvesHeader(headers, northingCandidates));
 
-                List<IReadOnlyDictionary<string, string>> rows;
+                List<ScheduleRow> rows;
                 if (!isCandidate)
                 {
-                    rows = new List<IReadOnlyDictionary<string, string>>();
+                    rows = new List<ScheduleRow>();
                 }
                 else
                 {
@@ -155,7 +155,7 @@ public static class RevitScheduleSource
                     // resolved to a simple parameter (a calculated/combined
                     // field, or FilteredElementCollector coming back empty).
                     rows = (filtered
-                        ? TryReadDataRowsFromElements(doc, schedule, headers, idCandidates!, eastingCandidates!, northingCandidates!)
+                        ? TryReadDataRowsFromElements(doc, schedule, headers, idCandidates, eastingCandidates!, northingCandidates!)
                         : null)
                         ?? ReadDataRowsFromCellText(schedule, headers);
                 }
@@ -163,6 +163,7 @@ public static class RevitScheduleSource
                 schedules.Add(new ScheduleInfo
                 {
                     Name = schedule.Name,
+                    ElementId = schedule.Id.Value,
                     Headers = headers,
                     Rows = rows,
                 });
@@ -225,27 +226,31 @@ public static class RevitScheduleSource
     /// "zero rows" for a schedule that may well have real data the
     /// rendered-table path could still find.
     /// </remarks>
-    private static List<IReadOnlyDictionary<string, string>>? TryReadDataRowsFromElements(
+    private static List<ScheduleRow>? TryReadDataRowsFromElements(
         Document doc,
         ViewSchedule schedule,
         List<string> headers,
-        List<string> idCandidates,
+        List<string>? idCandidates,
         List<string> eastingCandidates,
         List<string> northingCandidates)
     {
+        // The id column is optional: rows carry their real element
+        // (ScheduleRow.ElementId), which is what a consumer should join on.
+        // It is still read when present, for diagnostics and for the
+        // text-fallback path.
         var idHeader = ResolveHeaderText(headers, idCandidates);
         var eastingHeader = ResolveHeaderText(headers, eastingCandidates);
         var northingHeader = ResolveHeaderText(headers, northingCandidates);
-        if (idHeader is null || eastingHeader is null || northingHeader is null)
+        if (eastingHeader is null || northingHeader is null)
         {
             return null;
         }
 
         var definition = schedule.Definition;
-        var idParam = ResolveFieldParameter(doc, definition, idHeader);
+        var idParam = idHeader is null ? null : ResolveFieldParameter(doc, definition, idHeader);
         var eastingParam = ResolveFieldParameter(doc, definition, eastingHeader);
         var northingParam = ResolveFieldParameter(doc, definition, northingHeader);
-        if (idParam is null || eastingParam is null || northingParam is null)
+        if (eastingParam is null || northingParam is null)
         {
             return null;
         }
@@ -265,30 +270,52 @@ public static class RevitScheduleSource
             return null;
         }
 
-        var rows = new List<IReadOnlyDictionary<string, string>>();
+        var rows = new List<ScheduleRow>();
         foreach (var element in elements)
         {
-            var idValue = ReadParameterText(element, idParam.Value);
-            if (idValue is null)
-            {
-                // No value for the id column on this element - nothing to
-                // join it against, skip rather than emit a blank key.
-                continue;
-            }
+            // A blank or absent id is no longer a reason to drop the row -
+            // the element itself is the join key.
+            var idValue = idParam is null ? null : ReadParameterText(element, idParam.Value);
 
-            rows.Add(new Dictionary<string, string>
+            rows.Add(new ScheduleRow
             {
-                [idHeader] = idValue,
-                [eastingHeader] = ReadParameterText(element, eastingParam.Value) ?? "",
-                [northingHeader] = ReadParameterText(element, northingParam.Value) ?? "",
+                // The whole reason this path exists (see ScheduleRow.ElementId):
+                // the row's real element is already in hand here, so the
+                // check never has to reconstruct the link from text.
+                ElementId = element.Id.Value,
+                Values = BuildValues(idHeader, idValue, eastingHeader, northingHeader, element, eastingParam.Value, northingParam.Value),
             });
         }
 
         return rows;
     }
 
-    private static string? ResolveHeaderText(List<string> headers, List<string> candidates) =>
-        headers.FirstOrDefault(h => candidates.Contains(h, StringComparer.OrdinalIgnoreCase));
+    /// <summary>Cell values for one row - the id column included only when the schedule actually has one.</summary>
+    private static Dictionary<string, string> BuildValues(
+        string? idHeader,
+        string? idValue,
+        string eastingHeader,
+        string northingHeader,
+        Element element,
+        ResolvedScheduleParameter eastingParam,
+        ResolvedScheduleParameter northingParam)
+    {
+        var values = new Dictionary<string, string>
+        {
+            [eastingHeader] = ReadParameterText(element, eastingParam) ?? "",
+            [northingHeader] = ReadParameterText(element, northingParam) ?? "",
+        };
+
+        if (idHeader is not null && idValue is not null)
+        {
+            values[idHeader] = idValue;
+        }
+
+        return values;
+    }
+
+    private static string? ResolveHeaderText(List<string> headers, List<string>? candidates) =>
+        candidates is null ? null : headers.FirstOrDefault(h => candidates.Contains(h, StringComparer.OrdinalIgnoreCase));
 
     /// <summary>
     /// Resolves the real <see cref="Definition"/>/<see cref="BuiltInParameter"/>
@@ -448,9 +475,9 @@ public static class RevitScheduleSource
     }
 
     /// <summary>The original, rendered-table-text read - kept as the fallback for a column <see cref="TryReadDataRowsFromElements"/> can't resolve to a simple parameter, and for the unfiltered "read every schedule unconditionally" mode.</summary>
-    private static List<IReadOnlyDictionary<string, string>> ReadDataRowsFromCellText(ViewSchedule schedule, List<string> headers)
+    private static List<ScheduleRow> ReadDataRowsFromCellText(ViewSchedule schedule, List<string> headers)
     {
-        var rows = new List<IReadOnlyDictionary<string, string>>();
+        var rows = new List<ScheduleRow>();
         var section = schedule.GetTableData().GetSectionData(SectionType.Body);
         var columnCount = Math.Min(headers.Count, section.NumberOfColumns);
 
@@ -467,13 +494,16 @@ public static class RevitScheduleSource
                 continue;
             }
 
-            var row = new Dictionary<string, string>();
+            var values = new Dictionary<string, string>();
             for (var c = 0; c < columnCount; c++)
             {
-                row[headers[c]] = cells[c];
+                values[headers[c]] = cells[c];
             }
 
-            rows.Add(row);
+            // No ElementId: this path reads the rendered table, which has no
+            // element behind a row. A consumer must fall back to a key join
+            // for these (see ScheduleRow.ElementId's remarks).
+            rows.Add(new ScheduleRow { Values = values });
         }
 
         return rows;
