@@ -15,7 +15,7 @@ namespace RevitCheck.Core.Tests;
 public class PileChainBearingConsistencyCheckTests
 {
     [Fact]
-    public void Real_two_pile_chain_matches_its_real_printed_bearing_call()
+    public void Real_two_pile_chain_is_no_longer_given_a_verdict_at_all()
     {
         // PIL232116 (element 7926092) and PIL232115 (element 7926091),
         // real local/project positions - dimension 8174725's own two
@@ -40,9 +40,16 @@ public class PileChainBearingConsistencyCheckTests
             dimensions: new[] { dim },
             textNotes: new[] { note });
 
-        var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig());
+        var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
 
+        // Empty because it was SKIPPED, not because it was checked and
+        // found clean - PileChainMinimumPiles rose to 3 on 2026-09-07 after
+        // a two-pile run on model 100302 was given a confident verdict it
+        // could not support. The empty investigated scope is what proves
+        // the difference; asserting only on the issue list would let a
+        // skipped run masquerade as a clean one.
         Assert.Empty(issues);
+        Assert.Empty(investigated);
     }
 
     [Fact]
@@ -71,16 +78,14 @@ public class PileChainBearingConsistencyCheckTests
     {
         var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
         var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000); // due north, 0deg
-        var dim = RevitCheckTestBuilders.PileChainDimension(
-            100, 1,
-            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
-            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var dims = new[] { Edge(100, pileA, pileB, 200, 201), Edge(101, pileB, pileC, 202, 203) };
         // Printed as 90 deg (due east) - a real 90 degree drafting/model
         // disagreement, not invented noise near the tolerance boundary.
         var note = RevitCheckTestBuilders.TextNote(300, 1, "90° 00' 00\"", RevitCheckTestBuilders.Pt(50, 500));
 
         var model = RevitCheckTestBuilders.Model(
-            elements: new[] { pileA, pileB }, dimensions: new[] { dim }, textNotes: new[] { note });
+            elements: new[] { pileA, pileB, pileC }, dimensions: dims, textNotes: new[] { note });
 
         var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig());
 
@@ -98,10 +103,8 @@ public class PileChainBearingConsistencyCheckTests
     {
         var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
         var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
-        var dim = RevitCheckTestBuilders.PileChainDimension(
-            100, 1,
-            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
-            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var dims = new[] { Edge(100, pileA, pileB, 200, 201), Edge(101, pileB, pileC, 202, 203) };
         // Real confirmed case, PLANNING.md §14: a real printed bearing
         // note that belongs to a chain outside this run's scope stayed
         // unmatched rather than being force-matched - this mirrors that,
@@ -109,13 +112,13 @@ public class PileChainBearingConsistencyCheckTests
         var farNote = RevitCheckTestBuilders.TextNote(300, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(50_000, 500));
 
         var model = RevitCheckTestBuilders.Model(
-            elements: new[] { pileA, pileB }, dimensions: new[] { dim }, textNotes: new[] { farNote });
+            elements: new[] { pileA, pileB, pileC }, dimensions: dims, textNotes: new[] { farNote });
 
         var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig());
 
         var issue = Assert.Single(issues);
         Assert.Equal("coverage", issue.Category);
-        Assert.Contains("no bearing call was found", issue.Description);
+        Assert.Contains("no bearing call could be", issue.Description);
     }
 
     [Fact]
@@ -185,22 +188,20 @@ public class PileChainBearingConsistencyCheckTests
     {
         var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
         var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000); // due north, 0deg
-        var dim = RevitCheckTestBuilders.PileChainDimension(
-            100, 1,
-            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
-            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var dims = new[] { Edge(100, pileA, pileB, 200, 201), Edge(101, pileB, pileC, 202, 203) };
         // Printed 90deg - a real disagreement, so this chain gets flagged,
-        // not clean. RunWithScope should still count its dimension as
+        // not clean. RunWithScope should still count its dimensions as
         // investigated - a verdict was reached, whether or not it passed.
         var note = RevitCheckTestBuilders.TextNote(300, 1, "90° 00' 00\"", RevitCheckTestBuilders.Pt(50, 500));
 
         var model = RevitCheckTestBuilders.Model(
-            elements: new[] { pileA, pileB }, dimensions: new[] { dim }, textNotes: new[] { note });
+            elements: new[] { pileA, pileB, pileC }, dimensions: dims, textNotes: new[] { note });
 
         var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
 
         Assert.Single(issues);
-        Assert.Equal(new[] { 100L }, investigated);
+        Assert.Equal(new[] { 100L, 101L }, investigated.OrderBy(x => x).ToArray());
     }
 
     [Fact]
@@ -471,4 +472,90 @@ public class PileChainBearingConsistencyCheckTests
             dimensionId, 1,
             RevitCheckTestBuilders.TagRef(tagA, RevitCheckTestBuilders.Pt(from.LocalPoint!.X, from.LocalPoint!.Y)),
             RevitCheckTestBuilders.TagRef(tagB, RevitCheckTestBuilders.Pt(to.LocalPoint!.X, to.LocalPoint!.Y)));
+
+    /// <summary>
+    /// The real 2026-09-07 mis-assignment, built from the actual pile
+    /// layout drawing. A three-pile spur runs west off the top of the
+    /// Abutment A line, sharing its end pile with that line - and the
+    /// line's own "175° 08' 40"" call is printed directly over the shared
+    /// pile, so by distance alone the spur's nearest call is the main
+    /// line's, at ~0mm. The spur was reported 84.6° wrong while its own
+    /// call, "90° 35' 22"", sat a few metres away and agrees with the
+    /// reconstruction to 6.6 arcseconds.
+    ///
+    /// Rotation is what tells them apart: a bearing call is drawn parallel
+    /// to the line it describes.
+    /// </summary>
+    [Fact]
+    public void A_spur_takes_its_own_parallel_bearing_call_not_the_main_lines_nearer_one()
+    {
+        var junction = RevitCheckTestBuilders.Pile(1, "PIL234301", 0.0, 0.0);
+        var spurMid = RevitCheckTestBuilders.Pile(2, "PIL234342", -1147.9392505982264, 11.81003539293781);
+        var spurEnd = RevitCheckTestBuilders.Pile(3, "PIL234341", -4902.740545020125, 50.43955011461157);
+
+        var dims = new[] { Edge(101, junction, spurMid, 201, 202), Edge(102, spurMid, spurEnd, 203, 204) };
+
+        // Printed over the shared junction pile, rotated to run along the
+        // main line - nearest by distance, wrong by rotation.
+        var mainLineCall = RevitCheckTestBuilders.TextNote(
+            301, 1, "175° 08' 40\"", RevitCheckTestBuilders.Pt(0.0, 0.0), directionDegrees: 175.14444);
+        // The spur's own call, further away but drawn along the spur.
+        var spurCall = RevitCheckTestBuilders.TextNote(
+            302, 1, "90° 35' 22\"", RevitCheckTestBuilders.Pt(-2500.0, 900.0), directionDegrees: 90.58944);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { junction, spurMid, spurEnd },
+            dimensions: dims,
+            textNotes: new[] { mainLineCall, spurCall });
+
+        // Matched to its own call and agreeing with it, so nothing is
+        // reported at all - where distance alone produced a confident
+        // 84.6-degree false positive.
+        Assert.Empty(PileChainBearingConsistencyCheck.Run(model, new RuleConfig()));
+    }
+
+    /// <summary>
+    /// Drafters eyeball the rotation, so the filter has to be generous
+    /// (the user, 2026-09-07). A call set out 12° off its own line is
+    /// still that line's call.
+    /// </summary>
+    [Fact]
+    public void A_hand_placed_call_rotated_off_its_line_still_matches_it()
+    {
+        var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var dims = new[] { Edge(100, pileA, pileB, 200, 201), Edge(101, pileB, pileC, 202, 203) };
+
+        var note = RevitCheckTestBuilders.TextNote(
+            300, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(50, 1000), directionDegrees: 12.0);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pileA, pileB, pileC }, dimensions: dims, textNotes: new[] { note });
+
+        Assert.Empty(PileChainBearingConsistencyCheck.Run(model, new RuleConfig()));
+    }
+
+    /// <summary>
+    /// Two calls equally near a run is the shared-end-pile case again, and
+    /// picking either would be a guess. A coverage gap is the honest
+    /// answer, not a confident verdict.
+    /// </summary>
+    [Fact]
+    public void Two_equally_near_parallel_calls_are_refused_rather_than_guessed_between()
+    {
+        var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var dims = new[] { Edge(100, pileA, pileB, 200, 201), Edge(101, pileB, pileC, 202, 203) };
+
+        var a = RevitCheckTestBuilders.TextNote(300, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(50, 1000), 0.0);
+        var b = RevitCheckTestBuilders.TextNote(301, 1, "0° 30' 00\"", RevitCheckTestBuilders.Pt(-50, 1000), 0.0);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pileA, pileB, pileC }, dimensions: dims, textNotes: new[] { a, b });
+
+        var issue = Assert.Single(PileChainBearingConsistencyCheck.Run(model, new RuleConfig()));
+        Assert.Equal("coverage", issue.Category);
+    }
 }

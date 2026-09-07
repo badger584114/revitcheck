@@ -54,6 +54,15 @@ public static class BearingMath
         return Normalize(Math.Atan2(x, y) * (180.0 / Math.PI));
     }
 
+    /// <summary>
+    /// The difference between two <em>axes</em> rather than two directions
+    /// (0-90°): a line running 175° and one running 355° are the same axis,
+    /// and a note's text can be set out along its line either way round, so
+    /// a parallel-ness test must not care which.
+    /// </summary>
+    public static double AxialDifference(double aDegrees, double bDegrees) =>
+        Math.Min(AngularDifference(aDegrees, bDegrees), AngularDifference(aDegrees, bDegrees + 180.0));
+
     private static double Normalize(double degrees)
     {
         var result = degrees % 360.0;

@@ -1057,3 +1057,28 @@ Three real problems came with it.
 **Still open, deliberately not guessed at: the bearing-note matching is the weak link, not the geometry.** Both remaining high-severity findings are mis-assignments. A 2-pile run reconstructs to a reciprocal of **175.095°** and was matched to a note reading 85.144° (flagged 89.95° out) while the note reading **175.144°** — 0.049° away — sat on the *other* finding. Three further runs got "no bearing call within 10000mm" at all. `PileChainNoteMaxDistanceMm`'s own remarks already predicted this would be the field most likely to need recalibration against a second project, and nearest-note-by-distance is now clearly producing verdict-severity output it cannot support.
 
 **The pattern across all three fixes, and it is the same one §19 named:** every failure was a confident wrong answer produced by a rule calibrated against a single model — duplication read as conflict, scatter read as corners, schedule membership read as pile-ness. None was a coding error; each was an assumption that only one real dataset had ever tested.
+
+**The pile-layout drawing settled the note-matching question (2026-09-07, `samples/Screenshot 2026-09-07 200403.png`).** §20 left it open deliberately rather than guess; one screenshot answered it completely, and proved the geometry had been right the whole time.
+
+**Both "wrong bearing" verdicts had their correct call printed on the drawing:**
+
+| Run | Reconstructed (reciprocal) | Its real call | Error |
+| --- | --- | --- | --- |
+| 3 piles, `[5956937, 7329344, 7328931]` | 90.58761° | `BEARING 90° 35' 22"` = 90.58944° | **6.6"** |
+| 2 piles, `[6475991, 5507875]` | 175.09507° | `BEARING 175° 08' 40"` = 175.14444° | 178" |
+
+The three-pile run is the **spur at the top-left of the sheet** — PIL234341 → PIL234342 → PIL234301, carrying the real 3755 and 1148 dimensions. It reconstructs to within **6.6 arcseconds** of its own printed call, the same precision the 100304 chains reached, and was reported 84.6° wrong.
+
+**Why distance alone can never work here, visible directly in the drawing:** bearing calls are printed at the *ends* of lines, and lines meet at their ends. The spur shares pile PIL234301 with the Abutment A main line, and that line's `175° 08' 40"` call sits directly over the shared pile — so the spur's nearest call is ~0mm away and belongs to something else. The same shape at the bottom right, where a vertical segment sat beside the horizontal row's `85° 08' 40"` call.
+
+**The signal that does work is in the drawing too: a bearing call is drawn parallel to the line it describes.** The two `175° 08' 40"` calls are rotated to run vertically alongside the vertical pile lines; `90° 35' 22"` and `85° 08' 40"` sit horizontally beside their own horizontal runs. Rotation is geometry and the stated bearing is content, so matching on the first and checking the second is not circular — a drafter who typed the wrong number still leaves a correctly-rotated note, and it still gets caught.
+
+Built: `TextNoteInfo.DirectionDegrees` (new IR, populated from `TextNote.BaseDirection`, verified against the real RevitAPI.dll first), `BearingMath.AxialDifference` (parallel-ness ignores which way round text is set out), and `MatchNote` — **rotation filters, distance then chooses, and ties are refused.** Three deliberate properties:
+
+- **Rotation is compared in MODEL space, not survey space.** A run's bearing comes from ProjectPosition, which can be rotated relative to the model when project north differs from true north; a note's `BaseDirection` is model-space. So rotation is matched against the run's own model-space direction from `LocalPoint`, while the bearing *value* comparison stays in survey space. Getting this wrong would have introduced a silent, project-dependent error that no test on this machine could have caught.
+- **The tolerance is deliberately generous at 20°, per the user: "most of the drafters will be eyeballing the rotation so it probably will not match the line exactly."** It only has to separate genuinely different lines, and the real ones on this sheet are ~85° apart — a 4x margin. Two near-parallel lines (both abutment runs at 175°) are not separable by rotation and are not meant to be; distance separates those.
+- **A note with no readable rotation does not fail the filter**, so captures predating this field check less precisely rather than stopping silently.
+
+Also raised `PileChainMinimumPiles` from 2 to 3. The 178" case above is not an error at all: it is a two-pile segment of a twelve-pile line measured against that whole line's call, and real scatter on this model reaches 306". A two-pile run is one measurement with no redundancy — this field's own original note said exactly that — and giving it a verdict manufactures confident noise. The real BR08 two-pile chain test was rewritten to assert it is now *skipped*, checking the investigated scope rather than just the issue list, so a skipped run can never masquerade as a clean one.
+
+370 Core tests passing; `dotnet build` clean including the net48 Addin. The spur test was confirmed to fail with the rotation filter disabled.

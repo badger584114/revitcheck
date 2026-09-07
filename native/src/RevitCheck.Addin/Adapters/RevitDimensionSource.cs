@@ -504,6 +504,11 @@ public static class RevitDimensionSource
                         // real property to read by InspectPileSetout.pushbutton
                         // (PLANNING.md §14).
                         LocalPoint = PointOf(note.Coord),
+                        // Which line this call belongs to, since a bearing
+                        // call is drawn parallel to its own line - see
+                        // TextNoteInfo.DirectionDegrees. Model coordinates,
+                        // deliberately, as that field's remarks explain.
+                        DirectionDegrees = DirectionOf(note),
                     };
                 }
                 catch (Exception ex)
@@ -720,6 +725,36 @@ public static class RevitDimensionSource
     private static string? ValueOverrideText(string? value) => value;
 
     private static double? Mm(double? feet) => feet is null ? null : feet.Value * MmPerFoot;
+
+    /// <summary>
+    /// The model-space direction a note's text runs, as an azimuth-style
+    /// angle (0 = +Y, 90 = +X), or null if it can't be read. Uses
+    /// <c>TextNote.BaseDirection</c>, verified against the real
+    /// RevitAPI.dll before this was written.
+    /// </summary>
+    private static double? DirectionOf(TextNote note)
+    {
+        try
+        {
+            var direction = note.BaseDirection;
+            if (direction is null)
+            {
+                return null;
+            }
+
+            // A zero-length direction carries no angle to read.
+            if (Math.Abs(direction.X) < 1e-9 && Math.Abs(direction.Y) < 1e-9)
+            {
+                return null;
+            }
+
+            return Core.Checks.BearingMath.AzimuthDegrees(0.0, 0.0, direction.X, direction.Y);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     private static Core.Ir.Point3D? PointOf(XYZ? xyz) =>
         xyz is null ? null : new Core.Ir.Point3D { X = xyz.X * MmPerFoot, Y = xyz.Y * MmPerFoot, Z = xyz.Z * MmPerFoot };
