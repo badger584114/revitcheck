@@ -1,24 +1,23 @@
 name: CI
 
-# One job, because there is now only one thing to check and it takes no
-# time. This replaced a four-job workflow (fast / packaging / tests /
-# forward-compat, ~6 minutes) when the PDF/DWG pipeline was parked
-# (ARCHIVE-pdf-dwg.md): `packaging` went with the distribution it tested,
-# and the sample-backed suite went with the 510MB of samples it read.
+# Replaced the Python workflow when the pyRevit extension was archived
+# (ARCHIVE-pyrevit.md, 2026-09-07). That workflow byte-compiled and tested
+# `revitcheck`, which no longer exists in the tree; leaving it in place
+# would have meant a green tick that checked nothing.
 #
-# What has NOT changed is why the byte-compile step exists, and it is the
-# most important line here. Two modules in this repo cannot be imported
-# on any machine without Revit installed —
-# `adapters/revit_source.py` and the pyRevit button scripts — so no test
-# will ever touch them. `compileall` does not import, so it is the only
-# automated check they get, and a syntax error in the adapter would
-# otherwise reach a Revit machine before anything caught it.
+# What this gates is the whole solution, and the important part is that it
+# includes RevitCheck.Addin. That project targets net48 and compiles
+# against the Revit API, but it needs neither Windows nor a Revit install
+# to build: the API comes from the Nice3point reference-assembly NuGet
+# packages and net48 from Microsoft.NETFramework.ReferenceAssemblies, the
+# same way it already builds on the Mac this project is developed on.
 #
-# The original reason for a `--collect-only` step also still applies: the
-# two breakages that prompted CI in the first place were both import-time
-# failures, and a single collection error aborts the *entire* pytest run,
-# so one bad file can silently suppress all test feedback. Here the whole
-# suite runs in well under a second, so running it outright covers that.
+# The Addin is exactly the half no test can reach - Core is covered by the
+# test suite, but nothing in RevitCheck.Addin can be exercised without
+# Revit running. Compiling it is the only automated check it gets, which
+# is the same argument the archived Python workflow made for its
+# `compileall` step over the adapter and button scripts, and the reason
+# that step was called the most important line in the file.
 
 on:
   push:
@@ -29,37 +28,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  tests:
-    # The matrix is a real signal now rather than the informational
-    # forward-compat job it replaces. `revitcheck` has to run on whatever
-    # CPython pyRevit ships with — 3.8/3.9 on pyRevit 4.8, 3.12 on
-    # pyRevit 5 — and that is not a version this repo chooses. 3.9 is the
-    # floor (the dev machine's interpreter) and 3.13 is the ceiling.
-    #
-    # Cheap enough to gate on all three: the package is stdlib-only, so
-    # there is nothing to resolve but pytest, and the suite is ~0.15s.
-    name: Tests (Python ${{ matrix.python-version }})
+  build-and-test:
+    name: Build and test
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.9", "3.12", "3.13"]
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-dotnet@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          dotnet-version: "8.0.x"
 
-      # No requirements.txt and no `pip install .`: `revitcheck` is
-      # stdlib-only and is imported from `extensions/.../lib` by
-      # `tests/revit/conftest.py`, exactly as pyRevit imports it.
-      - run: pip install pytest
+      - name: Restore
+        run: dotnet restore native/RevitCheck.sln
 
-      - name: Byte-compile everything
-        # Including what no test can import. See the header comment.
-        run: python -m compileall -q extensions scripts tests
+      # Includes the net48 Addin - see the header comment on why this is
+      # the step that matters most here.
+      - name: Build (whole solution, including the net48 Addin)
+        run: dotnet build native/RevitCheck.sln --no-restore
 
-      - name: Run tests
-        run: python -m pytest -q
+      - name: Test
+        run: dotnet test native/RevitCheck.sln --no-build --verbosity normal
