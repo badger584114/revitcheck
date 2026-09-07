@@ -90,41 +90,41 @@ public sealed record RuleConfig
     public string PileCategoryName { get; init; } = "Structural Foundations";
 
     /// <summary>
-    /// Which Revit categories the pile commands actually <em>collect</em>
-    /// before any check runs, as <c>BuiltInCategory</c> enum names.
+    /// <summary>
+    /// Which Revit categories the pile commands <em>collect</em> before any
+    /// check runs, as <c>BuiltInCategory</c> enum names. **Empty (the
+    /// default) means every model category the document defines.**
     /// </summary>
     /// <remarks>
     /// <para>
     /// Separate from <see cref="PileCategoryName"/>, and the more important
     /// of the two: that one is a display name the check uses to decide
     /// which collected elements it <em>expected</em> to see, whereas this
-    /// decides what the adapter sweeps at all. An element in no listed
+    /// decides what the adapter sweeps at all. An element in no swept
     /// category never reaches the check, so no amount of identity joining
     /// downstream can rescue it.
     /// </para>
     /// <para>
-    /// <b>Added 2026-09-07, closing a real gap left by the same day's own
-    /// identity-join fix.</b> That fix let the check take its scope from
-    /// schedule membership so piles modelled as Generic Models would still
-    /// be checked - but both pile commands passed a hardcoded
-    /// <c>OST_StructuralFoundation</c> to the adapter, so on that model
-    /// <c>RevitModel.Elements</c> came back empty and there was nothing for
-    /// schedule membership to match against. Half a fix reads exactly like
-    /// a whole one until someone asks what the collection step does.
+    /// <b>Defaults to sweeping everything, 2026-09-07, per the user:</b>
+    /// "we use a narrow number of categories 90% of the time but there may
+    /// be some outliers depending on the model, so it would be best to
+    /// sweep everything." A narrow default is right 90% of the time and
+    /// silently examines nothing the other 10%, which is the worse failure
+    /// - and it needs a person to already know the answer before the tool
+    /// can find it. Listing categories here narrows the sweep again if a
+    /// real run ever proves too slow; collection is view-scoped, so the
+    /// cost is bounded by one view's contents.
     /// </para>
     /// <para>
-    /// Defaults to both real cases seen so far. Collection is view-scoped,
-    /// so widening this costs a bounded number of extra
-    /// <c>GetProjectPosition</c> calls within one view - a far better trade
-    /// than a check that silently examines nothing. A name that isn't a
-    /// real <c>BuiltInCategory</c> is reported, never silently skipped.
+    /// This field exists at all because both pile commands passed a
+    /// hardcoded <c>OST_StructuralFoundation</c> to the adapter - upstream
+    /// of the same day's identity-join fix, so on a model whose piles are
+    /// Generic Models the check still examined nothing. Half a fix reads
+    /// exactly like a whole one until someone asks what the collection step
+    /// does.
     /// </para>
     /// </remarks>
-    public List<string> PileCollectionCategoryNames { get; init; } = new()
-    {
-        "OST_StructuralFoundation",
-        "OST_GenericModel",
-    };
+    public List<string> PileCollectionCategoryNames { get; init; } = new();
 
     /// <summary>
     /// Instance parameter holding a pile's own site/tag id - the join key

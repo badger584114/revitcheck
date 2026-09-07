@@ -40,10 +40,22 @@ public class DimensionTriageCommand : IExternalCommand
             return Result.Failed;
         }
 
+        // Resolved before collection, not after: SheetedViewsOnly has to
+        // reach the adapter, and the checklist window is the output here
+        // rather than a summary dialog, so there is nowhere natural to
+        // print which config was used - the per-element-type buttons
+        // launched from it each say so themselves.
+        var (config, _) = RuleConfigSource.Resolve(doc);
+
         DimensionCollectionResult collected;
         try
         {
-            collected = RevitDimensionSource.Collect(doc);
+            // sheetedViewsOnly comes from config, not the parameter's own
+            // default: RuleConfig.SheetedViewsOnly was read by the check
+            // (ViewScoping) while the adapter used its own hardcoded true,
+            // so setting it false could never actually widen anything -
+            // the collection step had already dropped those views.
+            collected = RevitDimensionSource.Collect(doc, sheetedViewsOnly: config.SheetedViewsOnly);
         }
         catch (Exception ex)
         {
@@ -63,13 +75,6 @@ public class DimensionTriageCommand : IExternalCommand
             ExcludedWorksets = collected.ExcludedWorksets,
         };
 
-        // Per-model config if this project has one, compiled defaults
-        // otherwise - either way the run's own output says which
-        // (RuleConfigSource's remarks).
-        // The checklist window is the output here, not a summary dialog,
-        // so there is nowhere natural to print which config was used - the
-        // per-element-type buttons launched from it each say so themselves.
-        var (config, _) = RuleConfigSource.Resolve(doc);
         var issues = DimensionProvenanceCheck.Run(model, config)
             .Concat(DimensionOverrideConsistencyCheck.Run(model, config))
             .ToList();

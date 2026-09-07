@@ -76,7 +76,16 @@ public class MetadataReconciliationCommand : IExternalCommand
         MetadataCollectionResult collected;
         try
         {
-            collected = RevitMetadataElementSource.Collect(doc, mapping.ScopeViewName);
+            // Every model category the document defines, not the five
+            // DefaultCategories this used to get by omission. This check
+            // never reports on the CSV's excess by design (see
+            // MetadataReconciliationCheck's remarks), so an element in an
+            // unswept category produced no finding of any kind - the run
+            // simply looked clean. Per the user, 2026-09-07: a narrow
+            // sweep is right most of the time and silently examines
+            // nothing the rest of it.
+            collected = RevitMetadataElementSource.Collect(
+                doc, mapping.ScopeViewName, allModelCategories: true);
         }
         catch (Exception ex)
         {

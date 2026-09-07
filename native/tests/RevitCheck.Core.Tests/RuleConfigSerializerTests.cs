@@ -91,20 +91,17 @@ public class RuleConfigSerializerTests
     }
 
     /// <summary>
-    /// The collection categories must be configurable, because they run
-    /// upstream of everything else: an element in no swept category never
-    /// reaches the check, so the identity join cannot rescue it. A real gap
-    /// found 2026-09-07 when both pile commands passed a hardcoded
-    /// OST_StructuralFoundation while the check had just been made
-    /// category-agnostic.
+    /// The collection categories run upstream of everything else: an
+    /// element in no swept category never reaches the check, so the
+    /// identity join cannot rescue it. Empty means "every model category",
+    /// which is the default - a narrow default is right most of the time
+    /// and silently examines nothing the rest of it, and it needs a person
+    /// to already know the answer before the tool can find it.
     /// </summary>
     [Fact]
-    public void Pile_collection_categories_default_to_both_real_cases_and_round_trip()
+    public void Pile_collection_categories_default_to_sweeping_everything()
     {
-        var defaults = new RuleConfig();
-
-        Assert.Contains("OST_StructuralFoundation", defaults.PileCollectionCategoryNames);
-        Assert.Contains("OST_GenericModel", defaults.PileCollectionCategoryNames);
+        Assert.Empty(new RuleConfig().PileCollectionCategoryNames);
 
         var loaded = RuleConfigSerializer.Loads(RuleConfigSerializer.Dumps(new RuleConfig
         {

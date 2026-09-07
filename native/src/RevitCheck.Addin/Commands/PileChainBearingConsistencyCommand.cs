@@ -73,7 +73,7 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
         // Structural Foundations on one real model and Generic Models on
         // another, and an element in no swept category never reaches the
         // check at all (RuleConfig.PileCollectionCategoryNames).
-        var (collectionCategories, unresolvedCategories) = CategoryScope.Resolve(config);
+        var (collectionCategories, allModelCategories, unresolvedCategories) = CategoryScope.Resolve(config);
 
         MetadataCollectionResult piles;
         try
@@ -85,7 +85,8 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
                 doc,
                 categories: collectionCategories,
                 populateLivePosition: true,
-                scopeView: activeView);
+                scopeView: activeView,
+                allModelCategories: allModelCategories);
         }
         catch (Exception ex)
         {

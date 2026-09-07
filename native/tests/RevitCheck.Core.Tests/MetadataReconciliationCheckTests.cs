@@ -568,4 +568,25 @@ public class MetadataReconciliationCheckTests
         Assert.Equal("coverage", issue.Category);
         Assert.Contains("more than one row", issue.Description);
     }
+
+    /// <summary>
+    /// An empty sweep must not read as a clean one. This check reports
+    /// nothing about the CSV's excess by design, so zero model elements
+    /// otherwise produces zero findings and looks like "everything
+    /// reconciled" - which is what a hardcoded five-category sweep could
+    /// cause on any project whose elements live somewhere unexpected
+    /// (2026-09-07).
+    /// </summary>
+    [Fact]
+    public void No_captured_elements_reports_coverage_not_a_clean_run()
+    {
+        var model = RevitCheckTestBuilders.Model(Array.Empty<ElementMetadata>());
+
+        var issues = MetadataReconciliationCheck.Run(
+            model, NumericMapping(toleranceMm: 5.0), Csv(("A1", "450")), new ReconciliationConfig());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+        Assert.Contains("not a clean result", issue.Description);
+    }
 }

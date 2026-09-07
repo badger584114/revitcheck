@@ -18,11 +18,23 @@ namespace RevitCheck.Addin.Commands;
 /// </remarks>
 internal static class CategoryScope
 {
-    public static (List<BuiltInCategory> Categories, List<string> Unresolved) Resolve(RuleConfig config)
+    /// <summary>
+    /// The categories to sweep. An empty
+    /// <see cref="RuleConfig.PileCollectionCategoryNames"/> means every
+    /// model category the document defines - <c>AllModelCategories</c> true
+    /// and <c>Categories</c> null, for the adapter's own
+    /// <c>allModelCategories</c> mode.
+    /// </summary>
+    public static (List<BuiltInCategory>? Categories, bool AllModelCategories, List<string> Unresolved) Resolve(RuleConfig config)
     {
-        var categories = new List<BuiltInCategory>();
         var unresolved = new List<string>();
 
+        if (config.PileCollectionCategoryNames.Count == 0)
+        {
+            return (null, true, unresolved);
+        }
+
+        var categories = new List<BuiltInCategory>();
         foreach (var name in config.PileCollectionCategoryNames)
         {
             if (Enum.TryParse<BuiltInCategory>(name, ignoreCase: true, out var parsed) &&
@@ -36,17 +48,17 @@ internal static class CategoryScope
             }
         }
 
-        // Never hand the adapter an empty list: that would silently fall
-        // back to its own DefaultCategories set, which is a different and
-        // much wider sweep than anything this config asked for.
+        // Every configured name was junk. Sweeping everything is the safe
+        // direction: the alternative is examining a narrow guess nobody
+        // asked for, which is exactly the silent-scope failure this whole
+        // mechanism exists to prevent.
         if (categories.Count == 0)
         {
-            categories.Add(BuiltInCategory.OST_StructuralFoundation);
-            unresolved.Add(
-                "no configured category resolved - fell back to OST_StructuralFoundation");
+            unresolved.Add("no configured category resolved - swept every model category instead");
+            return (null, true, unresolved);
         }
 
-        return (categories, unresolved);
+        return (categories, false, unresolved);
     }
 
     /// <summary>A line for the run's own summary, or empty when everything resolved.</summary>
