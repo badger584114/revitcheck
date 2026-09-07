@@ -100,7 +100,7 @@ native/
     UI/                         # code-behind-only WPF, no XAML
   tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
   tools/RevitCheck.MappingBuilder
-  tests/                        # 359 Core + 7 MappingBuilder tests, ~1s, no Revit
+  tests/                        # 376 Core + 7 MappingBuilder tests, ~1s, no Revit
   diagnostics/                  # throwaway pyRevit probes for answering real
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
@@ -195,8 +195,8 @@ Dated history for each is in PLANNING.md.
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. An override with no stated limit is not flagged (§17). Always reports how much was checkable. | Validated |
 | `revit.capture_coverage` | Turns per-element extraction failures into a visible Issue, plus a low-severity note for any workset excluded by user choice. | Validated |
 | `revitcheck.metadata_reconciliation` | Joins captured model elements to an external reference CSV via a per-run-chosen mapping file; flags missing/mismatched fields. | Validated, calibrated against two real reference tables (§13) |
-| `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Catches a pile moved without the schedule's Dynamo script being rerun. | Validated on one model (§16); **identity join (§19) not yet re-run** |
-| `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs, and compares each run's bearing against the drafted bearing call nearest it. A corner in a chain is reported for manual review, never averaged across. | Validated on one model (§16); **per-edge split (§19) not yet re-run** |
+| `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Rows from several schedules that agree are one answer stated twice; rows that disagree are a real finding. **Standalone — resolves no dimension triage, by design (§21).** | Validated on one model (§16); **everything from §19-§21 unrun on a machine** |
+| `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs (each edge against the run's **running mean**, never its predecessor — §20), and compares each run's bearing against its own call. Bearing calls are matched by **rotation first, distance second, ties refused** — a call is drawn parallel to its line, and distance alone provably mis-assigns them (§20). A corner is reported for manual review, never averaged across. | Validated on one model (§16); **everything from §19-§21 unrun on a machine** |
 | `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere. | Validated standalone (§18); session path fixed but **not re-confirmed** |
 
 **The ribbon is three panels, and the split is the workflow, not tidying:**
@@ -281,6 +281,24 @@ Notes worth not rediscovering:
 - **Skip rather than guess.** An override that isn't a clean number, a
   reference that won't resolve, a convention not yet seen — record it as
   unchecked, don't infer.
+- **Calibrate a tolerance against the noise, not against what you want it
+  to catch.** The pile collinearity tolerance was set at 60″ to protect a
+  6′25″ separation between two real setout lines — but real within-chain
+  placement scatter turned out to be *larger* than that separation, so the
+  figure it protected was below the noise floor and it produced four false
+  corners on the first real chain it met (§20). When the signal you want
+  is below the noise, say so and state the limit; don't tune the number.
+- **Check what runs *before* the thing you changed.** A fix applied where
+  a bug was *reported* can miss where it *is*: the "piles might be Generic
+  Models" correction was made in `RuleConfig` and the identical coupling
+  sat unread in the command's collection call, upstream of everything the
+  fix touched (§19). Ask what a change assumes about the step before it.
+- **Watch the units two layers apart.** Triage's unit is the view;
+  investigation's unit is the dimension. The join between them was
+  all-or-nothing, so partial progress — the normal case — rendered as no
+  progress, and the whole workflow looked inert while every individual
+  piece worked correctly (§21). When two layers count different things,
+  the seam is where the silence happens.
 - **Wait for real data before writing convention-specific logic.** Every
   extractor in this project's history that guessed ahead of a sample had
   to be rewritten when one arrived. The counterpart discipline that keeps
@@ -299,42 +317,62 @@ Notes worth not rediscovering:
 
 ## Next
 
-**1. Validate §19's three fixes on the two models that failed.** Per-edge
-bearings, the identity join, and the per-model config loop are all built
-and tested but unrun on a Revit machine. This is the immediate frontier.
+**1. Run everything from 2026-09-07 on a real machine. This is the whole
+frontier.** Nine PRs landed that day (§19-§21) and **not one line of the
+Addin half has run inside Revit.** Three separate things that day looked
+complete and were not: the Generic Models fix missed the collection step
+upstream of it, a mapping file was required by the very step that
+produces it, and the workflow could show no progress at all. The record
+says the next real run finds something.
 
-**2. Negative controls — the biggest evidence gap.** Every verification
-check has only ever returned zero issues on real data. The tool is proven
-to agree with a clean model, which is much weaker than proven to detect
-drift. Deliberately breaking something in a scratch copy (move a pile
-50mm without rerunning Dynamo; retype a Spot Elevation) and confirming
-each check flags it at the right magnitude would convert three ambiguous
-zeros into real evidence, and is the only thing that will exercise the
-placeholder tolerances.
+The single clearest signal: run Dimension Triage then Pile Chain Bearing
+on `DRG-2871051 - FOUNDATION LAYOUT` in model 100302 and watch whether
+the checklist's **Dimensions** column moves off `0 / 29`. If it does, the
+whole triage → investigation → reconciliation chain works end to end for
+the first time. Expect it to settle near 27/29 — two of those dimensions
+carry a single reference and no automated check can ever reach them,
+which is what the new manual-review verdict is for.
 
-**3. A second real model.** Until 2026-09-07 every check had been
-validated against exactly one model (BR08, the same file as the old
-pipeline's sample). The first contact with two others broke all three
-pile paths. That risk is now partly retired but not measured.
+Two specific things to watch, both currently invisible if they fail:
+- **If `TextNote.BaseDirection` comes back empty**, the rotation filter
+  silently stops applying and note matching reverts to distance-only. The
+  run summary does not say so. That is the least visible failure in the
+  whole build.
+- **Capture Model is now much slower and broader.** If it is unreasonable
+  on a real cloud model, the lever is "active view only", not narrowing
+  categories back.
+
+**2. Negative controls — still the biggest evidence gap, and untouched.**
+Every verification check has only ever returned zero or noise on real
+data. The tool is proven to agree with a clean model, which is far weaker
+than proven to detect drift. Move one pile 50mm in a scratch copy without
+rerunning Dynamo, retype a Spot Elevation, and confirm each check flags
+it at the right magnitude. One session, and it is the only thing that
+will exercise the placeholder tolerances — several of which were retuned
+on 2026-09-07 against real *scatter*, never against a known-bad case.
+
+**3. More models.** Contact with two beyond BR08 broke all three pile
+paths in three different ways. That risk is partly retired, not measured
+— every fix from that day was calibrated against the second model, which
+is exactly the mistake the first round made.
 
 **4. The next dimension type.** The organizing axis is **dimension type
 plus how its provenance resolves** — not element type, not view type
-(corrected 2026-09-02, §18: piles read as "element-type" only because
-piles' own conventions genuinely are pile-specific). Named and unbuilt:
+(§18). Named and unbuilt:
 - ordinary linear dimensions dimensioning to `DetailLine`s — 3 real ones
-  found in the same abutment view Spot Elevation was validated against;
-  needs a different mechanism (a measured distance between two witness
-  points, not one point's Z against one face).
+  in the same abutment view Spot Elevation was validated against; needs a
+  measured distance between two witness points, not one point's Z against
+  one face.
 - a per-view dimension-type breakdown in the checklist ("3 linear, 3
   spot") so a reviewer knows which button to run without already knowing
   the answer.
 
 **5. The drafting checks — the untouched half of the brief.** Glossaries,
-`config/en_gb_variants.json` (563 curated pairs) and the precise check
+`config/en_gb_variants.json` (563 curated pairs) and the check
 definitions all carry over as data and semantics; only the extraction
 layer does not. This is the half where the invariance argument is
 *strongest* — Revit revisions, sheet parameters and view references are
-API objects, not drafting conventions — and it is currently at zero.
+API objects, not drafting conventions — and it is at zero.
 
 **Also open:** multi-hop survey-tolerance scaling (§5's
 `base + per_hop×√hops`), awaiting a retaining-wall sample. Bridge chains
