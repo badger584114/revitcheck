@@ -2,577 +2,145 @@
 
 Guidance for Claude Code (and other agents) working in this repository.
 
+**This file is current state.** The dated reasoning behind everything
+here lives in PLANNING.md, which is the audit trail and is written
+append-only. When the two disagree, this file is right about *what is
+true now* and PLANNING.md is right about *how it got that way*.
+
 ## Project
 
 Automated review of civil engineering drawings — bridges, retaining
-walls, and similar structures — run **inside Revit**. The checks
-themselves (`extensions/RevitCheck.extension/lib/revitcheck/`) are what
-matters here and are host-independent; the pyRevit toolbar in that same
-extension is today's *host* for them, not a permanent architectural
-choice.
-
-> **PLANNING.md §12 (2026-08-21, updated 2026-08-22):** pyRevit's
-> CPython bridge failed deployment the same way on two different
-> machines — three environment-coupling causes, not code bugs,
-> documented in `extensions/RevitCheck.extension/README.md`'s "Three
-> CPython gotchas". Production is moving to a compiled native Revit
-> add-in. The pyRevit extension's job was development plus proving the
-> Revit → BCF → Forma → Revit round trip — **that proof succeeded
-> 2026-08-22**, confirmed by the user as the entire scope pyRevit
-> needed to cover. No further pyRevit feature work is planned; see §12
-> for the full reasoning, including the decision on what happens to
-> the Python rule engine (kept — see below) and what the add-in needs
-> to build next (dimension-vs-model verification, not more triage).
->
-> **PLANNING.md §13 (2026-08-24):** the native add-in's first real
-> feature — metadata reconciliation — is now built, deployed, calibrated
-> against real data, and merged. §14 is the current plan for what's next:
-> the dimension/sheet/view adapter, then dimension-vs-model verification.
-> **§14 update (2026-08-25):** the adapter half (Track A) is now built and
-> validated against a real cloud-worksharing model the same day — 59
-> sheets/833 views/538 dimensions, 0 extraction errors, run via the
-> updated Capture Model button. `native/tools/RevitCheck.CheckRunner`
-> (new) then ran both dimension checks against that capture off-Revit and
-> found 125 real issues, including two override-consistency findings —
-> both triaged by the user as correct, expected flags, not bugs (sheet
-> 2871008 is diagrammatic; sheet 2871071's is a pipe-clearance call-out)
-> — see PLANNING.md §14. Track B (dimension-vs-model verification):
-> comparison logic is still unbuilt. `InspectDimensionGeometry.pushbutton`
-> was run seven times (2026-08-25) — runs 1-4 fixed real code bugs,
-> runs 5-7 found real facts about the drawings, culminating in run 7:
-> a whole real pile-layout view swept, zero `CUT_EDGE` references
-> anywhere. **Pile setout on this project is drafted tag-to-tag against
-> a schedule, not tag-to-geometry — confirmed by the user to be
-> PLANNING.md §5b's `geometry.setout_reconstruction` all over again,
-> same real sheet number (2873041) as the old PDF/DWG pipeline's BR08
-> sample.** Two real dimensioning conventions now confirmed on this
-> project: piles (setout table + bearing/dimension-chain reconstruction,
-> the §5b technique) and deck/abutments (direct-to-geometry — what
-> runs 1-5's `Face.Project` work was actually for). A third real
-> wrinkle: the pile schedule is populated by a Dynamo script that isn't
-> always rerun after the model changes, so **two pile checks are
-> wanted, not one** — drawing-vs-schedule (the direct §5b port) and
-> model-vs-schedule (comparing each `Pile`'s own current position to
-> the schedule directly — cheaper if `ProjectLocation.
-> GetProjectPosition` already gives real coordinates for this model,
-> unconfirmed). `native/diagnostics/InspectPileSetout.pushbutton`
-> (new) was built to answer the remaining real unknowns (schedule
-> field structure, origin/pile parameter names, whether
-> `GetProjectPosition` works here) before writing either port — not
-> yet run. **This project already has real history bearing directly on
-> the coordinate question** — `native/`'s current model is the literal
-> same file as the old PDF/DWG pipeline's BR08 sample (both
-> `T2DPAA-T2D-C3S-BR-M3D-100304`), which found a real, twice-confirmed
-> Survey Point convention (~278,000mE/6,129,000mN) for this client, and
-> separately a cautionary case from a *different* client (Flinders'
-> "Massachusetts problem" — an unconfigured Revit template default
-> masquerading as real geodata). See PLANNING.md §14 for the full
-> detail.
->
-> **PLANNING.md §14 update (2026-08-26):** `InspectPileSetout.pushbutton`
-> was run for real, and the model-vs-schedule pile check is now fully
-> unblocked — no bearing/chain reconstruction needed for it at all.
-> `ProjectLocation.GetProjectPosition(Pile.Location.Point)`, the pile's
-> own `XYZ_Easting`/`XYZ_Northing` parameters, and the schedule's
-> `EASTING`/`NORTHING` row (joined via `DIT_SiteID` = the schedule's
-> `SITE ID`) **agree to sub-millimetre precision** on all 4 real piles
-> sampled — this model's Survey Point is genuinely configured, not a
-> Massachusetts-style default. **Correction to the read above:**
-> `DIT_StartEasting`/`DIT_StartNorthing` being identical across piles
-> is not staleness — confirmed by the user to be a deliberate client
-> convention giving the *bridge's centre* location (matching the sheet
-> title-blocks' own lat/long), not a per-pile position; `XYZ_Easting`/
-> `XYZ_Northing` are the real per-pile parameters. A same-day re-run of
-> `InspectDimensionGeometry.pushbutton` across the whole pile layout
-> view (46 dimensions) turned run 7's qualitative tag-to-tag finding
-> into hard numbers: 87/92 references resolve to `AnnotationSymbol`,
-> 5/92 to `Grid`, **zero** to any model geometry — confirms
-> drawing-vs-schedule genuinely needs proximity/tag-matching, not
-> `Face.Project`. Next: build the model-vs-schedule pile check as its
-> own ribbon button ([[track-b-per-element-type-buttons]]). See
-> PLANNING.md §14 for the full detail, including the exact per-pile
-> numbers.
->
-> **PLANNING.md §14 correction (2026-08-26, later the same day):** the
-> paragraph above is misleading on one point — `XYZ_Easting`/
-> `XYZ_Northing` must NOT be used as the check's comparison input.
-> Confirmed by the user: those parameters are themselves written by the
-> same Dynamo script that (re)writes the schedule, from the insertion
-> point at the time it last ran, so comparing one against the other
-> compares the same stale value to itself — a pile moved without a
-> Dynamo rerun would show as clean, silently, forever. The sub-mm
-> agreement above only proves nobody had moved a pile since the last
-> Dynamo run; it was never three independent confirmations, only one
-> (`GetProjectPosition`, computed from live geometry) agreeing with a
-> self-consistent pair. Fixed: `ElementMetadata.ProjectPositionEastingMm`/
-> `NorthingMm` (new Core IR field, populated only by a live
-> `GetProjectPosition` call — genuinely new Addin-side work, still
-> unbuilt) is what the check reads now, not any parameter. See
-> PLANNING.md §14 for the full correction and the regression test that
-> proves it.
->
-> **PLANNING.md §14 update (2026-08-26, later still): the dimension
-> buttons' BCF export was proof-of-concept plumbing, not the intended
-> steady-state output — confirmed by the user.** A real run produces
-> ~250 triage candidates, not confirmed problems, and shipping all of
-> them to Forma isn't the goal — that BCF wiring only ever existed to
-> prove the round trip (§12). Fixed: `DimensionProvenanceCommand`/
-> `DimensionOverrideConsistencyCommand` now pass `writeBcf: false` to
-> `IssueOutput.WriteNextToModel` (new parameter, defaults true so
-> `MetadataReconciliationCommand` — already verdicts, not triage — is
-> unaffected); JSON/CSV still write. Real BCF export now belongs to a
-> later reconciliation stage (not built) that prunes triage against
-> investigation-check verdicts first. Also extended the same day:
-> `InspectDimensionGeometry.pushbutton` gained pile-proximity matching
-> (`_collect_piles`/`_nearest_pile`, 2D/X-Y only — real data shows a tag
-> reference's Z sitting ~180m from a real pile's) so a pile dimension's
-> own stated value can be checked directly against the measured distance
-> between its two nearest real piles, no schedule needed — not yet run.
-> `_collect_piles` is scoped to the active view (`FilteredElementCollector(doc,
-> view.Id)`), not document-wide — the user's own suggestion, avoiding
-> false matches against foundation instances from unrelated structures.
->
-> **PLANNING.md §14 update (2026-08-26, same day, stage 3 design
-> started):** `Core/Reporting/InvestigationReconciliation.cs` (new,
-> tested, not yet wired to any command) prunes dimension triage against a
-> per-dimension investigation check's verdicts — the real join needed the
-> investigated-scope to be a parameter separate from the issues list
-> (absence-of-issue is ambiguous between "checked, clean" and "never
-> examined," and treating it as clean would violate "report a coverage
-> indicator, never fail silently"), and most real triage volume needed
-> "un-rolling" first (`DimensionProvenanceCheck`'s view-rollup issue now
-> carries `drafted_dimension_ids` in its `SuggestedFix`, a small additive
-> fix). `revitcheck.pile_model_schedule_consistency` deliberately doesn't
-> participate — it's keyed on Pile ElementIds, never a Dimension's, so it
-> naturally never matches; it should export to BCF directly once wired to
-> its own command, not route through this. Blocked on the one
-> investigation check that would actually feed it (the pile-proximity
-> match above) not existing as a real Core check yet.
->
-> **PLANNING.md §14 refinement (2026-08-26, same day, per the user's own
-> direction): three outcomes, not two.** `Reconcile` now returns a
-> `ReconciliationResult` (`ConfirmedProblems`/`NeedsManualReview`/
-> `StillOpenTriage`), not one flat list — some dimensions genuinely need
-> drawing interpretation a script can't do, and a future investigation
-> check marks those with `Category = InvestigationReconciliation.
-> ManualReviewCategory` rather than being forced to guess "clean" or
-> "problem". Only `ConfirmedProblems` is meant for automatic BCF export.
-> See PLANNING.md §14 for the full detail.
->
-> **PLANNING.md §14 update (2026-08-26, later still): the tag-to-pile
-> approach is now decisively validated on real data, and a third pile
-> check is built.** A view-scoping fix to `InspectDimensionGeometry
-> .pushbutton`'s pile collection (281 "piles" document-wide → 43,
-> matching the real ~47) unblocked a real re-run: 31 of 32 matched
-> dimensions agree with real pile geometry to sub-millimetre precision,
-> and the one real outlier turned out to be dimensioned to a setout-point
-> marker, not a pile — confirmed directly by the user, not a drafting
-> bug. Reconstructing each chain's bearing from live geometry and
-> comparing to the printed bearing call matched all 4 real chains to
-> within a third of an arcsecond. Per the user directly — the results are
-> clear enough that a manual-review fallback isn't needed here, build the
-> automatic comparison. Built: `revitcheck.pile_chain_bearing_consistency`
-> (`Checks/PileChainReconstruction.cs`/`BearingText.cs`/`BearingMath.cs`),
-> new IR (`ReferenceInfo.LocalPoint`/`ElementMetadata.LocalPoint`/
-> `Ir/TextNoteInfo.cs`), 32 new tests including one built from the literal
-> real pile/note numbers — 289 Core tests passing. Not wired to a command
-> yet. See PLANNING.md §14 for the full numbers.
->
-> **PLANNING.md §15 (2026-08-25):** a real cloud-model run of Metadata
-> Reconciliation crashed — `Document.PathName` for a Revit Cloud
-> Worksharing model isn't a filesystem path, and the code didn't guard
-> against that, only against an empty path. Fixed (`DocumentPaths.cs`);
-> full diagnosis and the .NET Framework-vs-.NET-8 `Path` behaviour gap
-> that made it not reproduce on this Mac are in §15.
->
-> **PLANNING.md §16 (2026-08-26): the interactive checking workflow tying
-> triage/investigation/reconciliation together is designed, not built.**
-> Full plan saved at `~/.claude/plans/an-idea-of-how-floating-peacock.md`
-> — read it before starting this work, don't re-derive it. Headline: a
-> real correctness bug (`PileChainBearingConsistencyCheck`'s issues are
-> pile-keyed, `Reconcile` joins on dimension ids — feeding it unmodified
-> would silently reconcile a flagged chain's dimensions as clean) was
-> found and designed around before any code was written, via a new
-> `ExpandByElementIdList` helper. First feature needing cross-command
-> session state, a custom code-behind-only WPF window (no XAML/SDK
-> change), and the `ExternalEvent` pattern (all new to this codebase).
-> Manual sheet-resolution (for diagrammatic sheets no check will ever
-> resolve, e.g. construction-sequence drawings) deliberately cannot
-> override a real confirmed-problem finding. Staged: Stage 1 is pure
-> Core, testable off-Revit today; Stage 2 builds the two pile checks'
-> first real Addin commands (needed regardless of this feature); Stage 3
-> is the window/session/combined-triage-command wiring; Stage 4 is real
-> Revit-machine validation.
->
-> **PLANNING.md §16 update (2026-08-28): Stage 1 built.**
-> `InvestigationReconciliation.ExpandByElementIdList` plus
-> `Core/Reporting/CheckingSession.cs`/`CheckingSessionSerializer.cs` are
-> built and tested — 313 Core tests passing, `dotnet build` clean across
-> the whole solution. The regression Stage 1 exists to prevent is directly
-> tested end to end.
->
-> **PLANNING.md §16 update (2026-08-28, same day): Stage 2 built too, not
-> yet run on the Revit machine.** `PileModelScheduleConsistencyCommand`/
-> `PileChainBearingConsistencyCommand` are real ribbon buttons now. The
-> Addin-side geometry work both checks were blocked on is built:
-> `RevitMetadataElementSource.Collect` gained an opt-in
-> `populateLivePosition` flag (live `GetProjectPosition` + `Location.Point`
-> per element, off by default for API cost); `RevitDimensionSource` now
-> populates `ReferenceInfo.LocalPoint` and collects `TextNote`s; a new
-> `Adapters/RevitScheduleSource.cs` reads every `ViewSchedule`, skipping
-> the real two-row header artifact (PLANNING.md line 695) by matching each
-> row against its own schedule's resolved headers rather than a hardcoded
-> row count. `dotnet build` clean including the net48 Addin — compile-only
-> verification; **validate both buttons for real before starting Stage
-> 3**, matching this project's own pattern that every real correction so
-> far came from an actual machine run.
->
-> **PLANNING.md §16 correction (2026-08-28, real machine run, same day):
-> both commands were whole-document, and shouldn't have been.** The user
-> ran both: 281 piles, 0 captured schedules, 62 extraction errors (Pile
-> Model/Schedule); 281 piles, 1297 dimensions, 3790 text notes (Pile Chain
-> Bearing) — and confirmed directly these tools are meant to run on the
-> active view, not the whole drawing set. 281 is the exact same
-> document-wide over-collection number `InspectDimensionGeometry
-> .pushbutton` already fixed once this session (real count ~43-47) — a
-> real miss carrying that lesson forward, not a plan ambiguity. Fixed same
-> day: `RevitMetadataElementSource.Collect`/`RevitDimensionSource.Collect`
-> both gained a `scopeView` parameter (the live `View`, not a name
-> re-lookup); both pile commands now pass `ActiveView`. Schedule collection
-> stays whole-document deliberately — not "in" a view the way a pile
-> element is. Separately: 0 schedules with 2 real ones expected, and 62
-> extraction errors nobody could read (no error *text* was ever surfaced,
-> only a count) — new `Commands/ExtractionErrorSample.cs` fixes the
-> visibility gap. **Same-day follow-up, per the user's own suggestion:**
-> `RevitScheduleSource.Collect` now only reads a schedule's expensive body
-> cells when its headers already resolve all three of
-> `PileModelScheduleConsistencyCheck`'s own id/Easting/Northing candidates
-> (the identical filter that check already applies downstream, just
-> hoisted earlier) — not a proven diagnosis of the 62 errors, but a
-> well-justified fix for the most likely cause.
->
-> **PLANNING.md §16 update (2026-08-28, real machine re-run, screenshots):
-> Pile Chain Bearing is fully validated; Pile Model/Schedule's real root
-> cause is now diagnosed and fixed.** Pile Chain Bearing: 43 piles, 46
-> dimensions (the exact figure already on record from the manual
-> diagnostic), 31 text notes, 0 issues — **done, no further work needed.**
-> Pile Model/Schedule: the header filter worked exactly as designed (62
-> errors → 2, both on the two real named schedules) and the real error
-> text answered the question the previous update could only guess at:
-> `Illegal attempt to modify document. Reason: Changes are disabled for
-> the active document!` — `ViewSchedule.GetTableData()`/`GetCellText` can
-> internally need document-modify permission even though it's conceptually
-> a read, and `TransactionMode.ReadOnly` blocked that. Fixed:
-> `TransactionMode.Manual` with the schedule read wrapped in a `Transaction`
-> that's always `RollBack()`'d, never committed. Not yet confirmed — needs
-> one more real run.
->
-> **PLANNING.md §16 update (2026-08-28, later the same day): the
-> transaction fix worked, but every pile (43/43) now fails its schedule
-> match.** Real issue descriptions confirmed a flat zero-match join for
-> every pile, not "ambiguous," not a numeric mismatch — a systematic bug
-> (4 real piles already confirmed sub-mm agreement, so 100% failure can't
-> be real drift). `PileModelScheduleConsistencyCommand` gained a permanent
-> `ScheduleDiagnostics` summary (the check's own `candidateSchedules`
-> filter, made visible): each candidate schedule's name, real row count,
-> and its first row's literal id value — enough to tell "row-skip heuristic
-> ate every row" from "ids don't textually match" without dumping real
-> coordinates. Needs one more real run.
->
-> **PLANNING.md §16 update (2026-08-28, later still): schedule rows are now
-> read off the schedule's own backing elements, not rendered table text.**
-> The user asked whether a schedule keeps a link back to its real elements —
-> yes, via `FilteredElementCollector(doc, schedule.Id)`, a genuine Revit API
-> pattern. Real fix, not another patch: resolve each candidate column's
-> real bound parameter (`ScheduleField.ParameterId`) and read it directly
-> off each backing element, sidestepping `GetCellText`'s format-fragile
-> rendered text entirely. Every Revit API member used was verified against
-> the real `RevitAPI.dll` (via `System.Reflection.MetadataLoadContext`, no
-> Revit machine needed) before writing any code. `dotnet build` clean.
-> Needs one more real run.
->
-> **PLANNING.md §16 update (2026-08-28, later still): the element-based
-> read worked, but the join still failed 43/43 - real diagnostics found
-> the exact cause.** Rows were genuinely captured correctly this time
-> (19+24=43, matching pile count, a correctly-formatted first-row id
-> `PIL232126` identical to an already-failing pile's own key). Piles read
-> their key via `AsString()`; the schedule reader read every column,
-> including id, via `AsValueString()` first — `ScheduleInfo.RowsForKey`'s
-> `Ordinal` join silently breaks on any divergence there. Fixed:
-> `ReadParameterText` now branches on `Parameter.StorageType` — `AsString()`
-> first for `String` (matching piles exactly), `AsValueString()` first for
-> numeric. A `CharacterCheck` diagnostic (hex code points for one matched
-> pair) was added alongside the fix so a wrong hypothesis would still show
-> why. `dotnet build` clean. Needs one more real run.
->
-> **PLANNING.md §16 update (2026-08-28, later still): the id-join fix
-> worked — `CharacterCheck` confirms an exact byte-for-byte match — but the
-> issue count is still exactly 43.** Since the join is now provably
-> correct, this can't be the same "no matching row" bug. `CharacterCheck`
-> never verified Easting/Northing. Added `PositionCheck` for the same
-> matched pair: raw captured Easting/Northing text, whether it parses as a
-> bare number (`AsValueString()` may apply the project's display unit/
-> suffix, which `TryParseMetresToMm` doesn't expect), and the pile's own
-> live position. `dotnet build` clean. Needs one more real run — also
-> asked the user for real issue descriptions from this run's own output,
-> no rebuild needed.
->
-> **PLANNING.md §16 update (2026-08-28, later still): the CSV alone found
-> the exact bug — no machine run needed.** Every one of 43 issues showed
-> the schedule's parsed Easting/Northing at exactly 1000× the live value.
-> `AsValueString()` applies the *parameter's own* display unit — confirmed
-> millimetres for this project's `XYZ_Easting`/`XYZ_Northing`, not the
-> metres the schedule column's heading implies. Fixed: read the raw
-> internal value via `AsDouble()` instead (always decimal feet for a real
-> Length spec), convert to mm directly, divide by
-> `RuleConfig.ScheduleMetresToMm` before handing it back as row text, so
-> the check's existing, unchanged `TryParseMetresToMm` recovers the
-> correct value instead of scaling it twice. `dotnet build` clean, no Core
-> changes. Needs one more real run — the fourth real bug found and fixed
-> in this one check's schedule-reading path in a single day. See
-> PLANNING.md §16 for the full detail.
->
-> **PLANNING.md §16 update (2026-08-31): confirmed clean — Pile
-> Model/Schedule is done, Stage 2 is complete.** Real re-run: 0 issues,
-> 43 piles in view, 62 schedules checked, both real candidate schedules
-> matched (19+24=43 rows). `PositionCheck` now shows the schedule's
-> parsed Easting/Northing landing exactly on the pile's own live
-> `GetProjectPosition` value (278198410.59mm/6130233357.011mm, both
-> sides) — the `AsDouble()` units fix holds on real data, no more 1000×
-> scaling. Both real magnitudes also land in the ~278,000mE/6,129,000mN
-> neighbourhood §5/§14 already established for this client's Survey
-> Point convention. **Both pile commands are now real, validated ribbon
-> buttons — the fourth-and-final bug in this check's schedule-reading
-> path is closed, and PLANNING.md §16's Stage-3 gate ("validate both on
-> the real Revit machine before starting Stage 3") is satisfied.** Per
-> the user's own framing (2026-08-31): piles are the first, easiest
-> element type this tool checks, not the whole scope — the same
-> per-element-type pattern (its own investigation check, its own ribbon
-> button, folded into the same checklist/session workflow) is expected
-> to repeat for deck/abutments and, later, retaining walls, once a real
-> sample exists for either (see "Next" below).
->
-> **PLANNING.md §16 update (2026-08-31, later the same day): Stage 3
-> built.** `Addin/CheckingSessionHost.cs` (new cross-command state),
-> `Commands/DimensionTriageCommand.cs` (replaces the two old triage
-> commands, deleted; offers Resume/Start Fresh against a saved
-> per-document session), `UI/ChecklistWindow.cs`/`ReasonPromptWindow.cs`
-> (code-behind-only WPF, no XAML/SDK change), `UI/RevitCheckExternalEvents.cs`
-> + its two `IExternalEventHandler`s, and dual-mode changes to both pile
-> commands (`PileChainBearingConsistencyCheck` gained a `RunWithScope`
-> overload exposing its investigated-dimension scope, a real small Core
-> addition `InvestigationReconciliation.Reconcile` needed). `dotnet build`
-> clean across the whole solution, 316 Core tests passing (313 + 3 new).
-> **Not yet run on the Revit machine** — Stage 4 is next, see PLANNING.md
-> §16 for the full validation list.
->
-> **PLANNING.md §16 update (2026-08-31, Stage 4's first two real runs):**
-> six real bugs found and fixed the same day, all from actual use, not
-> guessed ahead of it. First run: a `TaskDialog.DefaultButton` crash on
-> restart (set before its command links existed), a `System.Text.Json`
-> `JsonElement`-vs-CLR-type bug that silently broke resuming a session and
-> investigating further, and Pile Chain Bearing silently dropping (not
-> flagging) dimensions that should have been manual-review candidates —
-> also the likely real cause of a view's status never changing, since up
-> to 14 of 46 real dimensions were never accounted for at all. Second run:
-> dismissing with a blank reason silently did nothing (`Status` used
-> `ManualResolutionReason is not null` as its only "was this dismissed"
-> signal — fixed in `CheckingSession.ResolveManually` itself), a confusing
-> "Dismiss" button renamed to "OK", and — the real usability gap — a bare
-> status/count row gave no way to know what a finding actually was or how
-> to act on it, fixed with a details pane in the checklist window that
-> shows the real issue text for whichever row is selected. 323 Core tests
-> passing. See PRs #51 and the one that follows it, and PLANNING.md §16
-> for the full account.
->
-> **PLANNING.md §16 update (2026-08-31, Stage 4 complete): the last two
-> checklist items confirmed real, plus one more real gap fixed the same
-> day.** Bulk dismiss protected a real confirmed problem correctly; Export
-> Reconciled BCF produced zero confirmed problems — the correct, honest
-> answer, since only piles have an investigation check built so far, not a
-> bug. Then: no way existed to record a verdict on one specific dimension
-> while manually checking it, only a whole-view dismissal. Fixed by
-> recognizing a human's per-dimension verdict is functionally just another
-> investigation source — it reuses `CheckingSession.RecordInvestigation`
-> completely unchanged (new `InvestigationReconciliation.ManualVerdictRuleId`
-> constant so the audit trail says it came from a person). The checklist's
-> details pane became a selectable list (rollups expanded via
-> `ExpandByElementIdList` before display, so a reviewer always selects a
-> real dimension, never an opaque summary), with two new buttons — Mark
-> Selected Issue(s) Resolved / Confirmed Problem. 324 Core tests passing.
->
-> **PLANNING.md §16 update (2026-08-31, same day): one more real bug,
-> found running the manual-verdict feature for real — a display-only one,
-> in exactly the layer Core tests can't reach.** "Confirmed Problem"
-> visibly worked; "Resolved" appeared to do nothing. Both were actually
-> recording correctly — the real bug was in `ChecklistWindow.UpdateDetails`:
-> a partially-investigated rollup stays one issue in `StillOpenTriage`
-> until *every* one of its dimensions has a verdict, so re-expanding it
-> for display always re-listed all of them, including ones already given
-> a verdict. "Confirmed" still looked like it worked because it also adds
-> a new row to the Confirmed Problem section; "Resolved" adds no new row
-> anywhere, so the same stale duplicate was the only thing visible. Fixed
-> by filtering the expanded list against `entry.InvestigatedElementIds`
-> before display. Confirms the Core reconciliation logic was correct the
-> whole time — this was purely an Addin-side display bug, which is why it
-> slipped past 324 passing Core tests and only surfaced on the real
-> machine.
->
-> **PLANNING.md §16 update (2026-08-31, same day): confirmed fixed, via a
-> real diagnostic rather than a fourth guess.** A re-test reported "Mark
-> Resolved still doesn't work" even after the fix above. A temporary
-> diagnostic (removed the same day) showed the real session state right
-> after a click — dimension 6019961 (the confirmed real outlier from §14,
-> a setout-point-marker dimension) was correctly recorded, and the raw
-> `StillOpenTriage` list held only 2 issues, neither of them 6019961.
-> **Confirmed directly by the user: the row disappeared the moment the
-> dialog closed.** The earlier fix was correct all along — the report was
-> from a test pass that predated it reaching a rebuilt, redeployed binary.
->
-> **PLANNING.md §16 correction (2026-08-31, later the same day): a real,
-> distinct bug, continuing the same real testing session.** "Needs Manual
-> Review items are still not cleared after marking them resolved" — a
-> Core-level bug this time, not a display one.
-> `CheckingSession.RecordInvestigation`'s dimension-linked path only ever
-> *appended* to `InvestigationIssues`, never removed a stale entry — so an
-> automated check's old `manual_review` flag for a dimension kept showing
-> forever, even after a human selected it and clicked Mark Resolved
-> (correctly calling `RecordInvestigation` with an empty issue list for
-> that id — "clean" had nothing to overwrite the stale entry with, since
-> nothing ever removed it). Fixed: recording a verdict for an id now
-> removes any existing entry for that same id first — the latest call
-> always wins. Two new regression tests, 326 Core tests passing (324 + 2
-> new). The third real bug found in the manual-verdict feature across
-> three consecutive real-machine runs the same day — CLAUDE.md's own
-> "assume nothing is trustworthy" applies most literally here: an
-> accumulate-only list looks correct by inspection every time, because
-> "clean" reads as an obviously-safe no-op unless you specifically ask
-> what happens to whatever was already recorded for that same id.
+walls, and similar structures — run **inside Revit**, as a compiled
+native C# add-in (`native/`).
 
 Two categories of check:
 
 1. **Drafting** — standards and convention compliance, annotation and
    dimension completeness, cross-sheet consistency, spelling, revision
-   consistency, plus project-specific rules.
+   consistency, plus project-specific rules. **Nothing here is built in
+   the Revit era** — see "Next".
 2. **Geometry** — dimensional consistency within and across views, and
    whether what a drawing states matches what the model actually says.
+   This is where all the work so far has gone.
 
 Scope is **internal projects only**, confirmed by the user, so a Revit
 model is always available. Models are **cloud-workshared in Autodesk
 Forma**, which is the firm's approved and secure store for project
 information — so persistent state living off the machine is legitimate,
-and the tool may keep memory between runs.
+and the tool may keep memory between runs. (This corrects an earlier
+"nothing leaves the machine" position that was never a client
+requirement — PLANNING.md §10, which is otherwise **withdrawn**; read its
+superseded note before treating anything in it as a rule.)
 
-> This **corrects** the earlier "nothing leaves the machine" position
-> stated here until 2026-08-18. That was never a client requirement; it
-> was inherited from PLANNING.md §10's air-gap design for the parked
-> web stack. See §10 for the correction and why the underlying
-> confidentiality concern is still answered.
+**Read PLANNING.md before making structural changes.** §5 is the domain
+knowledge about what actually goes wrong on real drawing sets and remains
+correct regardless of where the checks run. §5c records why the checks
+moved into Revit. §12 onward is the native add-in's history, most
+usefully §19 (the most recent corrections).
 
-**Read `PLANNING.md` before making structural changes** — it holds the
-reasoning, not just the "what". §5c records why the checks moved into
-Revit and §5d the open reporting question; §5 (all of it) is the domain
-knowledge about what actually goes wrong on real drawing sets, and
-remains correct regardless of where the checks run. §10 is **withdrawn**
-— read its superseded note before treating anything in it as a rule.
+## Two archives, and you should know what is in them
 
-### There is a large archive, and you should know what is in it
+Both are tags, and each tag is the only surviving reference to its code:
+`main` is the sole branch and every merged branch was deleted on
+2026-08-18.
 
-This project spent weeks building `src/pdfchecker/`, a working pipeline
-that checked PDF/DWG/IFC *exports* instead. It was parked on 2026-08-18.
+- **`ARCHIVE-pdf-dwg.md`** / `git checkout pdf-dwg-final` — a working
+  pipeline that checked PDF/DWG/IFC *exports* instead, parked 2026-08-18.
+  Its 276-test suite and the real BR06/BR08 sample sets are in the tag.
+  Genuinely worth reading before assuming anything about drafting
+  conventions. `BACKEND_REVIEW.md` reviews it; `git show
+  frontend-plan-final:FRONTEND_PLAN.md` is the never-merged frontend plan.
+- **`ARCHIVE-pyrevit.md`** / `git checkout pyrevit-final` — the pyRevit
+  extension, archived 2026-09-07. It proved the adapter/IR/checks split
+  and the Revit → BCF → Forma → Revit round trip, then was superseded by
+  `native/`. Every rule it carried has a C# equivalent (the archive doc
+  has the mapping).
 
-- **`ARCHIVE-pdf-dwg.md`** — what it did, what real drawing sets look
-  like, and which assumptions broke when a second client's files
-  arrived. Genuinely worth reading before assuming anything about
-  drafting conventions.
-- **`git checkout pdf-dwg-final`** — the code itself, its 276-test
-  suite, and the real BR06/BR08 sample sets.
-- **`BACKEND_REVIEW.md`** — a review of that backend taken just before
-  the pivot.
-- **`git show frontend-plan-final:FRONTEND_PLAN.md`** — the frontend
-  implementation plan, never merged. §5c took the web stack off the
-  path; tagged rather than deleted because it was the only copy.
+**The one lesson from the first archive that governs new work: logic
+built on domain invariants survived a second client; logic built on
+client conventions broke.** The Revit API is an invariant. That is the
+whole argument for this direction — PLANNING.md §5c.
 
-Both tags are the only surviving reference to their branches: every
-merged branch was deleted on 2026-08-18 and `main` is now the sole
-branch, so nothing is recoverable by branch name any more.
+That lesson has since been sharpened twice, one level down, inside the
+Revit API surface itself:
 
-The one lesson from it that governs new work: **logic built on domain
-invariants survived a second client; logic built on client conventions
-broke.** The Revit API is an invariant. That is the whole argument for
-this direction — see PLANNING.md §5c.
-
-> **Concrete instance, 2026-08-28, per the user's own standing
-> instruction:** the same lesson applies one level down, inside the
-> Revit API surface itself — a schedule's *rendered* text (`GetCellText`,
-> `AsValueString()`, a column heading like "EASTING (m)") is
-> presentation, and presentation is exactly the kind of thing that
-> varies by project/client the way a CAD layer name or a client's
-> drafting convention already did; a parameter's *raw internal* value
-> (`AsDouble()`, `Location.Point`, `ElementId`) is the invariant
-> underneath it. `RevitScheduleSource` learned this the hard way the
-> same day (PLANNING.md §16): a schedule column's own heading claimed
-> metres, but the bound parameter's real display unit was millimetres,
-> and trusting the heading text silently double-converted every value.
-> **Default to raw internal data over any rendered/formatted/labeled
-> string whenever adapter code in this repo has a choice between them.**
-
-## Layout
+> **Rendered text is presentation; raw internal data is the invariant
+> underneath it** (2026-08-28, the user's standing instruction). A
+> schedule's `GetCellText`, `AsValueString()` or a column heading like
+> "EASTING (m)" varies by project/client exactly the way a CAD layer name
+> did; `AsDouble()`, `Location.Point`, `ElementId` do not.
+> `RevitScheduleSource` learned this the hard way: a column heading
+> claimed metres, the bound parameter's real display unit was
+> millimetres, and trusting the heading silently double-converted every
+> value.
+>
+> **The same holds for identity, more strongly** (2026-09-07, §19).
+> Where the model already states a link, never reconstruct it from
+> rendered text. Joining two things by matching their displayed strings
+> needs both strings to exist, both to be recognised, and both to render
+> identically — three ways to fail that an `ElementId` does not have, all
+> three of which have now failed on real models.
 
 ## Layout
 
 ```
-extensions/RevitCheck.extension/     # the pyRevit extension
-  lib/revitcheck/                    # the package — here, not under src/,
-                                     # because pyRevit puts <extension>/lib on
-                                     # sys.path automatically. ONE copy: the
-                                     # files the buttons import are the files
-                                     # the tests import
-    ir.py                            # plain dataclasses, raw facts, millimetres
-    issue.py                         # Issue + derived issue_id + sort_issues
-    catalog.py                       # @register, RuleConfig, run_checks
-    capture.py                       # RevitModel <-> JSON (the dev loop)
-    report.py                        # summarize / to_json / to_markdown / to_bcf
-    bcf.py                           # Issues -> BCF 2.1 (.bcf), split at
-                                     #   100/file for Forma's import cap
-    en_gb_variants.py                # curated en-GB spelling variants — data
-                                     # landed ahead of its rule, rescued from
-                                     # the parked tree (see its docstring)
-    adapters/revit_source.py         # the ONLY module importing the Revit API
-    checks/dimensions.py             # revit.dimension_provenance +
-                                     #   revit.dimension_override_consistency
-    checks/coverage.py               # revit.capture_coverage
-  RevitCheck.tab/Checks.panel/       # the buttons — thin by design
-config/                              # firm_glossary.json, project_glossary.json
-scripts/check_capture.py             # run the checks against a captured model
-tests/revit/                         # 151 tests, ~0.1s, no Revit needed
+native/
+  src/RevitCheck.Core/          # netstandard2.0 — no Revit dependency at all
+    Ir/                         # plain records, raw facts, millimetres
+    Issues/Issue.cs             # Issue + derived IssueId
+    Catalog/                    # Catalog + CheckRegistry (explicit registration)
+    Checks/                     # pure (RevitModel, RuleConfig) -> [Issue]
+    Capture/CaptureSerializer   # RevitModel <-> JSON (the dev loop)
+    Reporting/                  # JSON / CSV / BCF writers, CheckingSession,
+                                #   InvestigationReconciliation
+    Mapping/                    # ParameterMapping + its serializer
+  src/RevitCheck.Addin/         # net48 — the ONLY project referencing the Revit API
+    Adapters/                   # read the open document -> Core IR
+    Commands/                   # the ribbon buttons — thin by design
+    UI/                         # code-behind-only WPF, no XAML
+  tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
+  tools/RevitCheck.MappingBuilder
+  tests/                        # 359 Core + 7 MappingBuilder tests, ~1s, no Revit
+  diagnostics/                  # throwaway pyRevit probes for answering real
+                                #   unknowns before writing check logic
+config/                         # firm_glossary.json, project_glossary.json,
+                                #   en_gb_variants.json — data ahead of its rules
+samples/                        # one real capture, kept as a test fixture
 ```
 
-`extensions/RevitCheck.extension/README.md` covers installing the
-extension in pyRevit and what each button does.
+`native/README.md` covers building, deploying to a Revit machine, and
+what each button does.
+
+**`native/diagnostics/` is deliberately still pyRevit.** These are
+throwaway probes, run once on a Revit machine to answer a real unknown
+before any check logic is written — a workflow that has repeatedly paid
+for itself (PLANNING.md §14, §18). They are not part of the product and
+were not archived with the extension.
 
 ## The layering rule, which is the one that matters
 
 ```
-adapters/revit_source.py   the ONLY module that imports the Revit API
-    |                      (reads the open document -> RevitModel)
+Adapters/*.cs      the ONLY code that touches the Revit API
+    |              (reads the open document -> RevitModel)
     v
-ir.py                      plain dataclasses, raw facts, millimetres
+Ir/*.cs            plain records, raw facts, millimetres
     |
     v
-checks/*.py                pure (RevitModel, RuleConfig) -> [Issue]
+Checks/*.cs        pure (RevitModel, RuleConfig) -> [Issue]
 ```
 
-**Nothing below the adapter knows Revit exists.** Two consequences that
-are easy to erode and worth defending in review:
+**Nothing below the adapter knows Revit exists.** This survived a whole
+host change (pyRevit → compiled C#) with the checks essentially intact,
+which is the strongest available evidence the cut is in the right place.
+Two consequences that are easy to erode and worth defending in review:
 
 - **The adapter extracts facts and judges nothing** — no classification,
   no tolerances, no filtering. `ReferenceInfo` records that an element is
-  view-specific; deciding that this means "drafted" happens in
-  `checks/dimensions.py`. So retuning a classification never invalidates
-  a capture and never requires a trip back to a Revit machine.
-- **Anything that grows inside a `script.py` is logic only debuggable
-  inside Revit.** Buttons stay thin.
+  view-specific; deciding that means "drafted" happens in `Checks/`. So
+  retuning a classification never invalidates a capture and never
+  requires a trip back to a Revit machine.
+- **Anything that grows inside a Command is logic only debuggable inside
+  Revit.** Buttons stay thin.
 
 Units: **every length in the IR is millimetres.** Revit's internal unit
 is decimal feet regardless of project settings, so the adapter multiplies
@@ -584,73 +152,70 @@ version breakage.
 
 Development happens on a Mac with **no Revit**. Revit runs on a
 locked-down Windows work machine where the only LLM access is Copilot.
-`capture.py` is what makes that workable, and it is the workflow rather
-than a convenience feature:
+The capture file is what makes that workable, and it is the workflow
+rather than a convenience feature:
 
 ```
 # on the Revit machine, once per project
-Capture Model  ->  BR06.capture.json
+Capture Model  ->  BR08.capture.json   (+ a starter RuleConfig, see below)
 
 # anywhere, as often as you like
-python scripts/check_capture.py BR06.capture.json
-python -m pytest tests/ -q          # 151 tests, ~0.1s, no dependencies
+dotnet test native/RevitCheck.sln                        # ~1s, no Revit needed
+dotnet run --project native/tools/RevitCheck.CheckRunner -- BR08.capture.json
 ```
 
-No install step, no virtualenv needed for the tests: `revitcheck` is
-**stdlib-only** (plus the Revit API inside the adapter), and
-`tests/revit/conftest.py` puts `extensions/RevitCheck.extension/lib` on
-`sys.path` exactly as pyRevit does. `pytest` is the sole dev dependency.
-There is no `[project]` table in `pyproject.toml` and that is deliberate
-— see the comment in it.
+`RevitCheck.Core` is netstandard2.0 with no Revit dependency, so the
+whole check suite runs on any machine. `RevitCheck.Addin` targets net48
+and compiles against the Revit API, but needs neither Windows nor a Revit
+install to *build* — the API comes from the Nice3point reference-assembly
+NuGet packages.
 
-**CI** (`.github/workflows/ci.yml`) is one job across Python 3.9 / 3.12 /
-3.13 — the code has to run on whatever CPython pyRevit ships (3.8/3.9 on
-pyRevit 4.8, 3.12 on pyRevit 5), which is not a version this repo picks.
-The `compileall` step is the important one: `adapters/revit_source.py`
-and the button scripts cannot be imported without Revit, so no test will
-ever touch them, and byte-compiling is the only automated check they get.
+**CI** (`.github/workflows/ci.yml`) builds the whole solution — including
+the net48 Addin — and runs the tests. Building the Addin is the step that
+matters most: it is the half no test can reach, since nothing in it can
+be exercised without Revit running.
 
 **One real capture is committed**, deliberately:
-`samples/T2DPAA-T2D-C3S-BR-M3D-100304_Peter.capture.json`. All tests still
-use the synthetic IR builders in `tests/revit/conftest.py` — the real
-capture isn't test fixture data, it's kept as the C#-port test fixture
-PLANNING.md §12 names (real client geometry, sheet numbers and view names,
-so treat committing one the way this project treats uploaded drawings and
-check before it lands in git). Its per-view dimension attribution predates
-the `OwnerViewId` fix below and should not be trusted until it's replaced.
-A handful of other real-capture variants and unrelated debug artifacts from
-the same 2026-08-19/21 sessions were cleaned out of `samples/` on
-2026-08-23 (stale, superseded, or already fully written up elsewhere) —
-this file is the one still worth keeping.
+`samples/T2DPAA-T2D-C3S-BR-M3D-100304_Peter.capture.json`. All tests use
+the synthetic IR builders in `tests/.../Fixtures/` — the real capture is
+kept as the C#-port test fixture PLANNING.md §12 names. It contains real
+client geometry, sheet numbers and view names, so treat committing one
+the way this project treats uploaded drawings and check before it lands
+in git. Its per-view dimension attribution predates the `OwnerViewId` fix
+below and should not be trusted.
 
 ## Built state
 
-| Rule | What it does |
-| --- | --- |
-| `revit.dimension_provenance` | For each dimension, do its references resolve to model geometry, a datum, or view-specific linework? Four-way classification, rolled up per view. |
-| `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. Always reports how much was checkable. |
-| `revit.capture_coverage` | Turns the adapter's per-element extraction failures into a visible Issue, plus a separate low-severity note for any workset excluded from the capture by user choice. |
-| `revitcheck.metadata_reconciliation` | Native add-in only (no Python equivalent) — joins captured model elements to an external reference CSV via a per-run-chosen mapping file, flags missing/mismatched fields. Built, wired to a real ribbon button, deployed, and calibrated against two real reference tables on a real model — see PLANNING.md §13. |
-| `revitcheck.pile_model_schedule_consistency` | **Corrected 2026-09-07 (PLANNING.md §19) after failing on two other real bridge models** — joins piles to schedule rows on the row's own backing element (`ScheduleRow.ElementId`), not on matching `DIT_SiteID`'s text against a `SITE ID` column's; scope now comes from schedule membership as well as category, so piles modelled as Generic Models are still checked. No id column or key parameter required. Native add-in, Core-side built and tested 2026-08-26; ribbon button (`PileModelScheduleConsistencyCommand`) built 2026-08-28, view-scoped and schedule-read-narrowed the same day. **Fully validated on a real machine run, 2026-08-31**: 43 piles, 62 schedules checked, 2 real candidate schedules matched, 0 issues — the schedule's parsed Easting/Northing lands exactly on the pile's own live `GetProjectPosition` value, confirming the `AsDouble()` units fix (the fourth and last of four real bugs found in this check's schedule-reading path) holds on real data. Compares each pile's own LIVE position (`ElementMetadata.ProjectPositionEastingMm`/`NorthingMm`, populated by a `GetProjectPosition` call — `RevitMetadataElementSource`'s opt-in `populateLivePosition` flag) against its live pile schedule row (read by `Adapters/RevitScheduleSource.cs`; joined via `DIT_SiteID` until the 2026-09-07 identity fix above) — the "model-vs-schedule" half of the two pile checks named in PLANNING.md §14, catching a pile moved in the model without the schedule's Dynamo script being rerun. Deliberately does NOT compare against `XYZ_Easting`/`XYZ_Northing` — those are Dynamo-written from the same insertion point the schedule reads, so they're the value being audited, not an independent check on it (a real design bug caught and fixed same-day, see PLANNING.md §14). See PLANNING.md §16 and native/README.md. |
-| `revitcheck.pile_chain_bearing_consistency` | **Corrected 2026-09-07 (PLANNING.md §19)** — the bearing was measured endpoint-to-endpoint over a whole chain, which is unsound in both directions: two setout lines meeting at a shared pile got one bearing fitted across the corner (a real false positive on a second model), and a line through two points fits with zero residual so an interior pile off its line was undetectable and reported clean. Every edge is now walked, the chain split into straight runs (`SplitIntoStraightRuns`), each run checked against its own bearing call, and the corner reported for manual review. Native add-in, Core-side built and tested 2026-08-26; ribbon button (`PileChainBearingConsistencyCommand`) built 2026-08-28, view-scoped the same day. **Fully validated on a real machine run, 2026-08-28**: 43 piles, 46 dimensions (the exact figure already on record from a manual diagnostic run on this same view), 31 text notes, 0 issues. Reconstructs each real pile chain's own bearing from live model geometry (`Checks/PileChainReconstruction.cs`, tag-to-pile proximity matching) and compares it against the drafted bearing call nearest to it — validated end-to-end against real data: all 4 real chains reconstructed from a real pile-layout view matched their real printed bearing call to within a third of an arcsecond. A simpler, stronger mechanism than the originally-planned drawing-vs-schedule §5b DXF-chain-walk port — no dimension-chain traversal or witness-point matching needed. See PLANNING.md §16 and native/README.md. |
-| `revitcheck.spot_elevation_consistency` | Native add-in, built 2026-09-02 (PLANNING.md §18) as "Abutment Elevation," **renamed the same day** once real use showed nothing about it is actually abutment-specific — the user's own correction: the real organizing axis for this project's checking tools is dimension type + how its provenance resolves, not element type or view type. Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` confirmed unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D (plan) proximity, never by Z agreement (picking whichever face happens to agree would be circular). Deliberately **not** filtered by category anywhere — real data confirmed a category-filtered search (the first cut, `OST_StructuralFraming`) "will fall over as soon as we put another model into it": Structural Framing is an old, being-phased-out modelling workflow on this project specifically, not even stable within one client's own project history, let alone across clients. **Fully validated standalone on a real machine run, 2026-09-02**: 3 Spot Elevations in view, all 3 confirmed, 0 issues — the first check in this project's history to work cleanly on its very first real run, no bugs found or fixed in that path. Core-side built and tested (11 tests); Addin geometry-walk work ported line-for-line from a real, validated diagnostic (`InspectDimensionGeometry.pushbutton`). **Dual-mode from the start** — `RunWithScope` exposes the investigated Spot Elevation scope directly (no `ExpandByElementIdList`/view-context patching needed, unlike pile chain bearing, since this check's issues already carry each Spot Elevation's own ElementId and real view context); a genuine "couldn't determine" outcome uses `InvestigationReconciliation.ManualReviewCategory` so it routes to `NeedsManualReview`, not a wrongly-auto-exported confirmed problem. **The dual-mode/session path was not bug-free, though**: the first real run against an active checking session wrongly flagged all 3 confirmed-clean Spot Elevations as confirmed problems (a whole-check coverage Issue with no `ElementId` was being miscategorized by `InvestigationReconciliation.Reconcile`) — found and fixed the same day (`CheckingSession.RecordInvestigation` now drops null-`ElementId` issues from its dimension-linked path), with regression tests confirmed to fail without the fix, **but not yet re-confirmed against a real checking session on the Revit machine** — that's the next real validation step. See PLANNING.md §18 and native/README.md. |
+Every rule is a real ribbon button in the native add-in unless noted.
+Dated history for each is in PLANNING.md.
 
-**Export:** `bcf.py` writes the full issue list as BCF 2.1 (`.bcf`),
-split at 100 issues per file for Forma's import cap, exposed as
-`report.to_bcf` alongside `to_json`/`to_markdown` and as the **Export
-BCF** button. The Revit → BCF → Forma round trip **is proven**
-(PLANNING.md §12, 2026-08-22) — real Forma import, after fixing four
-real rejections in a row (extension, `project.bcfp`/camera, a
-Viewpoint on every Topic, and the actual `<Viewpoint>` XML shape being
-a child element, not the attribute form this module invented). Every
-finding anchors to its **sheet** (`SheetInfo.unique_id`, denormalized
-onto `ViewInfo.sheet_unique_id`), not the dimension/view element
-itself — changed after Forma warned that some issues "may not match
-the current model," on the theory that a Dimension/View has no 3D
-placement for a model viewer to resolve where a sheet is exactly what
-a document-coordination platform navigates to directly. `unique_id`
-still flows adapter → `ir.py` → `Issue` as the fallback anchor when a
-finding has no sheet to anchor to.
+| Rule | What it does | Real-machine status |
+| --- | --- | --- |
+| `revit.dimension_provenance` | Per dimension, do its references resolve to model geometry, a datum, or view-specific linework? Four-way classification, rolled up per view. **Triage, not verdicts.** | Validated |
+| `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. An override with no stated limit is not flagged (§17). Always reports how much was checkable. | Validated |
+| `revit.capture_coverage` | Turns per-element extraction failures into a visible Issue, plus a low-severity note for any workset excluded by user choice. | Validated |
+| `revitcheck.metadata_reconciliation` | Joins captured model elements to an external reference CSV via a per-run-chosen mapping file; flags missing/mismatched fields. | Validated, calibrated against two real reference tables (§13) |
+| `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Catches a pile moved without the schedule's Dynamo script being rerun. | Validated on one model (§16); **identity join (§19) not yet re-run** |
+| `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs, and compares each run's bearing against the drafted bearing call nearest it. A corner in a chain is reported for manual review, never averaged across. | Validated on one model (§16); **per-edge split (§19) not yet re-run** |
+| `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere. | Validated standalone (§18); session path fixed but **not re-confirmed** |
+
+**The interactive checking workflow** (triage → per-view investigation →
+reconciliation → manual per-dimension verdicts → reconciled BCF export)
+is built and validated end to end (§16). `InvestigationReconciliation`
+splits into three outcomes — `ConfirmedProblems` / `NeedsManualReview` /
+`StillOpenTriage` — and only the first auto-exports to BCF. The design
+exists precisely to stop "not yet checked" being silently promoted to
+"confirmed clean".
+
+**Export:** `Reporting/IssueBcfWriter.cs` writes BCF 2.1, split at 100
+issues per file for Forma's import cap. The Revit → BCF → Forma → Revit
+round trip **is proven** (§12, 2026-08-22, after fixing four real Forma
+rejections in a row). Every finding anchors to its **sheet**, not the
+dimension/view element — a Dimension has no 3D placement for a model
+viewer to resolve, whereas a sheet is exactly what a document-coordination
+platform navigates to. One thing not to re-litigate: **the Forma Issues
+API cannot create element-pinned issues** (`linkedDocuments` is not
+writable on creation), which is what ruled it out as the primary sink.
 
 Notes worth not rediscovering:
 
@@ -660,256 +225,136 @@ Notes worth not rediscovering:
   view-specific — an imported DWG is a static snapshot of someone else's
   file.
 - **A wholly-drafted view is one finding, not twenty.** It is a larger
-  and different finding, and it is the unit the follow-up tool operates
-  on — `drafted_views()` returns exactly that list.
+  and different finding, and it is the unit the follow-up tool operates on.
 - **Drafting views get different wording and severity.** A section could
-  have been live and someone chose otherwise; a drafting view never had
-  a model behind it.
-- The provenance check reports **triage, not verdicts** — that the file
-  cannot answer whether a dimension is right, not that it is wrong. Per
-  the user's standing position: *assume nothing is trustworthy or you
-  will be caught out.* An override goes stale exactly as a witness line
-  does.
+  have been live and someone chose otherwise; a drafting view never had a
+  model behind it.
+- **Triage is not a verdict.** The provenance check says the file cannot
+  answer whether a dimension is right, not that it is wrong. Per the
+  user's standing position: *assume nothing is trustworthy or you will be
+  caught out.* An override goes stale exactly as a witness line does.
 - **`Dimension.OwnerViewId` is not trustworthy read document-wide.**
-  Found 2026-08-22: a real capture attributed 430 dimensions to one
-  view that had roughly a dozen, confirmed by Select-by-ID in Revit
-  (view-specific elements can't be selected unless their real owning
-  view is active; several of the "extra" ones couldn't be, while the
-  blamed view was). The adapter now collects dimensions **per view**
-  (`FilteredElementCollector(doc, view.Id)`) instead of once
-  document-wide — `view_id` comes from the loop, never read back off
-  the element. This also scopes collection to views placed on a sheet
-  by default (confirmed as the right call for this project: a heavy
-  template leaves thousands of unplaced premade views, each of which
-  would otherwise cost its own collector call for nothing). The
-  committed sample capture predates this fix and its per-view
-  attribution should not be trusted until it's replaced.
+  Found 2026-08-22: a real capture attributed 430 dimensions to one view
+  that had roughly a dozen, confirmed by Select-by-ID. Adapters collect
+  dimensions **per view** (`FilteredElementCollector(doc, view.Id)`);
+  `ViewId` comes from the loop, never read back off the element.
+- **Collect view-scoped, not document-wide.** The same mistake has now
+  been made three times (dimensions above; then piles, 281 document-wide
+  against a real ~43 in view; then again in a diagnostic). A command's
+  element sweep should pass `ActiveView` unless there is a stated reason
+  not to. Schedules are the real exception — they are not "in" a view.
 
 ## Working conventions
 
 - **Any change to the IR** affects every rule — update PLANNING.md §3
   alongside the change.
-- **New rules go in the catalog** (`@register`), not hardcoded into a
-  button or into pipeline logic, so a project-specific check is a config
-  change rather than a code change.
+- **New rules go in the catalog** (`CheckRegistry`), not hardcoded into a
+  command, so a project-specific check is a config change rather than a
+  code change.
 - **Config must be reachable without a rebuild.** `RuleConfig` is loaded
   per-model from a file (`RuleConfigSerializer`, written as a starter by
-  Capture Model); a command must resolve it via `RuleConfigSource`, never
-  construct `new RuleConfig()`. Learned the hard way 2026-09-07
-  (PLANNING.md §19): four commands constructed their own, so a category
-  name could only be changed by rebuilding the add-in — and the same real
-  correction ("these could be Generic Models") had to be made separately
-  in each check instead of propagating once.
-- **Where the model states a link, never reconstruct it from text.** The
-  identity extension of the raw-data-over-rendered-text rule below: a
-  schedule row already knows its own element, a dimension already knows
-  its references. Joining by matching two rendered strings needs both to
-  exist, both to be recognised, and both to render identically — three
-  ways to fail that identity does not have, all three of which have now
-  failed on real data.
-- **Tolerances must be configurable** (`RuleConfig`), never hardcoded
-  constants — and say in a comment whether a figure is calibrated
-  against real data or inherited as a placeholder.
-- **Report a coverage indicator; never fail silently.** A rule that
-  found nothing because nothing was in scope must not look like a rule
-  that found nothing because the model is clean. This has already bitten
-  this project twice: a check scope that ran zero rules and looked
-  clean, and a dimension rule that was structurally inert on a whole
-  client's drawings and reported 0 issues.
+  Capture Model); a command resolves it via `RuleConfigSource`, never
+  `new RuleConfig()`. Learned the hard way 2026-09-07 (§19): four
+  commands constructed their own, so a category name could only be
+  changed by rebuilding the add-in — and the same real correction ("these
+  could be Generic Models") had to be made separately in each check
+  instead of propagating once.
+- **Where the model states a link, never reconstruct it from text** — see
+  the archive lesson above.
+- **Tolerances must be configurable**, never hardcoded constants — and
+  say in a comment whether a figure is calibrated against real data or
+  inherited as a placeholder. Most current ones are placeholders, and say
+  so.
+- **Report a coverage indicator; never fail silently.** A rule that found
+  nothing because nothing was in scope must not look like a rule that
+  found nothing because the model is clean. This has bitten the project
+  three times, most recently when a category name matched no elements and
+  a check returned having compared nothing.
 - **Skip rather than guess.** An override that isn't a clean number, a
   reference that won't resolve, a convention not yet seen — record it as
   unchecked, don't infer.
 - **Wait for real data before writing convention-specific logic.** Every
   extractor in this project's history that guessed ahead of a sample had
-  to be rewritten when one arrived.
+  to be rewritten when one arrived. The counterpart discipline that keeps
+  paying: **run a throwaway diagnostic first** (`native/diagnostics/`).
+  Spot Elevation is the only check that worked on its first real run, and
+  it is the one that had the most diagnostic work behind it.
+- **Verify Revit API members before using them.** They can be checked
+  against the real `RevitAPI.dll` via `System.Reflection.MetadataLoadContext`
+  with no Revit machine needed.
 - **Rules must be auditable** — an Issue says how it reached its
   conclusion (which reference, which segment, which view). This is a
   compliance/review tool, not a black box.
+- **Nothing is trusted until a real machine run confirms it.** Almost
+  every correction in this project's history came from an actual run, not
+  from review. When a fix is made, say plainly that it is unconfirmed.
 
 ## Next
 
-**The interactive checking workflow (triage → investigation → reconciliation → BCF export) is built, validated on the real Revit machine, and done — 2026-08-31.** Full plan at `~/.claude/plans/an-idea-of-how-floating-peacock.md` for the design reasoning; §16 above has the full build/validation history. All four stages are complete: Stage 1 (pure Core), Stage 2 (the two pile checks' first real Addin commands), Stage 3 (`CheckingSessionHost`, `DimensionTriageCommand`, the code-behind `ChecklistWindow`/`ReasonPromptWindow`, the `ExternalEvent` scaffold, dual-mode pile commands), and Stage 4 (real-machine validation across five real runs — every button, the restart/resume cycle, bulk-dismiss, and export all confirmed working, six real bugs found and fixed along the way plus one real missing capability — per-dimension manual verdicts, not just whole-view dismissal — all covered by regression tests). Export Reconciled BCF's real result — zero confirmed problems, because only piles have an investigation check built so far — is the correct, honest answer, not a gap: the reconciliation design exists precisely to keep "not yet checked" from ever being silently promoted to "confirmed clean."
+**1. Validate §19's three fixes on the two models that failed.** Per-edge
+bearings, the identity join, and the per-model config loop are all built
+and tested but unrun on a Revit machine. This is the immediate frontier.
 
-**So the actual current frontier is not workflow plumbing any more — it's the next element type.** Piles were this tool's first, easiest element type, not its whole scope (per the user's own framing, 2026-08-31) — the workflow itself was designed generically from the start (`CheckingSession.RecordInvestigation`'s dimension-linked/`otherFindingsRuleId` split already covers both shapes a future check could take) and needs no rework to add a second one. Next up, once a real sample exists: deck/abutments (direct-to-geometry dimensions — the `Face.Project` groundwork PLANNING.md §14's runs 1-5 already did) and, later, retaining walls (multi-hop survey-tolerance scaling) — see "Also open" below.
+**2. Negative controls — the biggest evidence gap.** Every verification
+check has only ever returned zero issues on real data. The tool is proven
+to agree with a clean model, which is much weaker than proven to detect
+drift. Deliberately breaking something in a scratch copy (move a pile
+50mm without rerunning Dynamo; retype a Spot Elevation) and confirming
+each check flags it at the right magnitude would convert three ambiguous
+zeros into real evidence, and is the only thing that will exercise the
+placeholder tolerances.
 
-**The native add-in's metadata-reconciliation path is done, deployed,
-and calibrated against real data (2026-08-24, PLANNING.md §13) — this is
-no longer "next", it's built.** `revitcheck.metadata_reconciliation` +
-`Capture Model` are real ribbon buttons, merged to main. Don't propose
-re-scoping or re-validating that path without a specific real-data reason
-to — see PLANNING.md §13 for what was found and fixed.
+**3. A second real model.** Until 2026-09-07 every check had been
+validated against exactly one model (BR08, the same file as the old
+pipeline's sample). The first contact with two others broke all three
+pile paths. That risk is now partly retired but not measured.
 
-**The dimension/sheet/view adapter (phase 6) is built and its collection
-step validated on the Revit machine (2026-08-25).** `~/.claude/plans/crispy-hopping-key.md`
-(written 2026-08-24) covers both tracks — Track A executed 2026-08-25, read
-it before re-deriving Track B from scratch:
+**4. The next dimension type.** The organizing axis is **dimension type
+plus how its provenance resolves** — not element type, not view type
+(corrected 2026-09-02, §18: piles read as "element-type" only because
+piles' own conventions genuinely are pile-specific). Named and unbuilt:
+- ordinary linear dimensions dimensioning to `DetailLine`s — 3 real ones
+  found in the same abutment view Spot Elevation was validated against;
+  needs a different mechanism (a measured distance between two witness
+  points, not one point's Z against one face).
+- a per-view dimension-type breakdown in the checklist ("3 linear, 3
+  spot") so a reviewer knows which button to run without already knowing
+  the answer.
 
-1. **Port the adapter** (`revit_source.py`'s
-   `_collect_dimensions`/`_collect_sheets_and_views` → C#) and wire up
-   `DimensionProvenanceCommand`/`DimensionOverrideConsistencyCommand` —
-   **done**: `Adapters/RevitDimensionSource.cs`, both commands, both ribbon
-   buttons (order: Capture Model → Dimension Provenance → Dimension
-   Overrides → Metadata Reconciliation), `CaptureModelCommand` extended to
-   capture sheets/views/dimensions too. `dotnet build` clean, all 218 tests
-   still pass. **Collection now confirmed against a real document**: the
-   user ran Capture Model against the real cloud-worksharing model the same
-   day and uploaded the result — 59 sheets, 833 views, 538 dimensions, 0
-   extraction errors. Running both dimension checks against that capture
-   (via the new `native/tools/RevitCheck.CheckRunner`, off-Revit) found 125
-   real issues — see PLANNING.md §14. Still open: the *check-producing*
-   ribbon commands (Dimension Provenance/Overrides) haven't themselves been
-   run on the Revit machine yet, so the §15 second-pass save-dialog fix is
-   still unconfirmed there specifically — this run used Capture Model,
-   which already had a working dialog before that fix.
-2. **Verify drafted dimensions against the model** — the harder half.
-   Comparison logic is still entirely unbuilt; the required first step,
-   the diagnostic below, is now built and has been run (2026-08-25/26,
-   see below for both diagnostics' real results).
-   `revit.dimension_provenance` and `revit.dimension_override_consistency`
-   currently report *triage* — a dimension is drafted/overridden — never
-   *verdicts* — whether that drafted/overridden value has actually
-   drifted from the model. Bridge curves and the need for "clean" issued
-   drawings mean some dimensions will always be drafted or overridden,
-   permanently, not a defect any amount of filtering removes — a
-   drafted dimension is only a real problem if it disagrees with the
-   model. Same problem the parked PDF/DWG pipeline's
-   `geometry.ifc_setout_consistency` solved for piles (ARCHIVE-pdf-dwg.md;
-   real IFC comparison, 0 false positives on 24 real piles matched
-   within 10mm) — didn't survive the pivot into Revit, because "the
-   model is already the source of truth" never got followed through to
-   actually comparing against it. One simplification versus that old
-   approach: no IFC intermediary needed — the model is one API call
-   away. `revit.dimension_provenance`'s `drafted_views()` is the
-   existing scope this consumes. **Zero existing code in `native/`
-   touches Revit's geometry API** (`Curve`/`XYZ`/`Options`/
-   `GeometryElement`/`Solid`/`BoundingBoxXYZ` — confirmed via grep,
-   2026-08-24) — this is genuinely new, so the plan's first step is a
-   throwaway diagnostic against real drafted views, not writing
-   comparison logic blind. That diagnostic —
-   `native/diagnostics/InspectDimensionGeometry.pushbutton/`, mirroring
-   `InspectElements.pushbutton`'s role and disposal discipline — is now
-   built and run seven times against real data (2026-08-25) — runs 1-4
-   each found and fixed a real code bug, runs 5-7 found real facts
-   about the drawings, run 7 (a real pile-layout view swept, zero
-   `CUT_EDGE` references anywhere) being the one that mattered:
-   **confirmed by the user to be PLANNING.md §5b's
-   `geometry.setout_reconstruction` all over again** — pile setout on
-   this project is drafted tag-to-tag against a live schedule, on the
-   same real sheet number (2873041) the old PDF/DWG pipeline already
-   solved this for. Two real dimensioning conventions confirmed:
-   piles (chain+bearing reconstruction) and deck/abutments
-   (direct-to-geometry — what the `Face.Project` work in runs 1-5 was
-   actually for). The pile schedule is Dynamo-populated and can go
-   stale after a model move, so two pile checks are wanted: drawing-
-   vs-schedule (the direct §5b port) and model-vs-schedule (cheaper if
-   `ProjectLocation.GetProjectPosition` already gives real coordinates
-   for this model). `native/diagnostics/InspectPileSetout.pushbutton`
-   was built to answer the remaining real unknowns, and **was run for
-   real 2026-08-26**: `GetProjectPosition`, the pile's own `XYZ_Easting`/
-   `XYZ_Northing` parameters, and the schedule's `EASTING`/`NORTHING`
-   row agree to sub-mm precision on all 4 sampled piles — **the
-   model-vs-schedule pile check is now fully unblocked, no bearing/chain
-   reconstruction needed for it at all.** (Correction to the paragraph
-   above: `DIT_StartEasting`/`DIT_StartNorthing` isn't a stale-position
-   signal — it's a deliberate client convention giving the bridge's
-   *centre* location, not the piles' own.) **Second correction, same
-   day: `XYZ_Easting`/`XYZ_Northing` are NOT the pile's live position
-   either — they're written by the same Dynamo script that (re)writes
-   the schedule, so comparing one against the other compares the same
-   stale value to itself and would miss a genuinely moved pile.** The
-   check's actual comparison is `GetProjectPosition(Pile.Location.Point)`
-   (a live call, populating the new `ElementMetadata.
-   ProjectPositionEastingMm`/`NorthingMm` — real Addin-side geometry-API
-   work, still unbuilt) against the schedule directly — the one thing
-   "no bearing/chain reconstruction needed" was correctly saying is that
-   this is still far cheaper than the §5b port, not that it needs no
-   geometry API at all. Drawing-vs-schedule was expected to remain the
-   harder, unbuilt half — a same-day `InspectDimensionGeometry.pushbutton`
-   re-run across the whole pile layout view (46 dimensions) confirmed it
-   numerically: 87/92 references resolve to `AnnotationSymbol`, 5/92 to
-   `Grid`, zero to model geometry, so there's no `CUT_EDGE`/model
-   reference for the old §5b DXF-chain-walk approach's mechanics to use.
-   **Superseded 2026-08-26 by a stronger, simpler mechanism: reconstruct
-   each pile chain's own bearing directly from live model geometry
-   (tag-to-pile proximity matching) and compare it against the drafted
-   bearing call — no dimension-chain traversal or witness-point matching
-   needed at all.** Validated decisively against real data (31 of 32
-   matched dimensions agree with real pile geometry to sub-millimetre
-   precision; all 4 real reconstructed chains matched their real printed
-   bearing call within a third of an arcsecond) and built the same day as
-   `revitcheck.pile_chain_bearing_consistency` — see PLANNING.md §14 for
-   the full numbers and the built state table above.
+**5. The drafting checks — the untouched half of the brief.** Glossaries,
+`config/en_gb_variants.json` (563 curated pairs) and the precise check
+definitions all carry over as data and semantics; only the extraction
+layer does not. This is the half where the invariance argument is
+*strongest* — Revit revisions, sheet parameters and view references are
+API objects, not drafting conventions — and it is currently at zero.
 
-**Export findings as BCF — built and proven, 2026-08-22.** `bcf.py` +
-`unique_id` + the sheet anchor are done (see Built state above), and a
-real Forma import succeeded after fixing four real rejections in a row
-— see PLANNING.md §12 for the full sequence of exact error text ->
-diagnosis -> fix. The reasoning that got BCF chosen over six other
-candidates is unchanged (PLANNING.md §5d): it is the only off-machine
-format that keeps the element anchor, rather than degrading a finding
-to a number someone retypes into Select by ID.
-
-**Native-side port done too (2026-08-25).** `native/src/RevitCheck.Core/Reporting/IssueBcfWriter.cs`
-is a line-for-line port of `bcf.py`, wired into all three native
-check-producing commands so every run writes JSON, CSV, *and* BCF side by
-side — see native/README.md's "Next" for the detail, including the
-hand-rolled UUIDv5 (`System.Guid` has no built-in equivalent to
-`uuid.uuid5`) verified against real Python output. Genuinely no Revit
-machine needed to build or test this half — only confirming the output
-still imports into Forma does.
-
-One thing not to re-litigate: **the Forma Issues API cannot create
-element-pinned issues** (`linkedDocuments` is not writable on creation),
-which is what ruled it out as the primary sink.
-
-**Confirmed by the user, 2026-08-22: this was the entire scope of what
-pyRevit needed to do.** The Revit -> BCF -> Forma -> Revit round trip
-is proven; no further pyRevit feature work is planned. §12's decided
-direction (native add-in for production) starts next.
-
-Also open, carried over from PLANNING.md:
-
-- **Multi-hop survey-tolerance scaling** (§5's `base + per_hop×√hops`) —
-  still live, awaiting a retaining-wall sample. Bridge chains are short;
-  retaining walls are not.
-- ~~**Abutment beam placement**~~ — **built 2026-09-02 as `revitcheck.spot_elevation_consistency`** (PLANNING.md §18, see the Built state table above; originally named "Abutment Elevation," renamed the same day once real use showed it isn't abutment-specific). Diagnostic-first discipline paid off exactly as it did for piles: real ground truth (a Spot Elevation's `Value` is unconditionally null; its `Reference` and nearby parameters are both unreliable; a category-filtered geometry search "will fall over as soon as we put another model into it") shaped a real check built only after 3 real samples matched real solid geometry to within a few millimetres. Standalone path confirmed clean on a real machine run the same day; the dual-mode/checking-session path's first real run found a real reconciliation bug (fixed, see the Built state table above) that still needs re-confirming on the machine.
-- **Two real, named-but-unbuilt follow-ups from the same session**: (1) ordinary linear dimensions dimensioning to `DetailLine`s — a real, distinct gap found the same day (3 in the same abutment view `revitcheck.spot_elevation_consistency` was validated against) that nothing currently investigates; verifying these needs a different mechanism (a measured distance between two witness points, not one point's Z against one face) and should be named generically from the start, not as another element-type button, per the same lesson the rename above corrected. (2) surfacing a per-view dimension-type breakdown in the checklist (e.g. "3 linear, 3 spot") so a reviewer knows which button to run without already knowing the answer — the user's own suggested next UX step.
-- **Porting the drafting checks** — glossaries, en-GB variants and the
-  precise check definitions carry over as data and semantics; the
-  extraction layer does not. See ARCHIVE-pdf-dwg.md.
+**Also open:** multi-hop survey-tolerance scaling (§5's
+`base + per_hop×√hops`), awaiting a retaining-wall sample. Bridge chains
+are short; retaining walls are not, and may be curved, which the pile
+chain work explicitly assumes away.
 
 ## Environment quirks worth knowing
 
-- **`.venv` is Python 3.13 and holds only `pytest`** (26MB). Rebuilt
-  from scratch on 2026-08-18: a virtualenv hardcodes its own path and
-  does not survive the folder rename. The one it replaced was 359MB of
-  PyMuPDF/pdfplumber/ezdxf/ifcopenshell, all of it for the parked
-  pipeline.
-- 3.13 rather than the 3.9.5 this project used to run on — that is an
-  **x86_64 build under Rosetta on an arm64 Mac** and correspondingly
-  slow. CI still gates 3.9, so the floor is covered without paying for
-  it locally. Worth knowing before reading anything into an interpreter
-  benchmark taken here: a local 3.9-vs-3.13 comparison mostly measures
-  Rosetta. On CI, same runner both sides, the real gap was ~13%.
 - **The project folder is `~/projects/revitcheck`**, renamed from
   `pdf checker` on 2026-08-18 along with the repo. Claude Code keys its
-  per-project state on the path, so
-  `~/.claude/projects/-Users-petergriggs-projects-pdf-checker` was moved
-  to `...-revitcheck` at the same time — memory included. Anything still
-  naming the old path is stale.
+  per-project state on the path, so the old
+  `...-pdf-checker` state directory was moved at the same time — memory
+  included. Anything still naming the old path is stale.
+- **`.venv` is dead weight.** 45MB holding only `pytest`, for the test
+  suite archived on 2026-09-07. Nothing in the tree runs Python any more
+  except `native/diagnostics/`, which runs inside Revit's own interpreter.
 - **Git remote** is `https://github.com/badger584114/revitcheck.git`
-  (private, renamed from `pdf-dwg-checker` on 2026-08-18 — GitHub keeps
-  a redirect, so an old clone's remote still works). Two failure modes seen on this machine: (1) a GitHub HTTP/2
-  push bug (`RPC failed; HTTP 400`) — fixed by `git config http.version
+  (private, renamed from `pdf-dwg-checker` 2026-08-18 — GitHub keeps a
+  redirect). Two failure modes seen on this machine: (1) a GitHub HTTP/2
+  push bug (`RPC failed; HTTP 400`), fixed by `git config http.version
   HTTP/1.1` plus a larger `http.postBuffer`, already set in this repo's
-  `.git/config`, so a fresh clone needs it re-applied; (2) GitHub accepts
-  only a Personal Access Token as the HTTPS password, and a stale
-  Keychain credential produces a similar-looking HTTP 400 — clear it with
+  `.git/config` so a fresh clone needs it re-applied; (2) GitHub accepts
+  only a Personal Access Token as the HTTPS password, and a stale Keychain
+  credential produces a similar-looking HTTP 400 — clear it with
   `git credential-osxkeychain erase`.
 - The **`gh` CLI is installed and authenticated** (`badger584114`) — use
-  it for PRs (`gh pr create`, `gh pr merge`) rather than the REST API.
+  it for PRs rather than the REST API.
 - `samples/Flinders/` (201MB, a third client's real drawings) was never
-  tracked and was deleted from disk 2026-08-23 — its findings were already
-  fully written up in ARCHIVE-pdf-dwg.md, so nothing was lost. If it
-  reappears on disk from a future export, it must stay untracked; do not
-  `git add` it.
+  tracked and was deleted from disk 2026-08-23 — its findings are fully
+  written up in ARCHIVE-pdf-dwg.md. If it reappears from a future export
+  it must stay untracked; do not `git add` it.

@@ -1,8 +1,0 @@
-title: |-
-  CPython
-  Doc Test
-tooltip: >-
-  Same as CPython Test, but also touches revit.doc.Title — isolating
-  whether CPython 3 + Revit-document access is what fails, independent
-  of which extension the script lives in.
-author: Peter Griggs
