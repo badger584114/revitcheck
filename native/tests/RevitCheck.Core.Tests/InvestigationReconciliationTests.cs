@@ -392,4 +392,78 @@ public class InvestigationReconciliationTests
         Assert.Equal(new long?[] { 10, 20 }, result.ConfirmedProblems.Select(i => i.ElementId).OrderBy(id => id));
         Assert.Empty(result.StillOpenTriage);
     }
+
+    /// <summary>
+    /// Real user report, 2026-09-07: "when I run them against the dimension
+    /// triage they do not resolve any raised issues." On the real pile view
+    /// the whole checklist row is a single rollup naming 29 drafted
+    /// dimensions, and it only cleared when every one of them had a
+    /// verdict - so an investigation check that verified most of them
+    /// changed nothing a reviewer could see, and a partly-investigated view
+    /// looked identical to an untouched one.
+    /// </summary>
+    [Fact]
+    public void A_partly_investigated_rollup_narrows_to_what_is_actually_left()
+    {
+        var rollup = RollupIssue(viewId: 10, draftedIds: new long[] { 1, 2, 3, 4, 5 });
+
+        var result = InvestigationReconciliation.Reconcile(
+            new[] { rollup },
+            new long[] { 1, 2, 3 },
+            Array.Empty<Issue>());
+
+        var open = Assert.Single(result.StillOpenTriage);
+        var remaining = (List<long>)open.SuggestedFix!["drafted_dimension_ids"]!;
+        Assert.Equal(new long[] { 4, 5 }, remaining.ToArray());
+        Assert.Contains("3 of 5 have since been verified", open.Description);
+
+        // The issue count alone still reads 1 - which is exactly why the
+        // dimension-level counts exist.
+        Assert.Equal(1, result.StillOpenTriage.Count);
+        Assert.Equal(3, result.ResolvedDimensionCount);
+        Assert.Equal(2, result.OpenDimensionCount);
+    }
+
+    [Fact]
+    public void An_untouched_rollup_is_left_exactly_as_raised()
+    {
+        var rollup = RollupIssue(viewId: 10, draftedIds: new long[] { 1, 2, 3 });
+
+        var result = InvestigationReconciliation.Reconcile(
+            new[] { rollup }, Array.Empty<long>(), Array.Empty<Issue>());
+
+        var open = Assert.Single(result.StillOpenTriage);
+        // No "0 of 3 verified" noise appended to every unstarted view.
+        Assert.DoesNotContain("since been verified", open.Description);
+        Assert.Equal(0, result.ResolvedDimensionCount);
+        Assert.Equal(3, result.OpenDimensionCount);
+    }
+
+    [Fact]
+    public void A_fully_investigated_rollup_still_clears_completely()
+    {
+        var rollup = RollupIssue(viewId: 10, draftedIds: new long[] { 1, 2 });
+
+        var result = InvestigationReconciliation.Reconcile(
+            new[] { rollup }, new long[] { 1, 2 }, Array.Empty<Issue>());
+
+        Assert.Empty(result.StillOpenTriage);
+        Assert.Equal(2, result.ResolvedDimensionCount);
+        Assert.Equal(0, result.OpenDimensionCount);
+    }
+
+    private static Issue RollupIssue(long viewId, long[] draftedIds) => new()
+    {
+        RuleId = "revit.dimension_provenance",
+        Category = "geometry",
+        Severity = "high",
+        ElementId = viewId,
+        ViewId = viewId,
+        Description = $"{draftedIds.Length} of {draftedIds.Length} dimensions in this view are taken from detail linework.",
+        SuggestedFix = new Dictionary<string, object?>
+        {
+            ["scope"] = "view",
+            ["drafted_dimension_ids"] = draftedIds.ToList(),
+        },
+    };
 }

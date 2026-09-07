@@ -162,12 +162,19 @@ public static class InvestigationReconciliation
             needsManualReview.Where(i => i.ElementId is not null).Select(i => i.ElementId!.Value));
 
         var stillOpen = new List<Issue>();
+        // Dimension-level progress, so a partly-investigated view can show
+        // it. The issue-level count cannot: a rollup is one issue whether
+        // it covers 29 dimensions or 2.
+        var openDimensionCount = 0;
+        var resolvedDimensionCount = 0;
+
         foreach (var issue in triageIssues)
         {
             if (IsRolledUpDraftedView(issue))
             {
                 if (AllDraftedDimensionsResolved(issue, investigatedSet))
                 {
+                    resolvedDimensionCount += DraftedDimensionCount(issue);
                     // Every dimension this rollup summarized has been
                     // examined now (clean, problem, or manual review) - the
                     // rollup's own "verify this against the model"
@@ -178,23 +185,32 @@ public static class InvestigationReconciliation
                     continue;
                 }
 
-                // At least one dimension in this view is still
-                // uninvestigated - the rollup stays exactly as it was,
-                // not partially rewritten to reflect a partial result.
-                stillOpen.Add(issue);
+                // Partially investigated: the rollup is narrowed to what is
+                // actually still outstanding, rather than left standing at
+                // its original count. Leaving it whole was a real usability
+                // failure (2026-09-07): a view where an investigation check
+                // had verified 18 of 29 dimensions looked identical to one
+                // nobody had touched, so running the pile tools appeared to
+                // do nothing at all.
+                var remaining = RemainingDraftedDimensions(issue, investigatedSet);
+                openDimensionCount += remaining.Count;
+                resolvedDimensionCount += DraftedDimensionCount(issue) - remaining.Count;
+                stillOpen.Add(NarrowRollup(issue, remaining, DraftedDimensionCount(issue)));
                 continue;
             }
 
             if (issue.ElementId is not { } elementId)
             {
                 // No single element to reconcile against (a model-wide
-                // coverage note, for instance) - never suppressed.
+                // coverage note, for instance) - never suppressed, and not
+                // counted as a dimension either way.
                 stillOpen.Add(issue);
                 continue;
             }
 
             if (problemIds.Contains(elementId) || manualReviewIds.Contains(elementId))
             {
+                resolvedDimensionCount++;
                 // Superseded, not duplicated - the investigation check's
                 // own, more specific finding for this exact dimension is
                 // what should reach the reader, not the vague triage flag
@@ -207,11 +223,13 @@ public static class InvestigationReconciliation
             {
                 // Investigated and found clean - resolving exactly this
                 // uncertainty is the whole reason investigation exists.
+                resolvedDimensionCount++;
                 continue;
             }
 
             // Nothing has investigated this one yet - stays open and
             // visible, never silently dropped.
+            openDimensionCount++;
             stillOpen.Add(issue);
         }
 
@@ -220,6 +238,8 @@ public static class InvestigationReconciliation
             ConfirmedProblems = IssueSorting.SortIssues(confirmedProblems),
             NeedsManualReview = IssueSorting.SortIssues(needsManualReview),
             StillOpenTriage = IssueSorting.SortIssues(stillOpen),
+            OpenDimensionCount = openDimensionCount,
+            ResolvedDimensionCount = resolvedDimensionCount,
         };
     }
 
@@ -244,6 +264,68 @@ public static class InvestigationReconciliation
         JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
         _ => null,
     };
+
+    private static int DraftedDimensionCount(Issue rollupIssue) =>
+        ElementIdList(rollupIssue.SuggestedFix, "drafted_dimension_ids").Count;
+
+    private static List<long> RemainingDraftedDimensions(Issue rollupIssue, ISet<long> investigatedSet) =>
+        ElementIdList(rollupIssue.SuggestedFix, "drafted_dimension_ids")
+            .Where(id => !investigatedSet.Contains(id))
+            .ToList();
+
+    /// <summary>
+    /// The same rollup, restated to cover only the dimensions still
+    /// outstanding.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Keeps the "a wholly-drafted view is one finding, not twenty"
+    /// principle intact (CLAUDE.md) - this is still one issue, not
+    /// <paramref name="remaining"/> of them - while making partial progress
+    /// visible, which it previously was not at all.
+    /// </para>
+    /// <para>
+    /// The original description is appended to rather than rewritten: it
+    /// was composed by the check that raised it and says things this class
+    /// has no business restating. What gets added is only what this class
+    /// actually knows - how many of the dimensions it named have since been
+    /// examined.
+    /// </para>
+    /// </remarks>
+    private static Issue NarrowRollup(Issue rollupIssue, List<long> remaining, int originalCount)
+    {
+        var verified = originalCount - remaining.Count;
+        if (verified <= 0)
+        {
+            // Nothing investigated yet - leave it exactly as raised rather
+            // than appending a "0 verified" line to every untouched view.
+            return rollupIssue;
+        }
+
+        var fix = rollupIssue.SuggestedFix is null
+            ? new Dictionary<string, object?>()
+            : new Dictionary<string, object?>(rollupIssue.SuggestedFix);
+        fix["drafted_dimension_ids"] = remaining;
+        fix["verified_dimension_count"] = verified;
+        fix["original_drafted_dimension_count"] = originalCount;
+
+        return new Issue
+        {
+            RuleId = rollupIssue.RuleId,
+            Category = rollupIssue.Category,
+            Severity = rollupIssue.Severity,
+            ElementId = rollupIssue.ElementId,
+            UniqueId = rollupIssue.UniqueId,
+            ViewId = rollupIssue.ViewId,
+            ViewName = rollupIssue.ViewName,
+            SheetNo = rollupIssue.SheetNo,
+            Description =
+                rollupIssue.Description +
+                $" ({verified} of {originalCount} have since been verified against the model; " +
+                $"{remaining.Count} still unverified.)",
+            SuggestedFix = fix,
+        };
+    }
 
     private static bool AllDraftedDimensionsResolved(Issue rollupIssue, ISet<long> investigatedSet)
     {
@@ -435,4 +517,20 @@ public sealed class ReconciliationResult
 
     /// <summary>Nothing has investigated this yet - the original triage finding, unchanged.</summary>
     public List<Issue> StillOpenTriage { get; init; } = new();
+
+    /// <summary>
+    /// How many individual dimensions are still unverified across
+    /// <see cref="StillOpenTriage"/>, counting a rollup as the dimensions
+    /// it actually still covers rather than as one.
+    /// </summary>
+    /// <remarks>
+    /// The issue-level count cannot show progress: a view's rollup is one
+    /// issue whether it covers 29 dimensions or 2, so a checklist reading
+    /// <see cref="StillOpenTriage"/>.Count showed the same number after an
+    /// investigation check had verified two thirds of them (2026-09-07).
+    /// </remarks>
+    public int OpenDimensionCount { get; init; }
+
+    /// <summary>How many individual dimensions have been verified, superseded or otherwise accounted for.</summary>
+    public int ResolvedDimensionCount { get; init; }
 }

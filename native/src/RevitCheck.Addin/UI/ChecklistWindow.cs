@@ -186,6 +186,7 @@ internal sealed class ChecklistWindow : Window
         gridView.Columns.Add(Column("View Name", nameof(ChecklistRow.ViewName), 280));
         gridView.Columns.Add(Column("Status", nameof(ChecklistRow.StatusText), 110));
         gridView.Columns.Add(Column("Still Open", nameof(ChecklistRow.StillOpenCount), 75));
+        gridView.Columns.Add(Column("Dimensions", nameof(ChecklistRow.DimensionProgress), 90));
         gridView.Columns.Add(Column("Confirmed", nameof(ChecklistRow.ConfirmedCount), 80));
         gridView.Columns.Add(Column("Manual Review", nameof(ChecklistRow.ManualReviewCount), 100));
 
@@ -195,6 +196,13 @@ internal sealed class ChecklistWindow : Window
             SelectionMode = SelectionMode.Extended,
             View = gridView,
         };
+    }
+
+    /// <summary>"18 / 29" - how many of a view's flagged dimensions now have a verdict.</summary>
+    private static string FormatProgress(int resolved, int open)
+    {
+        var total = resolved + open;
+        return total == 0 ? "" : $"{resolved} / {total}";
     }
 
     private static GridViewColumn Column(string header, string bindingPath, double width) =>
@@ -361,6 +369,16 @@ internal sealed class ChecklistWindow : Window
                 // unchanged after real investigation work had actually
                 // resolved most of it.
                 StillOpenCount = v.LastReconciliation.StillOpenTriage.Count,
+                // Dimension-level progress, because the issue count above
+                // cannot move for the commonest case: a wholly-drafted
+                // view is deliberately ONE rollup issue however many
+                // dimensions it covers, so verifying 18 of 29 left this row
+                // reading exactly as it did before (real feedback,
+                // 2026-09-07 - "when I run them against the dimension
+                // triage they do not resolve any raised issues").
+                DimensionProgress = FormatProgress(
+                    v.LastReconciliation.ResolvedDimensionCount,
+                    v.LastReconciliation.OpenDimensionCount),
                 ConfirmedCount = v.LastReconciliation.ConfirmedProblems.Count + v.OtherInvestigationFindings.Count,
                 ManualReviewCount = v.LastReconciliation.NeedsManualReview.Count,
             })
@@ -716,6 +734,7 @@ internal sealed class ChecklistWindow : Window
         public ViewInvestigationStatus Status { get; init; }
         public string StatusText => Status.ToString();
         public int StillOpenCount { get; init; }
+        public string DimensionProgress { get; init; } = "";
         public int ConfirmedCount { get; init; }
         public int ManualReviewCount { get; init; }
     }
