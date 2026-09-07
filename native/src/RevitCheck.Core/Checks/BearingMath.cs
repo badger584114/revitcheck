@@ -29,6 +29,31 @@ public static class BearingMath
         return diff > 180.0 ? 360.0 - diff : diff;
     }
 
+    /// <summary>
+    /// The mean of several bearings, averaged as unit vectors rather than
+    /// as numbers - the only way that works across the 0°/360° wrap, where
+    /// a plain arithmetic mean of 359° and 1° gives 180°, the exact
+    /// opposite of the right answer.
+    /// </summary>
+    public static double MeanDegrees(IReadOnlyList<double> bearingsDegrees)
+    {
+        if (bearingsDegrees.Count == 0)
+        {
+            return 0.0;
+        }
+
+        var x = 0.0;
+        var y = 0.0;
+        foreach (var bearing in bearingsDegrees)
+        {
+            var radians = bearing * (Math.PI / 180.0);
+            x += Math.Sin(radians);
+            y += Math.Cos(radians);
+        }
+
+        return Normalize(Math.Atan2(x, y) * (180.0 / Math.PI));
+    }
+
     private static double Normalize(double degrees)
     {
         var result = degrees % 360.0;

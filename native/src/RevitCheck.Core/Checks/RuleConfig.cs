@@ -226,40 +226,34 @@ public sealed record RuleConfig
     public double PileChainBearingToleranceDegrees { get; init; } = 60.0 / 3600.0;
 
     /// <summary>
-    /// Two consecutive pile-to-pile edges in one reconstructed chain are
-    /// treated as the same straight setout line only while their bearings
-    /// agree within this many degrees; beyond it the chain is split into
-    /// separate straight runs at that pile and the bend itself is reported
-    /// for a human (see
-    /// <see cref="PileChainBearingConsistencyCheck"/>'s remarks).
+    /// How far one pile-to-pile edge may sit from its run's own mean
+    /// bearing before the chain is treated as changing direction there.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Calibrated against the real separation between adjacent setout
-    /// lines on this project, which is the figure that actually matters
-    /// here: the real bearing calls on <c>DRG-2873041 - PILE LAYOUT</c>
-    /// include 165°13'26" and 165°07'01" - two genuinely different setout
-    /// lines only 6'25" (~0.107°) apart. A collinearity tolerance has to
-    /// sit well below that separation or two real, distinct setout lines
-    /// joined at a shared pile would be silently absorbed into one
-    /// "straight" chain, which is exactly the real false positive this
-    /// field exists to prevent (a bearing fitted across the corner matches
-    /// neither leg). 60 arcseconds leaves roughly a 6x margin against that
-    /// real 6'25" case while staying orders of magnitude looser than the
-    /// real clean data (every real straight chain measured agreed to under
-    /// a third of an arcsecond).
+    /// <b>Measured against the run's running mean, not the previous edge —
+    /// corrected 2026-09-07 against real data from a second bridge model.</b>
+    /// Consecutive-edge comparison cannot tell a corner from placement
+    /// scatter, because scatter oscillates: a real 14-pile chain gave
+    /// consecutive deltas of 277", 605", 328", 71", 177" while its bearings
+    /// simply wandered around a mean and returned to it. Measured against
+    /// that mean instead, the same edges sit within 306" and the chain's one
+    /// genuine 84.56° corner stands out at 304,399" — a 996x separation,
+    /// where consecutive deltas gave no usable gap at all.
     /// </para>
     /// <para>
-    /// Deliberately its own field rather than reusing
-    /// <see cref="PileChainBearingToleranceDegrees"/>, despite sharing its
-    /// default: that one governs drawing-vs-model agreement (how far a
-    /// printed bearing call may sit from reconstructed geometry), this one
-    /// governs model-vs-model agreement (whether two edges are the same
-    /// physical line at all). They answer different questions and there is
-    /// no reason they should have to move together.
+    /// 0.2° is ~2.4x the largest real scatter observed (0.085°) and ~423x
+    /// below the real corner. <b>A consequence worth stating rather than
+    /// hiding: a genuine corner shallower than about 0.2° is below the
+    /// placement scatter in this model's own geometry, so this method
+    /// cannot see it.</b> That is a limit of the signal, not a threshold
+    /// that could be tuned away — an earlier 60" default, chosen against
+    /// the 6'25" separation between two adjacent setout lines on a
+    /// different model, produced four false corners on the first real chain
+    /// it met.
     /// </para>
     /// </remarks>
-    public double PileChainCollinearityToleranceDegrees { get; init; } = 60.0 / 3600.0;
+    public double PileChainCollinearityToleranceDegrees { get; init; } = 0.2;
 
     /// <summary>
     /// Below this many piles, a resolved chain isn't reported at all - a

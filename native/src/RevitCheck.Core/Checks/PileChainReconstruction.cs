@@ -56,7 +56,12 @@ public sealed class PileChainRun
     public required double MaxInternalDeviationDegrees { get; init; }
 }
 
-/// <summary>One pile where a chain changes direction, with the two edge bearings that meet there.</summary>
+/// <summary>One pile where a chain changes direction.</summary>
+/// <param name="BearingBeforeDegrees">
+/// The mean bearing of the run leading into this pile - not the single
+/// edge before it, which on real data wanders enough to make a straight
+/// run look like a series of corners.
+/// </param>
 public sealed record PileChainBend(
     ElementMetadata Pile,
     double DeviationDegrees,
@@ -329,12 +334,21 @@ public static class PileChainReconstruction
     /// chain's interior at all.
     /// </para>
     /// <para>
-    /// Both edge bearings are compared directly, never via
+    /// Bearings are compared directly, never via
     /// <see cref="BearingMath.Reciprocal"/>: within a single ordered walk
-    /// consecutive edges continue in the same direction, so a genuine
-    /// straight run shows near-zero disagreement. The reciprocal ambiguity
-    /// applies only when comparing a run against a printed bearing call,
-    /// whose own direction convention is arbitrary relative to walk order.
+    /// every edge continues in the same direction, so a genuine straight
+    /// run shows near-zero disagreement. The reciprocal ambiguity applies
+    /// only when comparing a run against a printed bearing call, whose own
+    /// direction convention is arbitrary relative to walk order.
+    /// </para>
+    /// <para>
+    /// <b>Each edge is measured against the mean of the run so far, not
+    /// against its immediate predecessor</b> - corrected 2026-09-07 after
+    /// the first real chain from a second model produced four false corners
+    /// (see <see cref="RuleConfig.PileChainCollinearityToleranceDegrees"/>
+    /// for the real numbers). Real piles are not exactly collinear, and
+    /// their scatter oscillates around the line rather than accumulating,
+    /// so consecutive deltas measure the noise while the mean cancels it.
     /// </para>
     /// <para>
     /// A pile with no live project position makes straightness
@@ -375,14 +389,25 @@ public static class PileChainReconstruction
 
         var split = new PileChainSplit();
         var runStartEdge = 0;
+        var runBearings = new List<double> { bearings[0] };
+        var runMean = bearings[0];
         var runMaxDeviation = 0.0;
 
         for (var i = 1; i < edgeCount; i++)
         {
-            var deviation = BearingMath.AngularDifference(bearings[i], bearings[i - 1]);
+            // Against the run's own mean, never the previous edge: real
+            // pile placement scatter oscillates around a line and returns
+            // to it, so consecutive deltas make a straight run look like a
+            // series of corners. See RuleConfig.PileChainCollinearityToleranceDegrees.
+            var deviation = BearingMath.AngularDifference(bearings[i], runMean);
             if (deviation <= config.PileChainCollinearityToleranceDegrees)
             {
-                runMaxDeviation = Math.Max(runMaxDeviation, deviation);
+                runBearings.Add(bearings[i]);
+                runMean = BearingMath.MeanDegrees(runBearings);
+                // Re-measured against the updated mean, so what a run
+                // reports is how far its worst edge sits from the line it
+                // was actually judged against.
+                runMaxDeviation = runBearings.Max(b => BearingMath.AngularDifference(b, runMean));
                 continue;
             }
 
@@ -390,11 +415,13 @@ public static class PileChainReconstruction
             split.Bends.Add(new PileChainBend(
                 piles[i],
                 deviation,
-                bearings[i - 1],
+                runMean,
                 bearings[i],
                 chain.EdgeDimensionElementIds[i - 1].Concat(chain.EdgeDimensionElementIds[i]).Distinct().ToList()));
 
             runStartEdge = i;
+            runBearings = new List<double> { bearings[i] };
+            runMean = bearings[i];
             runMaxDeviation = 0.0;
         }
 

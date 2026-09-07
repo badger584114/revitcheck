@@ -279,8 +279,17 @@ public class PileModelScheduleConsistencyCheckTests
         Assert.Contains("PIL999999", issue.Description);
     }
 
+    /// <summary>
+    /// Real shape from model 100302, which has five schedules carrying
+    /// setout columns (two per-abutment, one for barrier piles, one for
+    /// setout points, one general), so a pile legitimately appears in
+    /// several. Every one of that model's 33 piles was previously reported
+    /// "genuinely ambiguous, so this pile was not checked" - the check
+    /// refused to do its job on every element because it read duplication
+    /// as conflict.
+    /// </summary>
     [Fact]
-    public void Pile_matching_rows_in_two_schedules_is_flagged_as_ambiguous_not_guessed()
+    public void Pile_matching_agreeing_rows_in_two_schedules_is_checked_not_called_ambiguous()
     {
         var model = RevitCheckTestBuilders.Model(
             elements: new[] { RevitCheckTestBuilders.Pile(1, "PIL232132", 278238810.671, 6130224280.728) },
@@ -294,11 +303,36 @@ public class PileModelScheduleConsistencyCheckTests
                     new[] { ("PIL232132", "278238.811", "6130224.281") }),
             });
 
-        var issues = PileModelScheduleConsistencyCheck.Run(model, new RuleConfig());
+        // Two schedules stating the same thing is one answer said twice.
+        Assert.Empty(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
+    }
 
-        var issue = Assert.Single(issues);
-        Assert.Equal("coverage", issue.Category);
-        Assert.Contains("2 schedule rows", issue.Description);
+    /// <summary>
+    /// Rows that genuinely disagree are a real finding in their own right -
+    /// the schedules contradict each other about where a pile belongs -
+    /// which is a stronger result than the coverage note it replaces, and
+    /// not an excuse to stop looking.
+    /// </summary>
+    [Fact]
+    public void Pile_matching_disagreeing_rows_is_a_real_finding_about_the_schedules()
+    {
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { RevitCheckTestBuilders.Pile(1, "PIL232132", 278238810.671, 6130224280.728) },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileSchedule(
+                    "ABUTMENT A AND A1 PILE SCHEDULE",
+                    new[] { ("PIL232132", "278238.811", "6130224.281") }),
+                RevitCheckTestBuilders.PileSchedule(
+                    "ABUTMENT B, B1 AND B2 PILE SCHEDULE",
+                    new[] { ("PIL232132", "278239.811", "6130224.281") }),   // 1m east
+            });
+
+        var issue = Assert.Single(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
+
+        Assert.Equal("geometry", issue.Category);
+        Assert.Equal("high", issue.Severity);
+        Assert.Contains("disagree with each other", issue.Description);
     }
 
     [Fact]
@@ -322,5 +356,46 @@ public class PileModelScheduleConsistencyCheckTests
         var issue = Assert.Single(issues);
         Assert.Equal("coverage", issue.Category);
         Assert.Contains("2 pile element(s)", issue.Description);
+    }
+
+    /// <summary>
+    /// Real shape from model 100302: of 33 elements that reached this check,
+    /// only 28 were piles. A candidate schedule also lists two voids, a
+    /// conduit and a floor as backing elements, and identity-based scope
+    /// brought them along - schedule membership is a broader thing than
+    /// "the piles". An element that only got in that way, whose row carries
+    /// no readable coordinates, is other content in that schedule rather
+    /// than a pile with a coverage problem.
+    /// </summary>
+    [Fact]
+    public void Schedule_content_that_is_not_a_pile_is_counted_not_reported_as_a_broken_pile()
+    {
+        var pile = RevitCheckTestBuilders.Pile(1, "PIL232132", 278238810.671, 6130224280.728);
+        // A void that shares the schedule but has no setout coordinates.
+        var voidCut = RevitCheckTestBuilders.Element(
+            2,
+            category: "Generic Models",
+            familyName: "SFR_ACS_Voidcut",
+            projectPositionEastingMm: 278238810.671,
+            projectPositionNorthingMm: 6130224280.728);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pile, voidCut },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "ABUTMENT A PILE SCHEDULE",
+                    new[] { (1L, "278238.811", "6130224.281"), (2L, "", "") }),
+            });
+
+        var issues = PileModelScheduleConsistencyCheck.Run(model, new RuleConfig());
+
+        // The pile itself is clean; the void is accounted for, at low
+        // severity, and never presented as a pile that failed.
+        var issue = Assert.Single(issues);
+        Assert.Equal("coverage", issue.Category);
+        Assert.Equal("low", issue.Severity);
+        Assert.Contains("treated as other content", issue.Description);
+        Assert.Contains("2", issue.Description);
     }
 }
