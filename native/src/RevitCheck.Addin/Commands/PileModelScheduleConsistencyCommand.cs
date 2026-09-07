@@ -80,6 +80,12 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
         // (RuleConfigSource's remarks).
         var (config, configDescription) = RuleConfigSource.Resolve(doc);
 
+        // Which categories to sweep is config, not a constant: piles are
+        // Structural Foundations on one real model and Generic Models on
+        // another, and an element in no swept category never reaches the
+        // check at all (RuleConfig.PileCollectionCategoryNames).
+        var (collectionCategories, unresolvedCategories) = CategoryScope.Resolve(config);
+
         MetadataCollectionResult piles;
         try
         {
@@ -91,7 +97,7 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             // actually reads.
             piles = RevitMetadataElementSource.Collect(
                 doc,
-                categories: new[] { BuiltInCategory.OST_StructuralFoundation },
+                categories: collectionCategories,
                 populateLivePosition: true,
                 scopeView: activeView);
         }
@@ -170,7 +176,7 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             "." +
             ExtractionErrorSample.Format(model.ExtractionErrors) +
             ScheduleDiagnostics(piles.Elements, schedules, config);
-        summary += "\n\n" + configDescription;
+        summary += "\n\n" + configDescription + CategoryScope.Note(unresolvedCategories);
 
         if (CheckingSessionHost.Session is { } session)
         {

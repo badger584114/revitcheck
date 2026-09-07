@@ -90,6 +90,43 @@ public sealed record RuleConfig
     public string PileCategoryName { get; init; } = "Structural Foundations";
 
     /// <summary>
+    /// Which Revit categories the pile commands actually <em>collect</em>
+    /// before any check runs, as <c>BuiltInCategory</c> enum names.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Separate from <see cref="PileCategoryName"/>, and the more important
+    /// of the two: that one is a display name the check uses to decide
+    /// which collected elements it <em>expected</em> to see, whereas this
+    /// decides what the adapter sweeps at all. An element in no listed
+    /// category never reaches the check, so no amount of identity joining
+    /// downstream can rescue it.
+    /// </para>
+    /// <para>
+    /// <b>Added 2026-09-07, closing a real gap left by the same day's own
+    /// identity-join fix.</b> That fix let the check take its scope from
+    /// schedule membership so piles modelled as Generic Models would still
+    /// be checked - but both pile commands passed a hardcoded
+    /// <c>OST_StructuralFoundation</c> to the adapter, so on that model
+    /// <c>RevitModel.Elements</c> came back empty and there was nothing for
+    /// schedule membership to match against. Half a fix reads exactly like
+    /// a whole one until someone asks what the collection step does.
+    /// </para>
+    /// <para>
+    /// Defaults to both real cases seen so far. Collection is view-scoped,
+    /// so widening this costs a bounded number of extra
+    /// <c>GetProjectPosition</c> calls within one view - a far better trade
+    /// than a check that silently examines nothing. A name that isn't a
+    /// real <c>BuiltInCategory</c> is reported, never silently skipped.
+    /// </para>
+    /// </remarks>
+    public List<string> PileCollectionCategoryNames { get; init; } = new()
+    {
+        "OST_StructuralFoundation",
+        "OST_GenericModel",
+    };
+
+    /// <summary>
     /// Instance parameter holding a pile's own site/tag id - the join key
     /// against the schedule's own id column. Confirmed real on this project
     /// as <c>DIT_SiteID</c> - per-project naming, same as a `Mark`
