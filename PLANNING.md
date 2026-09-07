@@ -1126,3 +1126,13 @@ Added as a third verdict alongside the existing two ("Mark Selected Issue(s) Nee
 **The real risk, fixed at the same time: coverage findings were auto-exporting to BCF.** `ExportableConfirmedProblems()` took every `OtherInvestigationFindings` entry regardless of category, and `PileModelScheduleConsistencyCheck` emits several coverage notes per run (ambiguous rows, out-of-scope schedule content, blank keys). Those say *"this could not be checked"*, not *"this is wrong"*, and shipping them to Forma would bury the real defects under a stream of "nothing found here" topics — the same mistake the dimension triage buttons' own `writeBcf: false` correction already fixed once (PLANNING.md §14). Coverage findings now stay in the checklist and the JSON/CSV audit output but never auto-export, and a view whose only standalone finding is a coverage note is no longer marked `Flagged`.
 
 376 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+**Ribbon regrouped into three panels (2026-09-07), per the user.** One panel of six buttons said nothing about how they relate; the split encodes §21's distinction directly, so a reviewer can read it off the ribbon instead of discovering it the way this session did:
+
+| Panel | Buttons |
+| --- | --- |
+| **Capture** | Capture Model |
+| **Dimension Checking** | Dimension Triage, Pile Chain Bearing, Spot Elevation |
+| **Model Checks** | Pile Model/Schedule, Metadata Reconciliation |
+
+The middle panel is the button that raises triage plus exactly the checks that can resolve it; the right-hand one is the checks that report independently. Left-to-right still follows the order things are actually run in (confirmed 2026-08-24). Capture Model's tooltip was also stale on two counts — it still described the mandatory mapping file removed by the same day's earlier work, and predated the all-category sweep and the starter config — and now describes what the button actually does.
