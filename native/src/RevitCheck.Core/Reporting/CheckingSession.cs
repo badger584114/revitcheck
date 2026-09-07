@@ -85,7 +85,12 @@ public sealed class ViewChecklistEntry
     {
         get
         {
-            if (LastReconciliation.ConfirmedProblems.Count > 0 || OtherInvestigationFindings.Count > 0)
+            // Coverage findings say "this could not be checked", not "this
+            // is wrong" - a view whose only standalone finding is one of
+            // those is not Flagged (2026-09-07). It still shows in the
+            // checklist's Other Findings column and the audit output.
+            if (LastReconciliation.ConfirmedProblems.Count > 0 ||
+                OtherInvestigationFindings.Any(i => !string.Equals(i.Category, "coverage", StringComparison.OrdinalIgnoreCase)))
             {
                 return ViewInvestigationStatus.Flagged;
             }
@@ -250,6 +255,45 @@ public sealed class CheckingSession
     /// meaningful bucket for it - so it never reaches
     /// <see cref="ViewChecklistEntry.InvestigationIssues"/> at all.
     /// </remarks>
+    /// <summary>
+    /// This view's checklist entry, creating an empty one if triage never
+    /// raised anything here.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added 2026-09-07.</b> <see cref="RecordInvestigation"/> returns
+    /// silently when a view has no row, which is correct for a check that
+    /// resolves triage - there is nothing to resolve. It was wrong for a
+    /// check that <em>reports</em> independently: a real pile-versus-schedule
+    /// mismatch in a view that triage happened not to flag was dropped from
+    /// the session entirely, so it never appeared in the checklist and
+    /// never reached the reconciled BCF export. The finding existed only in
+    /// that command's own JSON/CSV, which is precisely the "one place to
+    /// check and export" this workflow is for.
+    /// </para>
+    /// <para>
+    /// An entry created this way carries no triage issues, so its
+    /// reconciliation is empty and nothing is invented - it exists purely
+    /// so a real finding has somewhere to be seen.
+    /// </para>
+    /// </remarks>
+    public ViewChecklistEntry EnsureView(long viewId, string? viewName, string? sheetNo)
+    {
+        if (FindView(viewId) is { } existing)
+        {
+            return existing;
+        }
+
+        var entry = new ViewChecklistEntry
+        {
+            ViewId = viewId,
+            ViewName = viewName,
+            SheetNo = sheetNo,
+        };
+        Views.Add(entry);
+        return entry;
+    }
+
     public void RecordInvestigation(
         long viewId,
         IReadOnlyCollection<long> investigatedElementIds,
@@ -326,10 +370,31 @@ public sealed class CheckingSession
         }
     }
 
-    /// <summary>Every confirmed problem across every view - reconciled per-dimension findings plus every non-dimension-linked investigation finding (already a verdict, not a candidate). The only list meant for automatic BCF export.</summary>
+    /// <summary>
+    /// Every confirmed problem across every view - reconciled
+    /// per-dimension findings plus every standalone investigation finding
+    /// that is an actual problem. The only list meant for automatic BCF
+    /// export.
+    /// </summary>
+    /// <remarks>
+    /// A standalone check's <c>coverage</c> findings are deliberately
+    /// excluded (2026-09-07). They are honest and belong in the checklist
+    /// and the JSON/CSV audit output, but they say "this could not be
+    /// checked", not "this is wrong" - and a check like
+    /// <c>revitcheck.pile_model_schedule_consistency</c> emits several per
+    /// run, so exporting them would put a stream of "nothing was found
+    /// here" topics into Forma alongside the real defects. Same principle
+    /// as the dimension triage buttons not exporting candidates:
+    /// BCF carries verdicts.
+    /// </remarks>
     public List<Issue> ExportableConfirmedProblems() =>
         IssueSorting.SortIssues(
-            Views.SelectMany(v => v.LastReconciliation.ConfirmedProblems.Concat(v.OtherInvestigationFindings)));
+            Views.SelectMany(v => v.LastReconciliation.ConfirmedProblems
+                .Concat(v.OtherInvestigationFindings.Where(IsRealProblem))));
+
+    /// <summary>A standalone finding that states a defect rather than a gap in what could be checked.</summary>
+    private static bool IsRealProblem(Issue issue) =>
+        !string.Equals(issue.Category, "coverage", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Investigated, but inconclusive - needs a human to read the drawing.

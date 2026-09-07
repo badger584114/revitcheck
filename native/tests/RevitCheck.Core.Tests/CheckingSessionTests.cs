@@ -554,4 +554,68 @@ public class CheckingSessionTests
         Assert.Single(entry.LastReconciliation.NeedsManualReview);
         Assert.Equal(ViewInvestigationStatus.NeedsManualReview, entry.Status);
     }
+
+    /// <summary>
+    /// A standalone check reports on a view triage never flagged. Before
+    /// 2026-09-07 RecordInvestigation returned silently for a view with no
+    /// row, so a real pile-versus-schedule mismatch there was dropped from
+    /// the session entirely - it never appeared in the checklist and never
+    /// reached the reconciled BCF export, existing only in that command's
+    /// own JSON/CSV.
+    /// </summary>
+    [Fact]
+    public void A_standalone_finding_on_an_untriaged_view_still_reaches_the_checklist_and_export()
+    {
+        var session = CheckingSession.Start(Array.Empty<Issue>(), new RuleConfig());
+        Assert.Null(session.FindView(42));
+
+        session.EnsureView(42, "PILE LAYOUT", "2871051");
+        session.RecordInvestigation(42, Array.Empty<long>(), new[]
+        {
+            new Issue
+            {
+                RuleId = "revitcheck.pile_model_schedule_consistency",
+                Category = "geometry",
+                Severity = "high",
+                ElementId = 900,
+                ViewId = 42,
+                Description = "Pile 900 is 250mm from its schedule row.",
+            },
+        }, "revitcheck.pile_model_schedule_consistency");
+
+        var entry = session.FindView(42)!;
+        Assert.Single(entry.OtherInvestigationFindings);
+        Assert.Equal(ViewInvestigationStatus.Flagged, entry.Status);
+        Assert.Single(session.ExportableConfirmedProblems());
+    }
+
+    /// <summary>
+    /// A coverage finding says "this could not be checked", not "this is
+    /// wrong". It belongs in the checklist and the audit output, but
+    /// exporting it would put a stream of "nothing found here" topics into
+    /// Forma alongside the real defects - and a standalone check emits
+    /// several per run.
+    /// </summary>
+    [Fact]
+    public void A_standalone_coverage_note_is_shown_but_neither_flags_the_view_nor_exports()
+    {
+        var session = CheckingSession.Start(Array.Empty<Issue>(), new RuleConfig());
+        session.EnsureView(42, "PILE LAYOUT", "2871051");
+        session.RecordInvestigation(42, Array.Empty<long>(), new[]
+        {
+            new Issue
+            {
+                RuleId = "revitcheck.pile_model_schedule_consistency",
+                Category = "coverage",
+                Severity = "low",
+                ViewId = 42,
+                Description = "2 element(s) were treated as other content in that schedule.",
+            },
+        }, "revitcheck.pile_model_schedule_consistency");
+
+        var entry = session.FindView(42)!;
+        Assert.Single(entry.OtherInvestigationFindings);
+        Assert.NotEqual(ViewInvestigationStatus.Flagged, entry.Status);
+        Assert.Empty(session.ExportableConfirmedProblems());
+    }
 }
