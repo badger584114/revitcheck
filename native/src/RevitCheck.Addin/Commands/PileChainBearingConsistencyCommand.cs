@@ -136,6 +136,10 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
         {
             var viewId = activeView.Id.Value;
             var viewInfo = dims.Views.FirstOrDefault(v => v.ElementId == viewId);
+            // Ensures a row exists even where triage raised nothing, so a
+            // real bend or manual-review finding is still seen and exported
+            // (see CheckingSession.EnsureView).
+            session.EnsureView(viewId, activeView.Name, viewInfo?.SheetNo);
             // Expand each chain-keyed issue into one copy per dimension id
             // first - the whole reason ExpandByElementIdList exists (see
             // its own remarks): a flagged chain's issue carries
@@ -153,10 +157,9 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
 
             session.RecordInvestigation(viewId, investigatedDimensionIds, expanded);
 
-            var sessionNote = session.FindView(viewId) is not null
-                ? "\n\nRecorded against the active checking session - see the checklist window."
-                : "\n\nNo checklist row exists yet for this view (Dimension Triage found nothing to flag " +
-                  "here), so these results were not recorded in the session - informational only.";
+            // A row always exists now (EnsureView above), including for a
+            // view triage never flagged - findings are no longer dropped.
+            var sessionNote = "\n\nRecorded against the active checking session - see the checklist window.";
 
             try
             {

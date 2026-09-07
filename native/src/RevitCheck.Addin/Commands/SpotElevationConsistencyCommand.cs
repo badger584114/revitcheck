@@ -133,12 +133,16 @@ public class SpotElevationConsistencyCommand : IExternalCommand
         if (CheckingSessionHost.Session is { } session)
         {
             var viewId = activeView.Id.Value;
+            // Ensures a row exists even where triage raised nothing here,
+            // so a real Spot Elevation finding is still seen and exported
+            // (see CheckingSession.EnsureView).
+            var spotViewInfo = collected.Views.FirstOrDefault(v => v.ElementId == viewId);
+            session.EnsureView(viewId, activeView.Name, spotViewInfo?.SheetNo);
             session.RecordInvestigation(viewId, investigatedElementIds, issues);
 
-            var sessionNote = session.FindView(viewId) is not null
-                ? "\n\nRecorded against the active checking session - see the checklist window."
-                : "\n\nNo checklist row exists yet for this view (Dimension Triage found nothing to flag " +
-                  "here), so these results were not recorded in the session - informational only.";
+            // A row always exists now (EnsureView above), including for a
+            // view triage never flagged - findings are no longer dropped.
+            var sessionNote = "\n\nRecorded against the active checking session - see the checklist window.";
 
             try
             {

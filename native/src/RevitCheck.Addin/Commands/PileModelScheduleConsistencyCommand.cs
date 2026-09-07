@@ -182,6 +182,14 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
         if (CheckingSessionHost.Session is { } session)
         {
             var viewId = activeView.Id.Value;
+            // A row is created if triage never raised anything here, so a
+            // real pile-versus-schedule mismatch in an otherwise-clean view
+            // still reaches the checklist and the reconciled BCF export
+            // instead of living only in this command's own JSON/CSV
+            // (see CheckingSession.EnsureView).
+            // No sheet number available here - this command collects piles
+            // and schedules, not views. Null rather than guessed.
+            session.EnsureView(viewId, activeView.Name, sheetNo: null);
             // No dimension linkage to expand or reconcile - see this
             // class's remarks and InvestigationReconciliation's own on why
             // this check "stands alone". investigatedElementIds is unused
@@ -190,10 +198,15 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             // recomputed for nothing.
             session.RecordInvestigation(viewId, Array.Empty<long>(), issues, PileModelScheduleConsistencyCheck.RuleId);
 
-            var sessionNote = session.FindView(viewId) is not null
-                ? "\n\nRecorded against the active checking session - see the checklist window."
-                : "\n\nNo checklist row exists yet for this view (Dimension Triage found nothing to flag " +
-                  "here), so these results were not recorded in the session - informational only.";
+            // A row always exists now (EnsureView above), so a real
+            // mismatch in a view triage never flagged still reaches the
+            // checklist and the reconciled BCF export.
+            var sessionNote =
+                "\n\nRecorded against the active checking session, in the checklist's Other Findings " +
+                "column.\n\nThis check does NOT resolve Dimension Triage items, and is not meant to: it " +
+                "compares a pile's position against the schedule, which says nothing about whether a " +
+                "drafted dimension on the drawing is correct. Pile Chain Bearing is the check that " +
+                "resolves triaged pile dimensions.";
 
             try
             {

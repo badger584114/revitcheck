@@ -189,6 +189,7 @@ internal sealed class ChecklistWindow : Window
         gridView.Columns.Add(Column("Dimensions", nameof(ChecklistRow.DimensionProgress), 90));
         gridView.Columns.Add(Column("Confirmed", nameof(ChecklistRow.ConfirmedCount), 80));
         gridView.Columns.Add(Column("Manual Review", nameof(ChecklistRow.ManualReviewCount), 100));
+        gridView.Columns.Add(Column("Other Findings", nameof(ChecklistRow.OtherFindingsCount), 100));
 
         return new ListView
         {
@@ -258,7 +259,7 @@ internal sealed class ChecklistWindow : Window
             Padding = new Thickness(8, 4, 8, 4),
             Margin = new Thickness(0, 0, 8, 0),
         };
-        resolve.Click += (_, _) => OnMarkDetailVerdictClick(isConfirmedProblem: false);
+        resolve.Click += (_, _) => OnMarkDetailVerdictClick(DetailVerdict.Resolved);
         panel.Children.Add(resolve);
 
         var confirm = new Button
@@ -267,8 +268,25 @@ internal sealed class ChecklistWindow : Window
             Padding = new Thickness(8, 4, 8, 4),
             Margin = new Thickness(0, 0, 16, 0),
         };
-        confirm.Click += (_, _) => OnMarkDetailVerdictClick(isConfirmedProblem: true);
+        confirm.Click += (_, _) => OnMarkDetailVerdictClick(DetailVerdict.ConfirmedProblem);
         panel.Children.Add(confirm);
+
+        // Without this a view could not terminate. Some dimensions no
+        // automated check can ever reach - the real pile view has two whose
+        // single reference means the pile chain check structurally cannot
+        // investigate them (PLANNING.md §21) - and the only exits were
+        // "Resolved", which claims a cleanliness the reviewer may have no
+        // basis for, or "Confirmed Problem", which claims a defect. Parking
+        // one honestly is a third, real outcome, and the reconciliation
+        // already has a bucket for it.
+        var manualReview = new Button
+        {
+            Content = "Mark Selected Issue(s) Needs Manual Review",
+            Padding = new Thickness(8, 4, 8, 4),
+            Margin = new Thickness(0, 0, 16, 0),
+        };
+        manualReview.Click += (_, _) => OnMarkDetailVerdictClick(DetailVerdict.NeedsManualReview);
+        panel.Children.Add(manualReview);
 
         var selectInRevit = new Button
         {
@@ -379,7 +397,14 @@ internal sealed class ChecklistWindow : Window
                 DimensionProgress = FormatProgress(
                     v.LastReconciliation.ResolvedDimensionCount,
                     v.LastReconciliation.OpenDimensionCount),
-                ConfirmedCount = v.LastReconciliation.ConfirmedProblems.Count + v.OtherInvestigationFindings.Count,
+                // Kept apart from OtherFindings deliberately: these are
+                // verdicts ON TRIAGED DIMENSIONS. A standalone check's
+                // findings are real, and flag the view, but they resolve
+                // nothing that triage raised - conflating the two made it
+                // look as though running any pile tool was making progress
+                // against the triage list (PLANNING.md §21).
+                ConfirmedCount = v.LastReconciliation.ConfirmedProblems.Count,
+                OtherFindingsCount = v.OtherInvestigationFindings.Count,
                 ManualReviewCount = v.LastReconciliation.NeedsManualReview.Count,
             })
             .ToList();
@@ -532,7 +557,20 @@ internal sealed class ChecklistWindow : Window
     /// deliberately fast for going through several dimensions in a row;
     /// a full reason prompt is what <c>ReasonPromptWindow</c> is for.
     /// </remarks>
-    private void OnMarkDetailVerdictClick(bool isConfirmedProblem)
+    /// <summary>What a reviewer decided about one selected dimension.</summary>
+    private enum DetailVerdict
+    {
+        /// <summary>Checked against the drawing and correct - recorded as investigated with no issue, exactly as a clean automated result is.</summary>
+        Resolved,
+
+        /// <summary>A real defect - emits an Issue that flows into ConfirmedProblems and the BCF export.</summary>
+        ConfirmedProblem,
+
+        /// <summary>Examined, and genuinely cannot be settled here - routed to NeedsManualReview, never auto-exported.</summary>
+        NeedsManualReview,
+    }
+
+    private void OnMarkDetailVerdictClick(DetailVerdict verdict)
     {
         var session = CheckingSessionHost.Session;
         var selectedView = _listView.SelectedItems.Cast<ChecklistRow>().ToList();
@@ -553,8 +591,9 @@ internal sealed class ChecklistWindow : Window
 
         var viewId = selectedView[0].ViewId;
         var elementIds = selectedDetails.Select(r => r.ElementId!.Value).ToList();
-        var verdictIssues = isConfirmedProblem
-            ? selectedDetails.Select(r => new Issue
+        var verdictIssues = verdict switch
+        {
+            DetailVerdict.ConfirmedProblem => selectedDetails.Select(r => new Issue
             {
                 RuleId = InvestigationReconciliation.ManualVerdictRuleId,
                 Category = "geometry",
@@ -565,8 +604,21 @@ internal sealed class ChecklistWindow : Window
                 SheetNo = selectedView[0].SheetNo,
                 Description = $"Manually confirmed as a real problem by a reviewer, checking against the " +
                     $"drawing. Original finding: {r.Description}",
-            }).ToList()
-            : new List<Issue>();
+            }).ToList(),
+            DetailVerdict.NeedsManualReview => selectedDetails.Select(r => new Issue
+            {
+                RuleId = InvestigationReconciliation.ManualVerdictRuleId,
+                Category = InvestigationReconciliation.ManualReviewCategory,
+                Severity = "medium",
+                ElementId = r.ElementId!.Value,
+                ViewId = viewId,
+                ViewName = selectedView[0].ViewName,
+                SheetNo = selectedView[0].SheetNo,
+                Description = $"Parked for manual review by a reviewer - no automated check can settle this one. " +
+                    $"Original finding: {r.Description}",
+            }).ToList(),
+            _ => new List<Issue>(),
+        };
 
         session.RecordInvestigation(viewId, elementIds, verdictIssues);
 
@@ -737,6 +789,9 @@ internal sealed class ChecklistWindow : Window
         public string DimensionProgress { get; init; } = "";
         public int ConfirmedCount { get; init; }
         public int ManualReviewCount { get; init; }
+
+        /// <summary>Findings from a standalone check that reports on this view without resolving its dimension triage - see the Confirmed column's own remarks.</summary>
+        public int OtherFindingsCount { get; init; }
     }
 
     /// <summary>One row in <see cref="_detailsListView"/> - a single, real, individually-actionable finding (never an opaque rollup - see <see cref="UpdateDetails"/>'s own remarks).</summary>
