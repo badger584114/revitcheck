@@ -182,13 +182,13 @@ public class PileChainReconstructionTests
     [Fact]
     public void SplitIntoStraightRuns_splits_at_a_corner_and_attributes_each_run_its_own_dimensions()
     {
-        // The two real adjacent setout lines from DRG-2873041 - PILE LAYOUT
-        // (165°13'26" and 165°07'01", 6'25" apart) meeting at pile 3.
+        // The real 84.56° corner from model 100302, where tag-to-tag
+        // dimensioning joined two setout lines into one 14-pile chain.
         var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0.0, 0.0);
-        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 765.1278858813357, -2900.7894301804736);
-        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 1530.2557717626714, -5801.578860360947);
-        var p4 = RevitCheckTestBuilders.Pile(4, "P4", 2300.796739915849, -8700.935102080402);
-        var p5 = RevitCheckTestBuilders.Pile(5, "P5", 3071.337708069026, -11600.291343799858);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", -254.35178378282274, 2989.198081440321);
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", -508.70356756564547, 5978.396162880642);
+        var p4 = RevitCheckTestBuilders.Pile(4, "P4", -3508.54919037101, 6008.830343262169);
+        var p5 = RevitCheckTestBuilders.Pile(5, "P5", -6508.394813176374, 6039.264523643696);
 
         var chain = Assert.Single(PileChainReconstruction.BuildChains(
             new List<PileChainEdge> { new(p1, p2, 101), new(p2, p3, 102), new(p3, p4, 103), new(p4, p5, 104) }).Chains);
@@ -197,15 +197,48 @@ public class PileChainReconstructionTests
 
         var bend = Assert.Single(split.Bends);
         Assert.Equal(3, bend.Pile.ElementId);
-        // 6'25" between the two real calls - the real separation this
-        // tolerance has to stay well below to tell them apart at all.
-        Assert.Equal(385.0, bend.DeviationDegrees * 3600.0, 3);
+        Assert.Equal(84.555, bend.DeviationDegrees, 2);
 
         Assert.Equal(2, split.Runs.Count);
         Assert.Equal(new long[] { 1, 2, 3 }, split.Runs[0].PilesInOrder.Select(x => x.ElementId).ToArray());
         Assert.Equal(new long[] { 3, 4, 5 }, split.Runs[1].PilesInOrder.Select(x => x.ElementId).ToArray());
         Assert.Equal(new long[] { 101, 102 }, split.Runs[0].DimensionElementIds.OrderBy(id => id).ToArray());
         Assert.Equal(new long[] { 103, 104 }, split.Runs[1].DimensionElementIds.OrderBy(id => id).ToArray());
+    }
+
+    /// <summary>
+    /// The real scatter case, from the same real chain: bearings that
+    /// wander around a line and return to it are one run, not five. The
+    /// consecutive-edge deltas here are 277", 605", 328", 71" - every one
+    /// of them a false corner under the old comparison - while every
+    /// bearing sits within 306" of the run's own mean.
+    /// </summary>
+    [Fact]
+    public void SplitIntoStraightRuns_treats_real_oscillating_scatter_as_one_run()
+    {
+        var piles = new List<Ir.ElementMetadata>();
+        var edges = new List<PileChainEdge>();
+        double e = 0.0, n = 0.0;
+        var bearings = new[] { 355.14432, 355.22129, 355.05310, 355.14432, 355.13461, 355.15420, 355.09507 };
+        piles.Add(RevitCheckTestBuilders.Pile(1, "P1", e, n));
+        for (var i = 0; i < bearings.Length; i++)
+        {
+            var r = bearings[i] * Math.PI / 180.0;
+            e += 3000.0 * Math.Sin(r);
+            n += 3000.0 * Math.Cos(r);
+            piles.Add(RevitCheckTestBuilders.Pile(i + 2, $"P{i + 2}", e, n));
+            edges.Add(new PileChainEdge(piles[i], piles[i + 1], 100 + i));
+        }
+
+        var chain = Assert.Single(PileChainReconstruction.BuildChains(edges).Chains);
+        var split = PileChainReconstruction.SplitIntoStraightRuns(chain, new RuleConfig());
+
+        Assert.Empty(split.Bends);
+        var run = Assert.Single(split.Runs);
+        Assert.Equal(8, run.PilesInOrder.Count);
+        // Reported honestly: the run is straight to within its own scatter,
+        // not perfectly straight.
+        Assert.InRange(run.MaxInternalDeviationDegrees * 3600.0, 100.0, 400.0);
     }
 
     [Fact]

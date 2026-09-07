@@ -124,6 +124,8 @@ public static class PileModelScheduleConsistencyCheck
             .Select(id => elementsById[id!.Value])
             .ToList();
 
+        var categoryMatchedIds = new HashSet<long>(categoryElements.Select(e => e.ElementId));
+
         var toCheck = new List<ElementMetadata>();
         var seen = new HashSet<long>();
         foreach (var element in categoryElements.Concat(scheduledElements))
@@ -173,6 +175,7 @@ public static class PileModelScheduleConsistencyCheck
         }
 
         var blankKeyElementIds = new List<long>();
+        var outOfScopeElementIds = new List<long>();
 
         foreach (var pile in toCheck)
         {
@@ -211,6 +214,23 @@ public static class PileModelScheduleConsistencyCheck
 
             var label = PileLabel(pile, config);
 
+            // Scope narrowing, added 2026-09-07 from real data: schedule
+            // membership is a broader scope than "the piles". A real
+            // candidate schedule on model 100302 also lists voids, a
+            // conduit and a floor as backing elements, and those arrived
+            // here alongside 28 genuine piles. An element that only got in
+            // via a schedule row, and whose row carries no readable
+            // coordinates, is simply another row in that schedule - not a
+            // pile with a coverage problem. Counted, never silently
+            // dropped.
+            if (matches.Count > 0 &&
+                !categoryMatchedIds.Contains(pile.ElementId) &&
+                !matches.Any(m => TryReadRowPosition(m.Schedule, m.Row, config, out _, out _)))
+            {
+                outOfScopeElementIds.Add(pile.ElementId);
+                continue;
+            }
+
             if (matches.Count == 0)
             {
                 issues.Add(new Issue
@@ -225,19 +245,21 @@ public static class PileModelScheduleConsistencyCheck
                 continue;
             }
 
-            if (matches.Count > 1)
+            if (matches.Count > 1 && !RowsAgree(matches, config, out var disagreementMm))
             {
                 issues.Add(new Issue
                 {
                     RuleId = RuleId,
-                    Category = "coverage",
-                    Severity = "medium",
+                    Category = "geometry",
+                    Severity = "high",
                     ElementId = pile.ElementId,
                     UniqueId = pile.UniqueId,
                     Description =
-                        $"{label} matches {matches.Count} schedule rows across the captured " +
-                        "schedules - genuinely ambiguous, so this pile was not checked rather than compared " +
-                        "against an arbitrarily chosen row.",
+                        $"{label} appears in {matches.Count} schedule rows that disagree with each other by up " +
+                        $"to {FormatMm(disagreementMm)}mm (" +
+                        string.Join(", ", matches.Select(m => $"'{m.Schedule.Name}'")) +
+                        ") - the schedules themselves are inconsistent about where this pile is, so there is no " +
+                        "single stated position to check the model against.",
                 });
                 continue;
             }
@@ -248,6 +270,22 @@ public static class PileModelScheduleConsistencyCheck
         if (blankKeyElementIds.Count > 0)
         {
             issues.Add(BuildBlankKeyIssue(blankKeyElementIds, config));
+        }
+
+        if (outOfScopeElementIds.Count > 0)
+        {
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = "coverage",
+                Severity = "low",
+                Description =
+                    $"{outOfScopeElementIds.Count} element(s) appear in a captured setout schedule but are not " +
+                    $"in category '{config.PileCategoryName}' and their rows carry no readable coordinates, so " +
+                    "they were treated as other content in that schedule rather than as piles: " +
+                    string.Join(", ", outOfScopeElementIds.Take(MaxListed)) +
+                    (outOfScopeElementIds.Count > MaxListed ? ", ..." : "") + ".",
+            });
         }
 
         return issues;
@@ -266,6 +304,82 @@ public static class PileModelScheduleConsistencyCheck
         return key is null
             ? $"Pile {pile.ElementId}"
             : $"Pile {pile.ElementId} ('{key}')";
+    }
+
+    /// <summary>
+    /// A row's stated Easting/Northing in millimetres, or false when either
+    /// column is missing or unreadable.
+    /// </summary>
+    private static bool TryReadRowPosition(
+        ScheduleInfo schedule, ScheduleRow row, RuleConfig config, out double eastingMm, out double northingMm)
+    {
+        eastingMm = 0;
+        northingMm = 0;
+
+        var eastingHeader = schedule.ResolveHeader(config.PileScheduleEastingHeaders);
+        var northingHeader = schedule.ResolveHeader(config.PileScheduleNorthingHeaders);
+        if (eastingHeader is null || northingHeader is null)
+        {
+            return false;
+        }
+
+        return TryParseMetresToMm(row, eastingHeader, config, out eastingMm) &&
+               TryParseMetresToMm(row, northingHeader, config, out northingMm);
+    }
+
+    /// <summary>
+    /// True when every matched row states the same position, within
+    /// <see cref="RuleConfig.PileSetoutToleranceMm"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added 2026-09-07, from a real run that checked nothing.</b> Model
+    /// 100302 has five schedules carrying setout columns - two per-abutment,
+    /// one for off-structure barrier piles, one for setout points, and a
+    /// general one - so a pile legitimately appears in more than one of
+    /// them. Every one of its 33 piles matched several rows and was
+    /// reported "genuinely ambiguous, so this pile was not checked": the
+    /// check refused to do its job on every single element, because it read
+    /// duplication as conflict.
+    /// </para>
+    /// <para>
+    /// Rows that agree are one answer stated twice, and the check proceeds.
+    /// Rows that genuinely disagree are a real finding in their own right -
+    /// the schedules contradict each other about where a pile belongs -
+    /// which is a stronger result than the coverage note it replaces, and
+    /// is reported as such rather than as an excuse not to look.
+    /// </para>
+    /// </remarks>
+    private static bool RowsAgree(
+        List<(ScheduleInfo Schedule, ScheduleRow Row)> matches, RuleConfig config, out double worstDisagreementMm)
+    {
+        worstDisagreementMm = 0;
+
+        var positions = new List<(double E, double N)>();
+        foreach (var (schedule, row) in matches)
+        {
+            if (!TryReadRowPosition(schedule, row, config, out var e, out var n))
+            {
+                // An unreadable row can't be shown to agree, so it can't be
+                // collapsed away - fall through to the normal single-row
+                // path only when every row is readable.
+                return false;
+            }
+
+            positions.Add((e, n));
+        }
+
+        for (var i = 0; i < positions.Count; i++)
+        {
+            for (var j = i + 1; j < positions.Count; j++)
+            {
+                var dE = positions[i].E - positions[j].E;
+                var dN = positions[i].N - positions[j].N;
+                worstDisagreementMm = Math.Max(worstDisagreementMm, Math.Sqrt((dE * dE) + (dN * dN)));
+            }
+        }
+
+        return worstDisagreementMm <= config.PileSetoutToleranceMm;
     }
 
     private static string? ResolveKeyValue(ElementMetadata pile, RuleConfig config)

@@ -343,27 +343,24 @@ public class PileChainBearingConsistencyCheckTests
     }
 
     /// <summary>
-    /// The real 2026-09-07 false positive, reproduced with this project's
-    /// own real bearing figures: two setout lines (165°13'26" and
-    /// 165°07'01", both real calls on DRG-2873041 - PILE LAYOUT, only 6'25"
-    /// apart) meeting at a shared pile. Tag-to-tag dimensioning connects
-    /// them into one topologically simple chain, and the old
-    /// endpoint-to-endpoint bearing measured straight across the corner:
-    /// 165°10'13", which is 192.5 arcseconds from BOTH real calls - well
-    /// beyond the 60-arcsecond tolerance, so a correct drawing got flagged.
-    /// Each leg must now be checked against its own call instead, with the
-    /// corner itself reported for a human rather than silently averaged.
+    /// The real false positive, rebuilt 2026-09-07 from the real corner in
+    /// model 100302: tag-to-tag dimensioning joined two setout lines
+    /// meeting at 84.56° into one topologically simple 14-pile chain, and
+    /// the old endpoint-to-endpoint bearing measured straight across the
+    /// corner - landing 152,199 arcseconds from *both* legs. Each leg must
+    /// be checked against its own call instead, with the corner reported
+    /// for a human rather than averaged away.
     /// </summary>
     [Fact]
     public void Two_setout_lines_meeting_at_a_shared_pile_are_not_flagged_as_one_wrong_bearing()
     {
-        // Leg A: piles 1→2→3 on 165°13'26". Leg B: piles 3→4→5 on
-        // 165°07'01". Pile 3 is the shared corner.
+        // Leg A: piles 1→2→3 on 355°08'11" (that chain's own real mean).
+        // Leg B: piles 3→4→5 on 270°34'52". Pile 3 is the shared corner.
         var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0.0, 0.0);
-        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 765.1278858813357, -2900.7894301804736);
-        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 1530.2557717626714, -5801.578860360947);
-        var p4 = RevitCheckTestBuilders.Pile(4, "P4", 2300.796739915849, -8700.935102080402);
-        var p5 = RevitCheckTestBuilders.Pile(5, "P5", 3071.337708069026, -11600.291343799858);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", -254.35178378282274, 2989.198081440321);
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", -508.70356756564547, 5978.396162880642);
+        var p4 = RevitCheckTestBuilders.Pile(4, "P4", -3508.54919037101, 6008.830343262169);
+        var p5 = RevitCheckTestBuilders.Pile(5, "P5", -6508.394813176374, 6039.264523643696);
 
         var dims = new[]
         {
@@ -373,9 +370,8 @@ public class PileChainBearingConsistencyCheckTests
             Edge(104, p4, p5, 207, 208),
         };
 
-        // One real bearing call beside each leg, each nearest to its own.
-        var noteA = RevitCheckTestBuilders.TextNote(301, 1, "165° 13' 26\"", RevitCheckTestBuilders.Pt(100.0, 0.0));
-        var noteB = RevitCheckTestBuilders.TextNote(302, 1, "165° 07' 01\"", RevitCheckTestBuilders.Pt(3171.337708069026, -11600.291343799858));
+        var noteA = RevitCheckTestBuilders.TextNote(301, 1, "355° 08' 11\"", RevitCheckTestBuilders.Pt(100.0, 0.0));
+        var noteB = RevitCheckTestBuilders.TextNote(302, 1, "270° 34' 53\"", RevitCheckTestBuilders.Pt(-6608.394813176374, 6039.264523643696));
 
         var model = RevitCheckTestBuilders.Model(
             elements: new[] { p1, p2, p3, p4, p5 },
@@ -388,12 +384,38 @@ public class PileChainBearingConsistencyCheckTests
         // nothing here is a confirmed bearing problem.
         Assert.DoesNotContain(issues, i => i.Category == "geometry");
 
-        // The corner is reported instead - for a human, since only a person
-        // can say whether two setout lines legitimately meet here or a pile
-        // is off its line.
         var bend = Assert.Single(issues, i => i.Category == InvestigationReconciliation.ManualReviewCategory);
         Assert.Equal(3, bend.ElementId);
         Assert.Contains("changes direction", bend.Description);
+    }
+
+    /// <summary>
+    /// The stated limit of the method, pinned so it cannot regress into a
+    /// silent one: real pile placement scatter reaches 0.085° within a
+    /// genuinely straight run, so a corner shallower than the 0.2°
+    /// tolerance is below the noise and is deliberately not split. An
+    /// earlier 60" tolerance, calibrated against the 6'25" separation
+    /// between two adjacent setout lines on a different model, produced
+    /// four false corners on the first real chain it met.
+    /// </summary>
+    [Fact]
+    public void A_direction_change_below_real_placement_scatter_is_not_treated_as_a_corner()
+    {
+        // 6'25" apart - the real separation between two adjacent setout
+        // lines on model 100304, and below this model's own scatter.
+        var p1 = RevitCheckTestBuilders.Pile(1, "P1", 0.0, 0.0);
+        var p2 = RevitCheckTestBuilders.Pile(2, "P2", 765.1278858813357, -2900.7894301804736);
+        var p3 = RevitCheckTestBuilders.Pile(3, "P3", 1530.2557717626714, -5801.578860360947);
+        var p4 = RevitCheckTestBuilders.Pile(4, "P4", 2300.796739915849, -8700.935102080402);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { p1, p2, p3, p4 },
+            dimensions: new[] { Edge(101, p1, p2, 201, 202), Edge(102, p2, p3, 203, 204), Edge(103, p3, p4, 205, 206) },
+            textNotes: new[] { RevitCheckTestBuilders.TextNote(301, 1, "165° 10' 13\"", RevitCheckTestBuilders.Pt(100, 0)) });
+
+        var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig());
+
+        Assert.DoesNotContain(issues, i => i.Category == InvestigationReconciliation.ManualReviewCategory);
     }
 
     /// <summary>
