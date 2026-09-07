@@ -89,4 +89,47 @@ public class RuleConfigSerializerTests
         Assert.Equal(new RuleConfig().PileCategoryName, result.Config.PileCategoryName);
         Assert.Contains(result.Diagnostics, d => d.Contains("Generic Models (2)"));
     }
+
+    /// <summary>
+    /// The collection categories must be configurable, because they run
+    /// upstream of everything else: an element in no swept category never
+    /// reaches the check, so the identity join cannot rescue it. A real gap
+    /// found 2026-09-07 when both pile commands passed a hardcoded
+    /// OST_StructuralFoundation while the check had just been made
+    /// category-agnostic.
+    /// </summary>
+    [Fact]
+    public void Pile_collection_categories_default_to_both_real_cases_and_round_trip()
+    {
+        var defaults = new RuleConfig();
+
+        Assert.Contains("OST_StructuralFoundation", defaults.PileCollectionCategoryNames);
+        Assert.Contains("OST_GenericModel", defaults.PileCollectionCategoryNames);
+
+        var loaded = RuleConfigSerializer.Loads(RuleConfigSerializer.Dumps(new RuleConfig
+        {
+            PileCollectionCategoryNames = new List<string> { "OST_StructuralFraming" },
+        }));
+
+        Assert.Equal(new[] { "OST_StructuralFraming" }, loaded.PileCollectionCategoryNames);
+    }
+
+    /// <summary>
+    /// The Spot Elevation shelf-search radius decides whether that check
+    /// finds any geometry at all - beyond it every spot reports "no nearby
+    /// geometry" regardless of how correct the drawing is. It was a
+    /// hardcoded adapter constant until 2026-09-07, documented there as
+    /// "generous but not calibrated", which is the exact phrase that
+    /// preceded all three real cross-model failures.
+    /// </summary>
+    [Fact]
+    public void Spot_elevation_shelf_search_radius_is_configurable()
+    {
+        Assert.Equal(1500.0, new RuleConfig().SpotElevationShelfSearchRadiusMm);
+
+        var loaded = RuleConfigSerializer.Loads(
+            "{\"spot_elevation_shelf_search_radius_mm\": 3000.0}");
+
+        Assert.Equal(3000.0, loaded.SpotElevationShelfSearchRadiusMm);
+    }
 }

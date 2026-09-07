@@ -98,7 +98,11 @@ public class SpotElevationConsistencyCommand : IExternalCommand
             // view) - see RevitDimensionSource.NearbyHorizontalFaces's own
             // remarks. scopeView also narrows dimension collection itself
             // to the active view, same as both pile commands.
-            collected = RevitDimensionSource.Collect(doc, scopeView: activeView, populateNearbyShelfFaces: true);
+            collected = RevitDimensionSource.Collect(
+                doc,
+                scopeView: activeView,
+                populateNearbyShelfFaces: true,
+                shelfSearchRadiusMm: config.SpotElevationShelfSearchRadiusMm);
         }
         catch (Exception ex)
         {
