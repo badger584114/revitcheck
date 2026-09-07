@@ -63,7 +63,13 @@ public class DimensionTriageCommand : IExternalCommand
             ExcludedWorksets = collected.ExcludedWorksets,
         };
 
-        var config = new RuleConfig();
+        // Per-model config if this project has one, compiled defaults
+        // otherwise - either way the run's own output says which
+        // (RuleConfigSource's remarks).
+        // The checklist window is the output here, not a summary dialog,
+        // so there is nowhere natural to print which config was used - the
+        // per-element-type buttons launched from it each say so themselves.
+        var (config, _) = RuleConfigSource.Resolve(doc);
         var issues = DimensionProvenanceCheck.Run(model, config)
             .Concat(DimensionOverrideConsistencyCheck.Run(model, config))
             .ToList();

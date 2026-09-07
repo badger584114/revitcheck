@@ -75,7 +75,10 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             return Result.Failed;
         }
 
-        var config = new RuleConfig();
+        // Per-model config if this project has one, compiled defaults
+        // otherwise - either way the run's own output says which
+        // (RuleConfigSource's remarks).
+        var (config, configDescription) = RuleConfigSource.Resolve(doc);
 
         MetadataCollectionResult piles;
         try
@@ -167,6 +170,7 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             "." +
             ExtractionErrorSample.Format(model.ExtractionErrors) +
             ScheduleDiagnostics(piles.Elements, schedules, config);
+        summary += "\n\n" + configDescription;
 
         if (CheckingSessionHost.Session is { } session)
         {

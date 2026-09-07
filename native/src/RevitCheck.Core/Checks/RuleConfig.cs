@@ -10,7 +10,7 @@ namespace RevitCheck.Core.Checks;
 /// field's own remarks for the reasoning and, where one exists, the real
 /// data it was calibrated against.
 /// </summary>
-public sealed class RuleConfig
+public sealed record RuleConfig
 {
     /// <summary>Only check views placed on a sheet. A dimension in an unplaced working view is never issued to anyone, and flagging it is how a check earns a reputation for noise.</summary>
     public bool SheetedViewsOnly { get; init; } = true;
