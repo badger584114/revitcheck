@@ -506,4 +506,52 @@ public class CheckingSessionTests
             new long?[] { 10, 20 },
             session.ExportableConfirmedProblems().Select(i => i.ElementId).OrderBy(id => id));
     }
+
+    /// <summary>
+    /// A view has to be able to reach a terminal state. Some dimensions no
+    /// automated check can ever settle - the real pile view has two whose
+    /// single reference means the pile chain check structurally cannot
+    /// investigate them (PLANNING.md §21) - and before 2026-09-07 the only
+    /// exits were "Resolved", claiming a cleanliness the reviewer may have
+    /// no basis for, or "Confirmed Problem", claiming a defect. Parking one
+    /// honestly is a third, real outcome.
+    /// </summary>
+    [Fact]
+    public void A_reviewers_manual_review_verdict_clears_triage_without_claiming_clean_or_broken()
+    {
+        var session = CheckingSession.Start(new[]
+        {
+            new Issue
+            {
+                RuleId = "revit.dimension_provenance",
+                Category = "geometry",
+                Severity = "high",
+                ElementId = 500,
+                ViewId = 10,
+                ViewName = "FOUNDATION LAYOUT",
+                Description = "Drafted dimension, unverifiable by any pile check.",
+            },
+        }, new RuleConfig());
+
+        session.RecordInvestigation(10, new long[] { 500 }, new[]
+        {
+            new Issue
+            {
+                RuleId = InvestigationReconciliation.ManualVerdictRuleId,
+                Category = InvestigationReconciliation.ManualReviewCategory,
+                Severity = "medium",
+                ElementId = 500,
+                ViewId = 10,
+                Description = "Parked for manual review by a reviewer.",
+            },
+        });
+
+        var entry = session.FindView(10)!;
+        // Off the open list, but never presented as clean and never
+        // auto-exported as a confirmed problem.
+        Assert.Empty(entry.LastReconciliation.StillOpenTriage);
+        Assert.Empty(entry.LastReconciliation.ConfirmedProblems);
+        Assert.Single(entry.LastReconciliation.NeedsManualReview);
+        Assert.Equal(ViewInvestigationStatus.NeedsManualReview, entry.Status);
+    }
 }

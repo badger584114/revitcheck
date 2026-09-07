@@ -191,7 +191,11 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             session.RecordInvestigation(viewId, Array.Empty<long>(), issues, PileModelScheduleConsistencyCheck.RuleId);
 
             var sessionNote = session.FindView(viewId) is not null
-                ? "\n\nRecorded against the active checking session - see the checklist window."
+                ? "\n\nRecorded against the active checking session, in the checklist's Other Findings " +
+                  "column.\n\nThis check does NOT resolve Dimension Triage items, and is not meant to: it " +
+                  "compares a pile's position against the schedule, which says nothing about whether a " +
+                  "drafted dimension on the drawing is correct. Pile Chain Bearing is the check that " +
+                  "resolves triaged pile dimensions."
                 : "\n\nNo checklist row exists yet for this view (Dimension Triage found nothing to flag " +
                   "here), so these results were not recorded in the session - informational only.";
 

@@ -104,7 +104,8 @@ public class RevitCheckApplication : IExternalApplication
             ToolTip = "For each pile visible in the active view, compares its own live position " +
                       "(a fresh GetProjectPosition call) against the pile schedule's row for it - " +
                       "catches a pile moved in the model without the schedule's Dynamo script being " +
-                      "rerun. Open the pile layout view before running this.",
+                      "rerun. Open the pile layout view before running this. Reports " +
+                      "independently - it does not resolve Dimension Triage items.",
         };
 
         SetIcons(pileModelScheduleButton, "PileModelSchedule");
