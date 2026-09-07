@@ -189,6 +189,42 @@ public sealed class RuleConfig
     public double PileChainBearingToleranceDegrees { get; init; } = 60.0 / 3600.0;
 
     /// <summary>
+    /// Two consecutive pile-to-pile edges in one reconstructed chain are
+    /// treated as the same straight setout line only while their bearings
+    /// agree within this many degrees; beyond it the chain is split into
+    /// separate straight runs at that pile and the bend itself is reported
+    /// for a human (see
+    /// <see cref="PileChainBearingConsistencyCheck"/>'s remarks).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Calibrated against the real separation between adjacent setout
+    /// lines on this project, which is the figure that actually matters
+    /// here: the real bearing calls on <c>DRG-2873041 - PILE LAYOUT</c>
+    /// include 165°13'26" and 165°07'01" - two genuinely different setout
+    /// lines only 6'25" (~0.107°) apart. A collinearity tolerance has to
+    /// sit well below that separation or two real, distinct setout lines
+    /// joined at a shared pile would be silently absorbed into one
+    /// "straight" chain, which is exactly the real false positive this
+    /// field exists to prevent (a bearing fitted across the corner matches
+    /// neither leg). 60 arcseconds leaves roughly a 6x margin against that
+    /// real 6'25" case while staying orders of magnitude looser than the
+    /// real clean data (every real straight chain measured agreed to under
+    /// a third of an arcsecond).
+    /// </para>
+    /// <para>
+    /// Deliberately its own field rather than reusing
+    /// <see cref="PileChainBearingToleranceDegrees"/>, despite sharing its
+    /// default: that one governs drawing-vs-model agreement (how far a
+    /// printed bearing call may sit from reconstructed geometry), this one
+    /// governs model-vs-model agreement (whether two edges are the same
+    /// physical line at all). They answer different questions and there is
+    /// no reason they should have to move together.
+    /// </para>
+    /// </remarks>
+    public double PileChainCollinearityToleranceDegrees { get; init; } = 60.0 / 3600.0;
+
+    /// <summary>
     /// Below this many piles, a resolved chain isn't reported at all - a
     /// 2-pile "chain" is just one dimension and one bearing figure with no
     /// per-segment redundancy to lend it any real confidence beyond that

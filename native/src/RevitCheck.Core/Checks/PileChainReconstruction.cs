@@ -6,12 +6,80 @@ namespace RevitCheck.Core.Checks;
 public sealed record PileChainEdge(ElementMetadata PileA, ElementMetadata PileB, long DimensionElementId);
 
 /// <summary>A resolved, ordered run of piles connected end-to-end by confident tag-to-pile-matched dimensions.</summary>
+/// <remarks>
+/// Topologically a simple path, which is <em>not</em> the same as
+/// geometrically straight - two different setout lines meeting at a shared
+/// pile form a perfectly simple path with a corner in it. Establishing
+/// straightness is <see cref="PileChainReconstruction.SplitIntoStraightRuns"/>'s
+/// job, and every consumer that fits a single bearing to a chain must go
+/// through it first; see its own remarks for the real false positive that
+/// forced this distinction.
+/// </remarks>
 public sealed class PileChain
 {
     public required IReadOnlyList<ElementMetadata> PilesInOrder { get; init; }
 
     /// <summary>The dimension(s) whose tag-to-pile matches built this chain - carried through for auditability (CLAUDE.md: a rule must say how it reached a conclusion).</summary>
     public required IReadOnlyList<long> DimensionElementIds { get; init; }
+
+    /// <summary>
+    /// The same dimension ids as <see cref="DimensionElementIds"/> but kept
+    /// per edge - entry <c>i</c> holds the dimension(s) matching
+    /// <see cref="PilesInOrder"/>[i] to [i+1], so there is one entry per
+    /// edge and always exactly one fewer than there are piles. Needed
+    /// because a chain that splits into separate straight runs has to
+    /// attribute its dimensions to the run they actually belong to;
+    /// the flattened list alone loses the edge boundaries.
+    /// </summary>
+    public required IReadOnlyList<IReadOnlyList<long>> EdgeDimensionElementIds { get; init; }
+}
+
+/// <summary>
+/// A maximal geometrically straight run of piles inside one
+/// <see cref="PileChain"/> - every consecutive edge within it points the
+/// same way to within <see cref="RuleConfig.PileChainCollinearityToleranceDegrees"/>,
+/// so fitting one bearing to it is meaningful.
+/// </summary>
+public sealed class PileChainRun
+{
+    public required IReadOnlyList<ElementMetadata> PilesInOrder { get; init; }
+
+    public required IReadOnlyList<long> DimensionElementIds { get; init; }
+
+    /// <summary>
+    /// The largest disagreement (degrees) between any two consecutive edges
+    /// inside this run - zero for a single-edge run, and within the
+    /// collinearity tolerance by construction. Carried so a finding can
+    /// state how straight the run it fitted a bearing to actually was,
+    /// rather than asserting straightness without evidence.
+    /// </summary>
+    public required double MaxInternalDeviationDegrees { get; init; }
+}
+
+/// <summary>One pile where a chain changes direction, with the two edge bearings that meet there.</summary>
+public sealed record PileChainBend(
+    ElementMetadata Pile,
+    double DeviationDegrees,
+    double BearingBeforeDegrees,
+    double BearingAfterDegrees,
+    IReadOnlyList<long> DimensionElementIds);
+
+/// <summary>The result of splitting one <see cref="PileChain"/> into straight runs.</summary>
+public sealed class PileChainSplit
+{
+    public List<PileChainRun> Runs { get; init; } = new();
+
+    /// <summary>Every pile at which the chain changes direction beyond tolerance - empty for a genuinely straight chain.</summary>
+    public List<PileChainBend> Bends { get; init; } = new();
+
+    /// <summary>
+    /// True when at least one pile in the chain has no live project
+    /// position, so straightness could not be established at all. Distinct
+    /// from "straight with no bends" - a caller must not read an empty
+    /// <see cref="Bends"/> list as evidence of straightness without
+    /// checking this first.
+    /// </summary>
+    public bool PositionsIncomplete { get; init; }
 }
 
 /// <summary>The result of grouping confident pile-to-pile edges into chains.</summary>
@@ -215,19 +283,146 @@ public static class PileChainReconstruction
 
             var order = WalkPath(adjacency, endpoints[0]);
             var dimensionIds = new List<long>();
+            var byEdge = new List<IReadOnlyList<long>>();
             for (var i = 0; i < order.Count - 1; i++)
             {
-                dimensionIds.AddRange(edgeDimensions[OrderedKey(order[i], order[i + 1])]);
+                var forEdge = edgeDimensions[OrderedKey(order[i], order[i + 1])];
+                byEdge.Add(forEdge.ToList());
+                dimensionIds.AddRange(forEdge);
             }
 
             result.Chains.Add(new PileChain
             {
                 PilesInOrder = order.Select(id => byId[id]).ToList(),
                 DimensionElementIds = dimensionIds,
+                EdgeDimensionElementIds = byEdge,
             });
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Splits one chain into maximal geometrically straight runs, reporting
+    /// every pile where it changes direction beyond
+    /// <see cref="RuleConfig.PileChainCollinearityToleranceDegrees"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why this exists, from a real failure:</b> a chain is built from
+    /// tag-to-tag dimension adjacency, so it is guaranteed to be a simple
+    /// <em>path</em> and guaranteed nothing about being a straight
+    /// <em>line</em>. Two setout lines that share a pile - or meet at one -
+    /// form one topologically clean chain with a corner in it. Reported by
+    /// the user 2026-09-07 after a real run on a second bridge model
+    /// wrongly flagged a bearing: piles belonging to a different setout
+    /// line had been absorbed into the line being checked.
+    /// </para>
+    /// <para>
+    /// <b>The deeper problem this also fixes.</b> The bearing was
+    /// previously measured endpoint-to-endpoint, and a line through
+    /// exactly two points fits with zero residual - it cannot fail. So the
+    /// old reconstruction could not detect an interior pile sitting off
+    /// the line either, and would report such a chain clean: a false
+    /// negative on precisely the defect the check exists to catch. Walking
+    /// every edge is what gives the check any diagnostic power over a
+    /// chain's interior at all.
+    /// </para>
+    /// <para>
+    /// Both edge bearings are compared directly, never via
+    /// <see cref="BearingMath.Reciprocal"/>: within a single ordered walk
+    /// consecutive edges continue in the same direction, so a genuine
+    /// straight run shows near-zero disagreement. The reciprocal ambiguity
+    /// applies only when comparing a run against a printed bearing call,
+    /// whose own direction convention is arbitrary relative to walk order.
+    /// </para>
+    /// <para>
+    /// A pile with no live project position makes straightness
+    /// unknowable rather than false - reported via
+    /// <see cref="PileChainSplit.PositionsIncomplete"/> with no runs and no
+    /// bends, so a caller cannot mistake it for a clean straight chain
+    /// (CLAUDE.md: report a coverage indicator, never fail silently).
+    /// </para>
+    /// </remarks>
+    public static PileChainSplit SplitIntoStraightRuns(PileChain chain, RuleConfig config)
+    {
+        var piles = chain.PilesInOrder;
+        if (piles.Count < 2)
+        {
+            return new PileChainSplit();
+        }
+
+        var positions = new List<(double Easting, double Northing)>(piles.Count);
+        foreach (var pile in piles)
+        {
+            if (pile.ProjectPositionEastingMm is not { } easting ||
+                pile.ProjectPositionNorthingMm is not { } northing)
+            {
+                return new PileChainSplit { PositionsIncomplete = true };
+            }
+
+            positions.Add((easting, northing));
+        }
+
+        var edgeCount = piles.Count - 1;
+        var bearings = new double[edgeCount];
+        for (var i = 0; i < edgeCount; i++)
+        {
+            bearings[i] = BearingMath.AzimuthDegrees(
+                positions[i].Easting, positions[i].Northing,
+                positions[i + 1].Easting, positions[i + 1].Northing);
+        }
+
+        var split = new PileChainSplit();
+        var runStartEdge = 0;
+        var runMaxDeviation = 0.0;
+
+        for (var i = 1; i < edgeCount; i++)
+        {
+            var deviation = BearingMath.AngularDifference(bearings[i], bearings[i - 1]);
+            if (deviation <= config.PileChainCollinearityToleranceDegrees)
+            {
+                runMaxDeviation = Math.Max(runMaxDeviation, deviation);
+                continue;
+            }
+
+            split.Runs.Add(BuildRun(chain, runStartEdge, i - 1, runMaxDeviation));
+            split.Bends.Add(new PileChainBend(
+                piles[i],
+                deviation,
+                bearings[i - 1],
+                bearings[i],
+                chain.EdgeDimensionElementIds[i - 1].Concat(chain.EdgeDimensionElementIds[i]).Distinct().ToList()));
+
+            runStartEdge = i;
+            runMaxDeviation = 0.0;
+        }
+
+        split.Runs.Add(BuildRun(chain, runStartEdge, edgeCount - 1, runMaxDeviation));
+        return split;
+    }
+
+    /// <summary>One run covering edges <paramref name="startEdge"/>..<paramref name="endEdge"/> inclusive - so piles [startEdge .. endEdge + 1].</summary>
+    private static PileChainRun BuildRun(PileChain chain, int startEdge, int endEdge, double maxDeviation)
+    {
+        var piles = new List<ElementMetadata>();
+        for (var i = startEdge; i <= endEdge + 1; i++)
+        {
+            piles.Add(chain.PilesInOrder[i]);
+        }
+
+        var dimensionIds = new List<long>();
+        for (var i = startEdge; i <= endEdge; i++)
+        {
+            dimensionIds.AddRange(chain.EdgeDimensionElementIds[i]);
+        }
+
+        return new PileChainRun
+        {
+            PilesInOrder = piles,
+            DimensionElementIds = dimensionIds.Distinct().ToList(),
+            MaxInternalDeviationDegrees = maxDeviation,
+        };
     }
 
     private static void AddAdjacency(Dictionary<long, HashSet<long>> adjacency, long from, long to)

@@ -37,6 +37,26 @@ namespace RevitCheck.Core.Checks;
 /// <see cref="RuleConfig.PileChainNoteMaxDistanceMm"/>'s own remarks)
 /// rather than force-matched to whichever chain happens to be nearest.
 /// </para>
+/// <para>
+/// <b>Corrected 2026-09-07, from a real failure on a second bridge
+/// model.</b> A bearing used to be fitted endpoint-to-endpoint across a
+/// whole chain. That is wrong in both directions, and the real run found
+/// the first of them: two setout lines meeting at a shared pile form one
+/// topologically simple chain, and the fitted bearing ran across the
+/// corner, matching neither leg - a correct drawing flagged as wrong.
+/// The second, never observed only because it fails silently: a line
+/// through two points fits with zero residual, so an interior pile
+/// sitting off its line was undetectable and such a chain was reported
+/// clean. Every chain now goes through
+/// <see cref="PileChainReconstruction.SplitIntoStraightRuns"/> first,
+/// each straight run is checked against its own nearest bearing call, and
+/// the corner itself is reported for a human
+/// (<see cref="InvestigationReconciliation.ManualReviewCategory"/>) since
+/// only a person can say whether two setout lines legitimately meet there
+/// or a pile is out of place. Both shapes are covered by regression tests
+/// built from this project's own real bearing figures, confirmed to fail
+/// without the fix.
+/// </para>
 /// </remarks>
 public static class PileChainBearingConsistencyCheck
 {
@@ -118,8 +138,7 @@ public static class PileChainBearingConsistencyCheck
                 continue;
             }
 
-            investigated.AddRange(chain.DimensionElementIds);
-            EvaluateChain(chain, notes, config, issues);
+            EvaluateChain(chain, notes, config, issues, investigated);
         }
 
         // Real dimensions that plausibly belong to a pile chain but didn't
@@ -160,37 +179,103 @@ public static class PileChainBearingConsistencyCheck
             investigated.Add(dim.ElementId);
         }
 
-        return (issues, investigated);
+        return (issues, investigated.Distinct().ToList());
     }
 
+    /// <summary>
+    /// Splits the chain into geometrically straight runs first, then checks
+    /// each run's own bearing against its own nearest bearing call. See
+    /// <see cref="PileChainReconstruction.SplitIntoStraightRuns"/> for why
+    /// a chain cannot be assumed straight, and why an endpoint-to-endpoint
+    /// bearing over the whole chain was wrong in both directions.
+    /// </summary>
     private static void EvaluateChain(
         PileChain chain,
         List<(TextNoteInfo Note, double? Degrees)> notes,
         RuleConfig config,
-        List<Issue> issues)
+        List<Issue> issues,
+        List<long> investigated)
     {
-        var first = chain.PilesInOrder[0];
-        var last = chain.PilesInOrder[chain.PilesInOrder.Count - 1];
-        var description = $"chain of {chain.PilesInOrder.Count} piles ({first.ElementId} → {last.ElementId})";
+        var split = PileChainReconstruction.SplitIntoStraightRuns(chain, config);
 
-        if (first.ProjectPositionEastingMm is not { } eastingFrom ||
-            first.ProjectPositionNorthingMm is not { } northingFrom ||
-            last.ProjectPositionEastingMm is not { } eastingTo ||
-            last.ProjectPositionNorthingMm is not { } northingTo)
+        if (split.PositionsIncomplete)
         {
             issues.Add(ChainCoverageIssue(chain,
-                $"Reconstructed a {description} but at least one endpoint has no live position captured - " +
-                "its bearing could not be checked."));
+                $"Reconstructed a {ChainDescription(chain)} but at least one pile has no live position " +
+                "captured - the chain could not be checked for straightness, so no bearing was checked."));
             return;
         }
 
-        var bearing = BearingMath.AzimuthDegrees(eastingFrom, northingFrom, eastingTo, northingTo);
+        foreach (var bend in split.Bends)
+        {
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = InvestigationReconciliation.ManualReviewCategory,
+                Severity = "medium",
+                ElementId = bend.Pile.ElementId,
+                UniqueId = bend.Pile.UniqueId,
+                Description =
+                    $"A {ChainDescription(chain)} changes direction at pile {bend.Pile.ElementId}: " +
+                    $"{FormatDms(bend.BearingBeforeDegrees)} into it, {FormatDms(bend.BearingAfterDegrees)} out of it " +
+                    $"({FormatDegrees(bend.DeviationDegrees)} apart). Tag-to-tag dimensioning connected these piles " +
+                    "into one run, but they are not one straight line - either two different setout lines meet here " +
+                    "(each is checked separately below) or this pile sits off its line. Needs a human to say which, " +
+                    "not an automated verdict.",
+                SuggestedFix = new Dictionary<string, object?>
+                {
+                    ["bend_pile_element_id"] = bend.Pile.ElementId,
+                    ["bearing_before_degrees"] = bend.BearingBeforeDegrees,
+                    ["bearing_after_degrees"] = bend.BearingAfterDegrees,
+                    ["deviation_degrees"] = bend.DeviationDegrees,
+                    ["dimension_element_ids"] = bend.DimensionElementIds,
+                },
+            });
+
+            investigated.AddRange(bend.DimensionElementIds);
+        }
+
+        foreach (var run in split.Runs)
+        {
+            if (run.PilesInOrder.Count < config.PileChainMinimumPiles)
+            {
+                continue;
+            }
+
+            investigated.AddRange(run.DimensionElementIds);
+            EvaluateRun(run, split.Bends.Count > 0, notes, config, issues);
+        }
+    }
+
+    /// <summary>
+    /// Checks one verified-straight run against its nearest bearing call.
+    /// The endpoint-to-endpoint azimuth is meaningful here and only here -
+    /// every interior edge has already been confirmed to point the same way
+    /// within <see cref="RuleConfig.PileChainCollinearityToleranceDegrees"/>.
+    /// </summary>
+    private static void EvaluateRun(
+        PileChainRun run,
+        bool fromSplitChain,
+        List<(TextNoteInfo Note, double? Degrees)> notes,
+        RuleConfig config,
+        List<Issue> issues)
+    {
+        var first = run.PilesInOrder[0];
+        var last = run.PilesInOrder[run.PilesInOrder.Count - 1];
+        var runLabel = fromSplitChain ? "straight run" : "chain";
+        var description = $"{runLabel} of {run.PilesInOrder.Count} piles ({first.ElementId} → {last.ElementId})";
+
+        // Positions are known to be present - SplitIntoStraightRuns returns
+        // PositionsIncomplete rather than a run when any pile lacks one.
+        var bearing = BearingMath.AzimuthDegrees(
+            first.ProjectPositionEastingMm!.Value, first.ProjectPositionNorthingMm!.Value,
+            last.ProjectPositionEastingMm!.Value, last.ProjectPositionNorthingMm!.Value);
         var reciprocal = BearingMath.Reciprocal(bearing);
 
-        var matched = NearestNote(chain, notes, config.PileChainNoteMaxDistanceMm);
+        var matched = NearestNote(run.PilesInOrder, notes, config.PileChainNoteMaxDistanceMm);
         if (matched is not { } matchedValue)
         {
-            issues.Add(ChainCoverageIssue(chain,
+            issues.Add(RunCoverageIssue(run,
                 $"Reconstructed a {description}, real bearing {FormatDms(bearing)} - no bearing call was found " +
                 $"within {FormatMm(config.PileChainNoteMaxDistanceMm)}mm to check it against."));
             return;
@@ -225,15 +310,20 @@ public static class PileChainBearingConsistencyCheck
                 ["note_text"] = note.RawText.Trim(),
                 ["note_element_id"] = note.ElementId,
                 ["delta_degrees"] = delta,
-                ["pile_element_ids"] = chain.PilesInOrder.Select(p => p.ElementId).ToList(),
-                ["dimension_element_ids"] = chain.DimensionElementIds,
+                ["max_internal_deviation_degrees"] = run.MaxInternalDeviationDegrees,
+                ["pile_element_ids"] = run.PilesInOrder.Select(p => p.ElementId).ToList(),
+                ["dimension_element_ids"] = run.DimensionElementIds,
             },
         });
     }
 
-    /// <summary>The parsed note nearest to any pile in the chain (2D), within the configured cap - not just the chain's endpoints, since a bearing call can sit anywhere along a chain's length.</summary>
+    private static string ChainDescription(PileChain chain) =>
+        $"chain of {chain.PilesInOrder.Count} piles " +
+        $"({chain.PilesInOrder[0].ElementId} → {chain.PilesInOrder[chain.PilesInOrder.Count - 1].ElementId})";
+
+    /// <summary>The parsed note nearest to any pile in the run (2D), within the configured cap - not just its endpoints, since a bearing call can sit anywhere along a run's length.</summary>
     private static (TextNoteInfo Note, double? Degrees)? NearestNote(
-        PileChain chain, List<(TextNoteInfo Note, double? Degrees)> notes, double maxDistanceMm)
+        IReadOnlyList<ElementMetadata> pilesInOrder, List<(TextNoteInfo Note, double? Degrees)> notes, double maxDistanceMm)
     {
         (TextNoteInfo Note, double? Degrees)? best = null;
         var bestDistance = double.MaxValue;
@@ -241,7 +331,7 @@ public static class PileChainBearingConsistencyCheck
         foreach (var candidate in notes)
         {
             var notePoint = candidate.Note.LocalPoint!;
-            foreach (var pile in chain.PilesInOrder)
+            foreach (var pile in pilesInOrder)
             {
                 if (pile.LocalPoint is not { } pilePoint)
                 {
@@ -268,6 +358,15 @@ public static class PileChainBearingConsistencyCheck
         Category = "coverage",
         Severity = "medium",
         ElementId = chain.PilesInOrder[0].ElementId,
+        Description = description,
+    };
+
+    private static Issue RunCoverageIssue(PileChainRun run, string description) => new()
+    {
+        RuleId = RuleId,
+        Category = "coverage",
+        Severity = "medium",
+        ElementId = run.PilesInOrder[0].ElementId,
         Description = description,
     };
 
