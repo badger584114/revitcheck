@@ -67,8 +67,11 @@ public static class RuleConfigStarter
         if (categories.Count > 0)
         {
             diagnostics.Add(
-                $"pile_category_name is '{config.PileCategoryName}'. Categories actually present in this " +
-                "capture, by element count: " + string.Join(", ", categories));
+                $"pile_category_name is '{config.PileCategoryName}' and pile_collection_category_names is " +
+                $"[{string.Join(", ", config.PileCollectionCategoryNames)}]. Every model category present in " +
+                "this capture, by element count: " + string.Join(", ", categories) +
+                ". If this project's piles are not in a listed collection category they will never reach the " +
+                "check at all - set both fields to match what is really there.");
         }
 
         var schedules = model.Schedules

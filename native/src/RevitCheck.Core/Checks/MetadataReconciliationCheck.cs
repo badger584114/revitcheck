@@ -61,6 +61,29 @@ public static class MetadataReconciliationCheck
 
         var skippedFields = ReportUnresolvableCsvColumns(mapping, csv, issues);
 
+        if (model.Elements.Count == 0)
+        {
+            // Without this, an empty sweep is indistinguishable from a
+            // clean one: this check reports nothing about the CSV's excess
+            // by design (see the class remarks), so zero model elements
+            // produces zero findings and reads as "everything reconciled".
+            // Exactly the failure CLAUDE.md's "report a coverage
+            // indicator, never fail silently" rule exists for, and the one
+            // a hardcoded five-category sweep could cause on any project
+            // whose elements live somewhere unexpected (2026-09-07).
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = "coverage",
+                Severity = "medium",
+                Description =
+                    "No model elements were captured, so nothing was reconciled against the reference table - " +
+                    "this is not a clean result. Check the mapping's scope view and that the elements are in a " +
+                    "category the capture actually sweeps.",
+            });
+            return issues;
+        }
+
         var blankKeyElementIds = new List<long>();
 
         foreach (var element in model.Elements)

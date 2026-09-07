@@ -90,6 +90,43 @@ public sealed record RuleConfig
     public string PileCategoryName { get; init; } = "Structural Foundations";
 
     /// <summary>
+    /// <summary>
+    /// Which Revit categories the pile commands <em>collect</em> before any
+    /// check runs, as <c>BuiltInCategory</c> enum names. **Empty (the
+    /// default) means every model category the document defines.**
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Separate from <see cref="PileCategoryName"/>, and the more important
+    /// of the two: that one is a display name the check uses to decide
+    /// which collected elements it <em>expected</em> to see, whereas this
+    /// decides what the adapter sweeps at all. An element in no swept
+    /// category never reaches the check, so no amount of identity joining
+    /// downstream can rescue it.
+    /// </para>
+    /// <para>
+    /// <b>Defaults to sweeping everything, 2026-09-07, per the user:</b>
+    /// "we use a narrow number of categories 90% of the time but there may
+    /// be some outliers depending on the model, so it would be best to
+    /// sweep everything." A narrow default is right 90% of the time and
+    /// silently examines nothing the other 10%, which is the worse failure
+    /// - and it needs a person to already know the answer before the tool
+    /// can find it. Listing categories here narrows the sweep again if a
+    /// real run ever proves too slow; collection is view-scoped, so the
+    /// cost is bounded by one view's contents.
+    /// </para>
+    /// <para>
+    /// This field exists at all because both pile commands passed a
+    /// hardcoded <c>OST_StructuralFoundation</c> to the adapter - upstream
+    /// of the same day's identity-join fix, so on a model whose piles are
+    /// Generic Models the check still examined nothing. Half a fix reads
+    /// exactly like a whole one until someone asks what the collection step
+    /// does.
+    /// </para>
+    /// </remarks>
+    public List<string> PileCollectionCategoryNames { get; init; } = new();
+
+    /// <summary>
     /// Instance parameter holding a pile's own site/tag id - the join key
     /// against the schedule's own id column. Confirmed real on this project
     /// as <c>DIT_SiteID</c> - per-project naming, same as a `Mark`
@@ -260,4 +297,25 @@ public sealed record RuleConfig
     /// case - no real wrong-elevation example has been seen yet.
     /// </summary>
     public double SpotElevationToleranceMm { get; init; } = 10.0;
+
+    /// <summary>
+    /// How far (mm) the Spot Elevation check's geometry search looks around
+    /// a spot's own point for a real horizontal face, in all three axes.
+    /// </summary>
+    /// <remarks>
+    /// This is the one number that decides whether the check finds anything
+    /// at all: beyond it, a Spot Elevation reports "no nearby geometry"
+    /// (coverage, so it fails safe rather than wrong) no matter how correct
+    /// the drawing is. It was a hardcoded adapter constant until 2026-09-07,
+    /// documented there as "generous but not calibrated" - which is the
+    /// exact phrase that preceded all three of this project's real
+    /// cross-model failures, so it belongs in per-model config like every
+    /// other figure of its kind.
+    ///
+    /// 1500mm is enormously generous against the only real data there is:
+    /// all three validated matches sat 0.0mm, 0.0mm and 0.04mm away in plan
+    /// (PLANNING.md §18). Widening it costs solid-geometry walk time per
+    /// spot, which is the expensive part of this check.
+    /// </remarks>
+    public double SpotElevationShelfSearchRadiusMm { get; init; } = 1500.0;
 }

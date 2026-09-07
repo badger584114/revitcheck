@@ -93,7 +93,8 @@ public static class RevitDimensionSource
         bool sheetedViewsOnly = true,
         ISet<string>? includeWorksets = null,
         View? scopeView = null,
-        bool populateNearbyShelfFaces = false)
+        bool populateNearbyShelfFaces = false,
+        double? shelfSearchRadiusMm = null)
     {
         var errors = new List<string>();
         var (sheets, views) = CollectSheetsAndViews(doc, errors);
@@ -112,7 +113,7 @@ public static class RevitDimensionSource
         // matching populateLivePosition's own opt-in-cost discipline in
         // RevitMetadataElementSource.
         var effectivePopulateNearbyShelfFaces = populateNearbyShelfFaces && scopeView is not null;
-        var dimensions = CollectDimensions(doc, errors, scannedViews, includeWorksets, effectiveSheetedViewsOnly, effectivePopulateNearbyShelfFaces ? scopeView : null);
+        var dimensions = CollectDimensions(doc, errors, scannedViews, includeWorksets, effectiveSheetedViewsOnly, effectivePopulateNearbyShelfFaces ? scopeView : null, shelfSearchRadiusMm);
         var textNotes = CollectTextNotes(doc, errors, scannedViews, effectiveSheetedViewsOnly);
 
         var excludedWorksets = new List<string>();
@@ -311,7 +312,8 @@ public static class RevitDimensionSource
         List<Core.Ir.ViewInfo> views,
         ISet<string>? includeWorksets,
         bool sheetedViewsOnly,
-        View? shelfSearchView = null)
+        View? shelfSearchView = null,
+        double? shelfSearchRadiusMm = null)
     {
         var seen = new Dictionary<long, Core.Ir.DimensionInfo>();
 
@@ -403,7 +405,7 @@ public static class RevitDimensionSource
                             shelfSearchPerformed = true;
                             try
                             {
-                                nearbyHorizontalFaces = NearbyHorizontalFaces(doc, shelfSearchView, rawOrigin);
+                                nearbyHorizontalFaces = NearbyHorizontalFaces(doc, shelfSearchView, rawOrigin, shelfSearchRadiusMm ?? ShelfSearchRadiusMm);
                             }
                             catch (Exception ex)
                             {
@@ -740,8 +742,8 @@ public static class RevitDimensionSource
     // spot's own point can sit exactly on the real shelf face
     // (distance_2d_mm=0.0, more than once), so this does not need to be
     // large.
+    /// <summary>Fallback only - the real value comes from <c>RuleConfig.SpotElevationShelfSearchRadiusMm</c>, passed in by the command.</summary>
     private const double ShelfSearchRadiusMm = 1500.0;
-    private const double ShelfSearchRadiusFt = ShelfSearchRadiusMm / MmPerFoot;
 
     // Categories/classes confirmed as pure noise by the real diagnostic
     // work this ports (a document-wide bounding-box search pulled in
@@ -763,15 +765,16 @@ public static class RevitDimensionSource
     /// bounding box, not document-wide - real data already justified a
     /// small radius (see this method's own remarks above).
     /// </summary>
-    private static List<Core.Ir.NearbyFaceInfo> NearbyHorizontalFaces(Document doc, View view, XYZ nearXyz)
+    private static List<Core.Ir.NearbyFaceInfo> NearbyHorizontalFaces(Document doc, View view, XYZ nearXyz, double radiusMm)
     {
         var faces = new List<Core.Ir.NearbyFaceInfo>();
 
         IEnumerable<Element> candidates;
         try
         {
-            var minPt = new XYZ(nearXyz.X - ShelfSearchRadiusFt, nearXyz.Y - ShelfSearchRadiusFt, nearXyz.Z - ShelfSearchRadiusFt);
-            var maxPt = new XYZ(nearXyz.X + ShelfSearchRadiusFt, nearXyz.Y + ShelfSearchRadiusFt, nearXyz.Z + ShelfSearchRadiusFt);
+            var radiusFt = radiusMm / MmPerFoot;
+            var minPt = new XYZ(nearXyz.X - radiusFt, nearXyz.Y - radiusFt, nearXyz.Z - radiusFt);
+            var maxPt = new XYZ(nearXyz.X + radiusFt, nearXyz.Y + radiusFt, nearXyz.Z + radiusFt);
             var outline = new Outline(minPt, maxPt);
             candidates = new FilteredElementCollector(doc, view.Id)
                 .WherePasses(new BoundingBoxIntersectsFilter(outline))
