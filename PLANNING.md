@@ -1082,3 +1082,25 @@ Built: `TextNoteInfo.DirectionDegrees` (new IR, populated from `TextNote.BaseDir
 Also raised `PileChainMinimumPiles` from 2 to 3. The 178" case above is not an error at all: it is a two-pile segment of a twelve-pile line measured against that whole line's call, and real scatter on this model reaches 306". A two-pile run is one measurement with no redundancy — this field's own original note said exactly that — and giving it a verdict manufactures confident noise. The real BR08 two-pile chain test was rewritten to assert it is now *skipped*, checking the investigated scope rather than just the issue list, so a skipped run can never masquerade as a clean one.
 
 370 Core tests passing; `dotnet build` clean including the net48 Addin. The spur test was confirmed to fail with the rotation filter disabled.
+
+## 21. The pile tools weren't resolving triage, and the reason was structural (2026-09-07)
+
+**Real user report, and the most important one of the day:** *"neither of these pile tools are doing what they primarily are supposed to be doing, that is checking issues raised by the dimension triage button... when I run them against the dimension triage they do not resolve any raised issues."* Correct, and not a bug in either check.
+
+**Diagnosed against the real capture rather than by reading code.** Running the triage rules over model 100302's capture off-Revit shows what the pile view actually raises. `DRG-2871051 - FOUNDATION LAYOUT` (view 5308377, sheet 2871051, 32 dimensions) gets exactly **two** triage items: a view rollup naming **29 drafted dimensions**, and one MIXED dimension (7400808).
+
+The rollup cleared on one condition only (`AllDraftedDimensionsResolved`): `ids.All(investigatedSet.Contains)` — **all 29, or the row does not change at all.**
+
+**It could never clear.** Of those 29 drafted dimensions, 27 have two `AnnotationSymbol` references and 2 have a single reference. `PileChainBearingConsistencyCheck` can only ever investigate the two-reference shape, since it resolves *two* references to *two distinct piles*. So the ceiling is 27 of 29, and the rollup needs 29. That ceiling is theoretical, too: a dimension only counts once it lands in a run of ≥3 piles — a minimum raised from 2 earlier the same day, which reduced coverage further.
+
+**And `PileModelScheduleConsistencyCommand` contributes nothing to resolution by construction**, using `RecordInvestigation`'s `otherFindingsRuleId` path, which returns before touching `InvestigatedElementIds` or reconciliation. That is arguably right and the framing is what is wrong: whether a pile sits where the schedule says has nothing to do with whether a drafted dimension on a drawing is correct. **Pile Chain Bearing is a genuine dimension-investigation check; Pile Model/Schedule is a standalone model-quality check that happens to be about piles**, and presenting it inside the triage workflow implies a resolution it cannot provide.
+
+**Fixed (the first of three steps, per the user's direction): a partially-investigated rollup now narrows to what is actually still outstanding.** `NarrowRollup` restates the issue over the remaining ids, appending — never rewriting — a progress sentence ("3 of 5 have since been verified against the model; 2 still unverified"), and carries `verified_dimension_count`/`original_drafted_dimension_count` in its `SuggestedFix`. An untouched rollup is left exactly as raised, so no "0 verified" noise appears on every unstarted view. This keeps CLAUDE.md's "a wholly-drafted view is one finding, not twenty" intact — it is still one issue — while making progress visible, which it previously was not at all.
+
+`ReconciliationResult` gained `OpenDimensionCount`/`ResolvedDimensionCount`, and the checklist a **Dimensions** column reading "18 / 29". The issue-level count cannot show this: a rollup is one issue whether it covers 29 dimensions or 2, which is why `StillOpenTriage.Count` sat unchanged while real work was being done. Note this is the *same class* of complaint as the 2026-08-31 fix that made `StillOpenCount` read live rather than frozen — the count was live, and still could not move.
+
+373 Core tests passing; `dotnet build` clean including the net48 Addin. The narrowing test was confirmed to fail with the fix disabled.
+
+**Still to do, agreed but not built:** (2) surface the dimensions no automated tool can reach — the two single-reference ones here — as manual-review candidates rather than silent blockers; (3) separate the two pile tools in the UI so only the one that actually resolves triage is presented as doing so.
+
+**The lesson, and it is a different one from §19/§20's.** Those were rules calibrated against a single model. This was a *unit mismatch*: triage's unit is the view, investigation's unit is the dimension, and the join between them was all-or-nothing, so partial progress — which is the normal case, not the exception — rendered as no progress. Every individual piece was working correctly and the workflow still appeared inert.
