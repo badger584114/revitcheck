@@ -272,12 +272,14 @@ public static class PileChainBearingConsistencyCheck
             last.ProjectPositionEastingMm!.Value, last.ProjectPositionNorthingMm!.Value);
         var reciprocal = BearingMath.Reciprocal(bearing);
 
-        var matched = NearestNote(run.PilesInOrder, notes, config.PileChainNoteMaxDistanceMm);
+        var matched = MatchNote(run, ModelDirectionDegrees(run), notes, config);
         if (matched is not { } matchedValue)
         {
             issues.Add(RunCoverageIssue(run,
-                $"Reconstructed a {description}, real bearing {FormatDms(bearing)} - no bearing call was found " +
-                $"within {FormatMm(config.PileChainNoteMaxDistanceMm)}mm to check it against."));
+                $"Reconstructed a {description}, real bearing {FormatDms(bearing)} - no bearing call could be " +
+                $"confidently matched to it (within {FormatMm(config.PileChainNoteMaxDistanceMm)}mm, drawn " +
+                $"parallel to within {FormatDegrees(config.PileChainNoteRotationToleranceDegrees)}, and " +
+                "unambiguously nearer than any other)."));
             return;
         }
 
@@ -321,35 +323,106 @@ public static class PileChainBearingConsistencyCheck
         $"chain of {chain.PilesInOrder.Count} piles " +
         $"({chain.PilesInOrder[0].ElementId} → {chain.PilesInOrder[chain.PilesInOrder.Count - 1].ElementId})";
 
-    /// <summary>The parsed note nearest to any pile in the run (2D), within the configured cap - not just its endpoints, since a bearing call can sit anywhere along a run's length.</summary>
-    private static (TextNoteInfo Note, double? Degrees)? NearestNote(
-        IReadOnlyList<ElementMetadata> pilesInOrder, List<(TextNoteInfo Note, double? Degrees)> notes, double maxDistanceMm)
+    /// <summary>
+    /// The bearing call belonging to this run: parallel to it within
+    /// <see cref="RuleConfig.PileChainNoteRotationToleranceDegrees"/>,
+    /// then nearest by 2D distance within the configured cap, and only
+    /// when that nearest is unambiguous.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Rotation filters, distance chooses - and ties are refused</b>
+    /// (2026-09-07, from a real pile-layout drawing). Distance alone put
+    /// two confident wrong verdicts on the board: calls are printed at the
+    /// ends of lines, lines meet at their ends, and a spur sharing its end
+    /// pile with a main line inherited that line's call from ~0mm away.
+    /// </para>
+    /// <para>
+    /// A note with no readable rotation does not fail the filter - captures
+    /// taken before <see cref="TextNoteInfo.DirectionDegrees"/> existed
+    /// carry none, and rejecting those outright would silently stop
+    /// checking rather than check less precisely. The filter applies only
+    /// where both directions are actually known.
+    /// </para>
+    /// </remarks>
+    private static (TextNoteInfo Note, double? Degrees)? MatchNote(
+        PileChainRun run,
+        double? runDirectionDegrees,
+        List<(TextNoteInfo Note, double? Degrees)> notes,
+        RuleConfig config)
     {
-        (TextNoteInfo Note, double? Degrees)? best = null;
-        var bestDistance = double.MaxValue;
+        var candidates = new List<((TextNoteInfo Note, double? Degrees) Candidate, double Distance)>();
 
         foreach (var candidate in notes)
         {
-            var notePoint = candidate.Note.LocalPoint!;
-            foreach (var pile in pilesInOrder)
+            if (runDirectionDegrees is { } runDirection &&
+                candidate.Note.DirectionDegrees is { } noteDirection &&
+                BearingMath.AxialDifference(noteDirection, runDirection) > config.PileChainNoteRotationToleranceDegrees)
             {
-                if (pile.LocalPoint is not { } pilePoint)
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                var dx = notePoint.X - pilePoint.X;
-                var dy = notePoint.Y - pilePoint.Y;
-                var distance = Math.Sqrt((dx * dx) + (dy * dy));
-                if (distance < bestDistance)
-                {
-                    bestDistance = distance;
-                    best = candidate;
-                }
+            var distance = NearestDistanceMm(candidate.Note, run.PilesInOrder);
+            if (distance <= config.PileChainNoteMaxDistanceMm)
+            {
+                candidates.Add((candidate, distance));
             }
         }
 
-        return best is not null && bestDistance <= maxDistanceMm ? best : null;
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+
+        // Two calls the same distance away is the shared-end-pile case
+        // again, and picking either would be a guess. Refusing produces a
+        // coverage finding instead of a confident wrong verdict.
+        if (candidates.Count > 1 &&
+            Math.Abs(candidates[1].Distance - candidates[0].Distance) < config.PileChainNoteAmbiguityMarginMm)
+        {
+            return null;
+        }
+
+        return candidates[0].Candidate;
+    }
+
+    /// <summary>2D distance from a note to the nearest pile in the run - a call can sit anywhere along a run's length.</summary>
+    private static double NearestDistanceMm(TextNoteInfo note, IReadOnlyList<ElementMetadata> pilesInOrder)
+    {
+        var best = double.MaxValue;
+        var notePoint = note.LocalPoint!;
+        foreach (var pile in pilesInOrder)
+        {
+            if (pile.LocalPoint is not { } pilePoint)
+            {
+                continue;
+            }
+
+            var dx = notePoint.X - pilePoint.X;
+            var dy = notePoint.Y - pilePoint.Y;
+            best = Math.Min(best, Math.Sqrt((dx * dx) + (dy * dy)));
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// The run's own direction in MODEL coordinates, for comparison against
+    /// a note's rotation - see <see cref="TextNoteInfo.DirectionDegrees"/>
+    /// on why this cannot use the survey-space bearing.
+    /// </summary>
+    private static double? ModelDirectionDegrees(PileChainRun run)
+    {
+        var first = run.PilesInOrder[0].LocalPoint;
+        var last = run.PilesInOrder[run.PilesInOrder.Count - 1].LocalPoint;
+        if (first is null || last is null)
+        {
+            return null;
+        }
+
+        return BearingMath.AzimuthDegrees(first.X, first.Y, last.X, last.Y);
     }
 
     private static Issue ChainCoverageIssue(PileChain chain, string description) => new()

@@ -214,6 +214,52 @@ public sealed record RuleConfig
     public double PileChainNoteMaxDistanceMm { get; init; } = 10_000.0;
 
     /// <summary>
+    /// How far a bearing call's own printed rotation may sit from the axis
+    /// of the run it is matched to, in degrees.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Distance alone provably cannot assign these: calls sit at the ends
+    /// of lines, lines meet at their ends, and on the real 100302 pile
+    /// layout a three-pile spur shares its end pile with a main line whose
+    /// call is printed directly over that shared pile. The spur was
+    /// reported 84.6° wrong while its own call, 6.6 arcseconds away, sat a
+    /// few metres off. Rotation is what separates them, since a call is
+    /// drawn parallel to the line it describes.
+    /// </para>
+    /// <para>
+    /// <b>Deliberately generous at 20°, per the user: drafters eyeball the
+    /// rotation, so it will not match the line exactly.</b> It only has to
+    /// be tight enough to tell genuinely different lines apart, and the
+    /// real ones on that sheet are ~85° apart - so 20° leaves a 4x margin
+    /// for hand-placed text while still rejecting a perpendicular line's
+    /// call. Two near-parallel lines (the two abutment runs, both 175°) are
+    /// not separable by rotation at all, and are not meant to be: distance
+    /// separates those. Rotation filters, distance then chooses.
+    /// </para>
+    /// <para>
+    /// Compared as an axis, not a direction
+    /// (<see cref="BearingMath.AxialDifference"/>) - text set out along a
+    /// line either way round is equally parallel to it.
+    /// </para>
+    /// </remarks>
+    public double PileChainNoteRotationToleranceDegrees { get; init; } = 20.0;
+
+    /// <summary>
+    /// Two bearing calls whose distances to a run differ by less than this
+    /// (mm) are treated as equally near, and neither is used.
+    /// </summary>
+    /// <remarks>
+    /// The shared-end-pile case again: where a spur and a main line meet,
+    /// both runs contain the junction pile, so a call printed over it is
+    /// ~0mm from both. Choosing either would be a guess, and this project
+    /// reports a coverage gap rather than guessing. Generous at 500mm,
+    /// since the real competing distances are metres apart once rotation
+    /// has already removed the wrong-axis candidates.
+    /// </remarks>
+    public double PileChainNoteAmbiguityMarginMm { get; init; } = 500.0;
+
+    /// <summary>
     /// Flag a chain whose reconstructed bearing (or its exact reciprocal -
     /// chain walk direction is arbitrary, both describe the same physical
     /// line) disagrees with its matched note's parsed bearing by more than
@@ -256,14 +302,21 @@ public sealed record RuleConfig
     public double PileChainCollinearityToleranceDegrees { get; init; } = 0.2;
 
     /// <summary>
-    /// Below this many piles, a resolved chain isn't reported at all - a
-    /// 2-pile "chain" is just one dimension and one bearing figure with no
-    /// per-segment redundancy to lend it any real confidence beyond that
-    /// single measurement. Real data has legitimate 2-pile chains (a
-    /// short end run), so this stays at the structural minimum (2) rather
-    /// than being tightened further without a real reason to.
+    /// Below this many piles, a resolved run isn't given a bearing verdict
+    /// at all.
     /// </summary>
-    public int PileChainMinimumPiles { get; init; } = 2;
+    /// <remarks>
+    /// <b>Raised from 2 to 3 on 2026-09-07, from real data.</b> A two-pile
+    /// run is a single measurement with no redundancy whatsoever - this
+    /// field's own original note said as much - and model 100302 showed
+    /// what that costs: a two-pile segment of a twelve-pile line was
+    /// compared against that whole line's printed call and came out 178"
+    /// apart, which is not an error but ordinary placement scatter (real
+    /// scatter on the same chain reaches 306"). Giving a verdict on one
+    /// unredundant measurement produces exactly that kind of confident
+    /// noise. Three piles is the minimum that can disagree with itself.
+    /// </remarks>
+    public int PileChainMinimumPiles { get; init; } = 3;
 
     // --- revitcheck.spot_elevation_consistency ---
     //

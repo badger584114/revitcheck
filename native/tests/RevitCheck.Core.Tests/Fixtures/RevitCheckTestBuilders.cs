@@ -159,12 +159,20 @@ internal static class RevitCheckTestBuilders
             TypeName = "Dimension_Standard_O (mm)",
         };
 
-    internal static TextNoteInfo TextNote(long elementId, long viewId, string rawText, Point3D localPoint) => new()
+    /// <summary>
+    /// A bearing call. <paramref name="directionDegrees"/> is the model-space
+    /// rotation of the note's own text - null (the default) mirrors a
+    /// capture taken before TextNoteInfo carried one, where the rotation
+    /// filter deliberately doesn't apply.
+    /// </summary>
+    internal static TextNoteInfo TextNote(
+        long elementId, long viewId, string rawText, Point3D localPoint, double? directionDegrees = null) => new()
     {
         ElementId = elementId,
         ViewId = viewId,
         RawText = rawText,
         LocalPoint = localPoint,
+        DirectionDegrees = directionDegrees,
     };
 
     /// <summary>
