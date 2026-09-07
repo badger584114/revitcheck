@@ -199,6 +199,14 @@ Dated history for each is in PLANNING.md.
 | `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs, and compares each run's bearing against the drafted bearing call nearest it. A corner in a chain is reported for manual review, never averaged across. | Validated on one model (§16); **per-edge split (§19) not yet re-run** |
 | `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere. | Validated standalone (§18); session path fixed but **not re-confirmed** |
 
+**The ribbon is three panels, and the split is the workflow, not tidying:**
+
+| Panel | Buttons | What they are |
+| --- | --- | --- |
+| **Capture** | Capture Model | The snapshot + starter config for a model. |
+| **Dimension Checking** | Dimension Triage, Pile Chain Bearing, Spot Elevation | The button that raises triage, and exactly the checks that can resolve it. |
+| **Model Checks** | Pile Model/Schedule, Metadata Reconciliation | Report independently. They flag real problems but resolve nothing triage raised — see §21. |
+
 **The interactive checking workflow** (triage → per-view investigation →
 reconciliation → manual per-dimension verdicts → reconciled BCF export)
 is built and validated end to end (§16). `InvestigationReconciliation`

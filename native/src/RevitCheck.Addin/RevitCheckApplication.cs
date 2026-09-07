@@ -29,7 +29,17 @@ namespace RevitCheck.Addin;
 public class RevitCheckApplication : IExternalApplication
 {
     private const string TabName = "RevitCheck";
-    private const string PanelName = "Checks";
+    // Three panels, not one, and the split is the workflow distinction
+    // itself rather than cosmetic tidying (2026-09-07). "Dimension
+    // Checking" holds the button that raises triage plus exactly the
+    // checks that can resolve it; "Model Checks" holds the ones that
+    // report independently and resolve nothing triage raised. That
+    // difference cost a whole round of real confusion to surface
+    // (PLANNING.md §21) - a reviewer should be able to read it off the
+    // ribbon instead.
+    private const string CapturePanelName = "Capture";
+    private const string DimensionPanelName = "Dimension Checking";
+    private const string ModelPanelName = "Model Checks";
 
     public Result OnStartup(UIControlledApplication application)
     {
@@ -49,32 +59,33 @@ public class RevitCheckApplication : IExternalApplication
             // failure, just skip creating it again.
         }
 
-        var panel = application.CreateRibbonPanel(TabName, PanelName);
+        var capturePanel = application.CreateRibbonPanel(TabName, CapturePanelName);
+        var dimensionPanel = application.CreateRibbonPanel(TabName, DimensionPanelName);
+        var modelPanel = application.CreateRibbonPanel(TabName, ModelPanelName);
 
         var assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-        // Left-to-right order matches the order someone actually runs
-        // things in, confirmed with the user 2026-08-24: capture first
-        // (the dev-loop snapshot), then triage, then the two pile
-        // investigation checks, then metadata/data reconciliation last -
-        // the final order PLANNING.md §16 Stage 3 named, now that Dimension
-        // Provenance/Overrides are one combined Dimension Triage button.
+        // Left-to-right still matches the order someone actually runs
+        // things in (confirmed 2026-08-24), now grouped: capture, then the
+        // triage workflow and its investigation checks, then the standalone
+        // checks that report on their own.
         var captureButton = new PushButtonData(
             "RevitCheck.CaptureModel",
             "Capture\nModel",
             assemblyPath,
             typeof(CaptureModelCommand).FullName)
         {
-            ToolTip = "Write a full model sweep (metadata, sheets/views/dimensions) to a JSON " +
-                      "capture file - a point-in-time snapshot, not a live sync - so checks can be " +
-                      "developed and tested off this machine. Prompts for a mapping file only to " +
-                      "read its scope view for the metadata half; its fields and any CSV are not " +
-                      "used here.",
+            ToolTip = "Write a full model sweep (every model category, plus sheets/views/dimensions " +
+                      "and schedule headers) to a JSON capture file - a point-in-time snapshot, not a " +
+                      "live sync - so checks can be developed and tested off this machine. Also writes " +
+                      "a starter config for a model that has none, listing the categories this project " +
+                      "actually uses. Asks what to cover: the whole document, the active view, or a " +
+                      "mapping file's scope view.",
         };
 
         SetIcons(captureButton, "CaptureModel");
 
-        panel.AddItem(captureButton);
+        capturePanel.AddItem(captureButton);
 
         var dimensionTriageButton = new PushButtonData(
             "RevitCheck.DimensionTriage",
@@ -93,7 +104,7 @@ public class RevitCheckApplication : IExternalApplication
         // DimensionTriage icon exists yet (cosmetic, not blocking).
         SetIcons(dimensionTriageButton, "DimensionProvenance");
 
-        panel.AddItem(dimensionTriageButton);
+        dimensionPanel.AddItem(dimensionTriageButton);
 
         var pileModelScheduleButton = new PushButtonData(
             "RevitCheck.PileModelScheduleConsistency",
@@ -110,7 +121,7 @@ public class RevitCheckApplication : IExternalApplication
 
         SetIcons(pileModelScheduleButton, "PileModelSchedule");
 
-        panel.AddItem(pileModelScheduleButton);
+        modelPanel.AddItem(pileModelScheduleButton);
 
         var pileChainBearingButton = new PushButtonData(
             "RevitCheck.PileChainBearingConsistency",
@@ -126,7 +137,7 @@ public class RevitCheckApplication : IExternalApplication
 
         SetIcons(pileChainBearingButton, "PileChainBearing");
 
-        panel.AddItem(pileChainBearingButton);
+        dimensionPanel.AddItem(pileChainBearingButton);
 
         var spotElevationButton = new PushButtonData(
             "RevitCheck.SpotElevationConsistency",
@@ -147,7 +158,7 @@ public class RevitCheckApplication : IExternalApplication
         // Dimension Triage set reusing Dimension Provenance's.
         SetIcons(spotElevationButton, "PileChainBearing");
 
-        panel.AddItem(spotElevationButton);
+        dimensionPanel.AddItem(spotElevationButton);
 
         var metadataButton = new PushButtonData(
             "RevitCheck.MetadataReconciliation",
@@ -162,7 +173,7 @@ public class RevitCheckApplication : IExternalApplication
 
         SetIcons(metadataButton, "MetadataReconciliation");
 
-        panel.AddItem(metadataButton);
+        modelPanel.AddItem(metadataButton);
 
         return Result.Succeeded;
     }
