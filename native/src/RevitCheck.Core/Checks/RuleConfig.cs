@@ -297,4 +297,25 @@ public sealed record RuleConfig
     /// case - no real wrong-elevation example has been seen yet.
     /// </summary>
     public double SpotElevationToleranceMm { get; init; } = 10.0;
+
+    /// <summary>
+    /// How far (mm) the Spot Elevation check's geometry search looks around
+    /// a spot's own point for a real horizontal face, in all three axes.
+    /// </summary>
+    /// <remarks>
+    /// This is the one number that decides whether the check finds anything
+    /// at all: beyond it, a Spot Elevation reports "no nearby geometry"
+    /// (coverage, so it fails safe rather than wrong) no matter how correct
+    /// the drawing is. It was a hardcoded adapter constant until 2026-09-07,
+    /// documented there as "generous but not calibrated" - which is the
+    /// exact phrase that preceded all three of this project's real
+    /// cross-model failures, so it belongs in per-model config like every
+    /// other figure of its kind.
+    ///
+    /// 1500mm is enormously generous against the only real data there is:
+    /// all three validated matches sat 0.0mm, 0.0mm and 0.04mm away in plan
+    /// (PLANNING.md §18). Widening it costs solid-geometry walk time per
+    /// spot, which is the expensive part of this check.
+    /// </remarks>
+    public double SpotElevationShelfSearchRadiusMm { get; init; } = 1500.0;
 }

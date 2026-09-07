@@ -113,4 +113,23 @@ public class RuleConfigSerializerTests
 
         Assert.Equal(new[] { "OST_StructuralFraming" }, loaded.PileCollectionCategoryNames);
     }
+
+    /// <summary>
+    /// The Spot Elevation shelf-search radius decides whether that check
+    /// finds any geometry at all - beyond it every spot reports "no nearby
+    /// geometry" regardless of how correct the drawing is. It was a
+    /// hardcoded adapter constant until 2026-09-07, documented there as
+    /// "generous but not calibrated", which is the exact phrase that
+    /// preceded all three real cross-model failures.
+    /// </summary>
+    [Fact]
+    public void Spot_elevation_shelf_search_radius_is_configurable()
+    {
+        Assert.Equal(1500.0, new RuleConfig().SpotElevationShelfSearchRadiusMm);
+
+        var loaded = RuleConfigSerializer.Loads(
+            "{\"spot_elevation_shelf_search_radius_mm\": 3000.0}");
+
+        Assert.Equal(3000.0, loaded.SpotElevationShelfSearchRadiusMm);
+    }
 }
