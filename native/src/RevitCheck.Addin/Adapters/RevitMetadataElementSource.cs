@@ -108,31 +108,141 @@ public static class RevitMetadataElementSource
     /// through a name lookup that could - in principle, if the document
     /// somehow has a same-named view elsewhere - resolve to the wrong one.
     /// </param>
+    /// <summary>
+    /// Every <em>model</em> category the document itself defines, as
+    /// ElementIds for <see cref="ElementMulticategoryFilter"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Read from <c>doc.Settings.Categories</c> rather than enumerating
+    /// <see cref="BuiltInCategory"/>: the document is the authority on what
+    /// it actually contains, including categories this code has never heard
+    /// of, and the ElementId constructor overload avoids having to map
+    /// anything back to a named enum value. Every member used here was
+    /// verified against the real RevitAPI.dll before it was written.
+    /// </para>
+    /// <para>
+    /// <b>Why this exists, 2026-09-07.</b> <c>RuleConfigStarter</c> reports
+    /// which categories a capture contains so a person can pick the right
+    /// one for a new model - but the capture swept five hardcoded
+    /// <see cref="DefaultCategories"/>, so the mechanism built to answer
+    /// "which category are this model's piles in" could only ever name a
+    /// subset of five, and could not reveal the unexpected answer that
+    /// motivated building it. Per the user: modellers put strange content
+    /// into models, and there is no telling what a given project will have
+    /// done.
+    /// </para>
+    /// <para>
+    /// Annotation, view and internal categories are excluded - they cannot
+    /// carry the model geometry or setout parameters any check here reads,
+    /// and sweeping them would turn a capture into a dump of every text
+    /// note and dimension in the document.
+    /// </para>
+    /// </remarks>
+    private static List<ElementId> ModelCategoryIds(Document doc, List<string> errors)
+    {
+        var ids = new List<ElementId>();
+        try
+        {
+            foreach (Category category in doc.Settings.Categories)
+            {
+                try
+                {
+                    if (category.CategoryType == CategoryType.Model)
+                    {
+                        ids.Add(category.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"reading a category: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"enumerating document categories: {ex.Message}");
+        }
+
+        return ids;
+    }
+
+    /// <summary>Per-element fallback for when no category filter could be built - see <see cref="ModelCategoryIds"/>.</summary>
+    private static bool IsModelCategory(Element element)
+    {
+        try
+        {
+            return element.Category?.CategoryType == CategoryType.Model;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static MetadataCollectionResult Collect(
         Document doc,
         string? viewName = null,
         IEnumerable<BuiltInCategory>? categories = null,
         bool populateLivePosition = false,
-        View? scopeView = null)
+        View? scopeView = null,
+        bool allModelCategories = false)
     {
-        var scope = categories?.ToList() ?? DefaultCategories.ToList();
         var elements = new List<ElementMetadata>();
         var errors = new List<string>();
         var seen = new HashSet<long>();
 
-        var categoryFilter = new ElementMulticategoryFilter(scope);
         var view = scopeView ?? (string.IsNullOrWhiteSpace(viewName) ? null : ResolveView(doc, viewName!));
-        var collector = view is null
-            ? new FilteredElementCollector(doc)
-                .WhereElementIsNotElementType()
-                .WherePasses(categoryFilter)
-            : new FilteredElementCollector(doc, view.Id)
-                .WhereElementIsNotElementType()
-                .WherePasses(categoryFilter);
+        var baseCollector = view is null
+            ? new FilteredElementCollector(doc).WhereElementIsNotElementType()
+            : new FilteredElementCollector(doc, view.Id).WhereElementIsNotElementType();
+
+        FilteredElementCollector collector;
+        // Set when no category filter could be applied, so the sweep has to
+        // exclude annotation/view content per element instead.
+        var filterModelCategoriesInCode = false;
+
+        if (allModelCategories)
+        {
+            var modelCategoryIds = ModelCategoryIds(doc, errors);
+            if (modelCategoryIds.Count > 0)
+            {
+                try
+                {
+                    collector = baseCollector.WherePasses(new ElementMulticategoryFilter(modelCategoryIds));
+                }
+                catch (Exception ex)
+                {
+                    // Never silently narrow: fall back to an unfiltered
+                    // sweep with a per-element check rather than quietly
+                    // reverting to DefaultCategories, which is exactly the
+                    // "looked like it examined everything" failure this
+                    // whole mode exists to prevent.
+                    errors.Add($"model-category filter: {ex.Message} - fell back to a per-element category check");
+                    collector = baseCollector;
+                    filterModelCategoriesInCode = true;
+                }
+            }
+            else
+            {
+                collector = baseCollector;
+                filterModelCategoriesInCode = true;
+            }
+        }
+        else
+        {
+            var scope = categories?.ToList() ?? DefaultCategories.ToList();
+            collector = baseCollector.WherePasses(new ElementMulticategoryFilter(scope));
+        }
 
         var queue = new Queue<(Element Element, long? HostId)>();
         foreach (var element in collector)
         {
+            if (filterModelCategoriesInCode && !IsModelCategory(element))
+            {
+                continue;
+            }
+
             queue.Enqueue((element, null));
         }
 

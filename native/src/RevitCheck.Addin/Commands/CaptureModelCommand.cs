@@ -69,7 +69,14 @@ public class CaptureModelCommand : IExternalCommand
         DimensionCollectionResult collectedDimensions;
         try
         {
-            collectedMetadata = RevitMetadataElementSource.Collect(doc, mapping.ScopeViewName);
+            // Every model category the document defines, not the five
+            // DefaultCategories: a capture is what the per-model starter
+            // config is derived from, so a category this code has never
+            // heard of has to show up here or the config step cannot
+            // reveal it. Per the user, 2026-09-07 - modellers put strange
+            // content into models. See ModelCategoryIds's own remarks.
+            collectedMetadata = RevitMetadataElementSource.Collect(
+                doc, mapping.ScopeViewName, allModelCategories: true);
             collectedDimensions = RevitDimensionSource.Collect(doc);
         }
         catch (Exception ex)

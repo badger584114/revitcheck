@@ -132,4 +132,27 @@ public class RuleConfigSerializerTests
 
         Assert.Equal(3000.0, loaded.SpotElevationShelfSearchRadiusMm);
     }
+
+    /// <summary>
+    /// The starter's category diagnostic has to name the *collection*
+    /// categories too, not just pile_category_name: an element in no
+    /// collected category never reaches the check, so listing what is in
+    /// the model without saying what is actually swept would tell a reader
+    /// half the story - the same half-fix that shipped earlier the same
+    /// day.
+    /// </summary>
+    [Fact]
+    public void Starter_diagnostic_names_the_collection_categories_not_just_the_expected_one()
+    {
+        var model = RevitCheckTestBuilders.Model(elements: new[]
+        {
+            RevitCheckTestBuilders.Element(1, category: "Structural Columns"),
+        });
+
+        var result = RuleConfigStarter.Build(model);
+
+        var line = Assert.Single(result.Diagnostics, d => d.Contains("pile_collection_category_names"));
+        Assert.Contains("Structural Columns (1)", line);
+        Assert.Contains("never reach the check", line);
+    }
 }
