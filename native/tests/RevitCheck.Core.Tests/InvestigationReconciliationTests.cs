@@ -417,9 +417,9 @@ public class InvestigationReconciliationTests
         Assert.Equal(new long[] { 4, 5 }, remaining.ToArray());
         Assert.Contains("3 of 5 have since been verified", open.Description);
 
-        // The issue count alone still reads 1 - which is exactly why the
-        // dimension-level counts exist.
-        Assert.Equal(1, result.StillOpenTriage.Count);
+        // The issue count alone still reads one (Assert.Single above) -
+        // which is exactly why the dimension-level counts exist: they move
+        // while it cannot.
         Assert.Equal(3, result.ResolvedDimensionCount);
         Assert.Equal(2, result.OpenDimensionCount);
     }
