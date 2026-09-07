@@ -1,8 +1,19 @@
 # RevitCheck native add-in
 
-The C# native Revit add-in. `extensions/RevitCheck.extension` (pyRevit) is
-frozen — no further feature work there (PLANNING.md §12) — this is where new
-work happens.
+The C# native Revit add-in — the production host, and the only one. The
+pyRevit extension this replaced was archived on 2026-09-07
+(`ARCHIVE-pyrevit.md`, `git checkout pyrevit-final`); references to
+`extensions/RevitCheck.extension/`, `scripts/check_capture.py` and the
+Python test suite below are **historical**, describing a tree that existed
+when they were written. `tools/RevitCheck.CheckRunner` is the surviving
+equivalent of `check_capture.py`.
+
+> **This file mixes operating instructions with a build diary.** For what
+> is true *now* — which checks exist, which are validated on a real
+> machine, and what is next — read **CLAUDE.md**, not the dated entries
+> below. Several of them say "not yet run on the Revit machine" about
+> work that has since been run and validated; each is annotated where it
+> appears, but CLAUDE.md's Built state table is the authority.
 
 See the plan the metadata reconciliation feature was built from for the full
 design reasoning: `~/.claude/plans/the-first-button-we-abundant-platypus.md`
@@ -588,7 +599,7 @@ scoped to the active view (`FilteredElementCollector(doc, view.Id)`), not
 a document-wide sweep - avoids false-matching against foundation
 instances from unrelated structures elsewhere in the model, and reuses
 the same per-view scoping the dimension collection already relies on.
-Not yet run - needs the Revit machine.
+Not yet run - needs the Revit machine. **[Superseded: this diagnostic was run, and its results shaped `revitcheck.pile_chain_bearing_consistency` - PLANNING.md §14.]**
 
 **Stage 3 (reconciliation + export) design started, same day, ahead of the
 check above being run - the mechanism itself doesn't need real client
@@ -695,6 +706,8 @@ anywhere in this codebase yet (still Stage 3's job).
   prose left open, resolved during implementation.
 - **Stage 2 (the two pile checks' first real Addin commands) built
   2026-08-28, same day - not yet run on the Revit machine.**
+  **[Superseded: both were run and validated, 2026-08-28 and 2026-08-31,
+  after four real bugs in the schedule-reading path - PLANNING.md §16.]**
   `Commands/PileModelScheduleConsistencyCommand.cs`/
   `Commands/PileChainBearingConsistencyCommand.cs`, both whole-model and
   standalone (not yet the Stage-3 dual-mode session integration), both
@@ -872,6 +885,11 @@ anywhere in this codebase yet (still Stage 3's job).
 
 ### Interactive checking workflow (PLANNING.md §16 Stage 3) - built, not yet run on the Revit machine
 
+> **[Superseded: Stage 4 ran across five real machine sessions on
+> 2026-08-31. Every button, the restart/resume cycle, bulk-dismiss and
+> reconciled BCF export are confirmed working; six real bugs and one
+> missing capability were found and fixed. See PLANNING.md §16.]**
+
 Everything named in Stage 3's design (`~/.claude/plans/an-idea-of-how-floating-peacock.md`)
 is built and passing `dotnet build`/`dotnet test` (316 Core tests, up from
 313) as of 2026-08-31:
@@ -927,7 +945,8 @@ is built and passing `dotnet build`/`dotnet test` (316 Core tests, up from
   without a second/third dialog interrupting the export.
 
 **Not yet run on the Revit machine** - Stage 4 (PLANNING.md §16) is the
-real-machine validation of the full cycle: open the checklist, open a
+real-machine validation of the full cycle: **[Superseded: Stage 4 is
+complete - every item in this list was confirmed on 2026-08-31.]** open the checklist, open a
 flagged view via its own button, run a pile check while it's active and
 confirm the row updates live, bulk-dismiss a real construction-sequence
 sheet, close and reopen Revit mid-cycle to confirm resume works, export and

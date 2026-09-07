@@ -1,20 +1,33 @@
-# PDF Checker — Architecture & Planning
+# RevitCheck — Architecture & Planning
 
-> **Current direction: §5c.** The checks now run **inside Revit** as a
-> pyRevit toolbar (`extensions/RevitCheck.extension/`), not over
-> PDF/DWG/IFC exports. §5c records that decision and what it dissolves;
-> CLAUDE.md describes the built state.
+> **How to read this document.** It is an append-only trail of why
+> decisions changed, deliberately not rewritten to look like it always
+> knew. So it is the right place for *how something came to be true* and
+> the wrong place for *what is true now* — **CLAUDE.md is current state**,
+> and where the two disagree, CLAUDE.md wins on the present tense.
 >
-> **Everything before §5c is still worth reading, and is not obsolete.**
-> §1-§4 and §5a/§5b are where the domain knowledge lives — what real
-> drawing sets look like, why drawn dimensions legitimately differ from
-> the model, what a setout table is for, which assumptions broke when a
-> second client's files arrived. The *delivery mechanism* changed; the
-> reasoning did not. This document is deliberately kept as a trail of why
-> decisions changed rather than rewritten to look like it always knew.
+> | Sections | Status |
+> | --- | --- |
+> | §1-§4, §5a/§5b, §6 | **Domain knowledge, still live.** What real drawing sets look like, why drawn dimensions legitimately differ from the model, what a setout table is for, which assumptions broke when a second client's files arrived. The delivery mechanism changed; the reasoning did not. |
+> | §5c | The decision to move the checks inside Revit, and what it dissolves. |
+> | §5d | The reporting-sink question. Answered by §12 (BCF), which is built and proven. |
+> | §7, §8 | Reporting and markup/redline export, written for the PDF pipeline. Superseded in mechanism by §12's BCF export; the *requirements* still read true. |
+> | §9 | MVP scope for the parked pipeline. Historical. |
+> | §10 | **Withdrawn.** Its air-gap premise was never a client requirement. Read its superseded note before treating anything in it as a rule. |
+> | §11 | Open questions, most since answered elsewhere. |
+> | §12-§19 | **The native add-in.** The live thread. §19 is the most recent. |
 >
-> The pipeline §1-§5b describes was built, worked, and was parked on
-> 2026-08-18 — see `ARCHIVE-pdf-dwg.md` and `git checkout pdf-dwg-final`.
+> **Two trees have been archived, and each tag is the only surviving
+> reference to its code** (`main` is the sole branch):
+>
+> - The PDF/DWG/IFC pipeline §1-§5b describes was built, worked, and was
+>   parked 2026-08-18 — `ARCHIVE-pdf-dwg.md`, `git checkout pdf-dwg-final`.
+> - The pyRevit extension §5c-§12 describes was built, proved the
+>   adapter/IR/checks split and the Revit → BCF → Forma round trip, and
+>   was archived 2026-09-07 — `ARCHIVE-pyrevit.md`, `git checkout
+>   pyrevit-final`. Production is the native C# add-in in `native/`.
+>   **References to `extensions/RevitCheck.extension/` in sections below
+>   are historical**; they described a real tree at the time of writing.
 
 A web app that ingests PDF or DWG sets of civil engineering drawings (bridges, retaining walls) and runs two categories of automated review: a **drafting check** (standards, annotation, cross-sheet, spelling/revisions) and a **geometry check** (dimensional consistency, full structure reconstruction from setout data, cross-checking against setout tables). A third input, an uploaded **client specification document**, can auto-generate project-specific rules that feed both engines (§6).
 
