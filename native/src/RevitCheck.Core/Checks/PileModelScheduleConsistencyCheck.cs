@@ -23,6 +23,24 @@ namespace RevitCheck.Core.Checks;
 /// </summary>
 /// <remarks>
 /// <para>
+/// <b>Corrected 2026-09-07, after real runs on two further bridge models
+/// failed for two different naming reasons.</b> One model's piles are
+/// modelled as Generic Models, so the configured category matched nothing
+/// and the check returned having compared nothing; the other's schedule
+/// columns were headed differently, so no rows were captured to join
+/// against. Both were the same mistake in two costumes - deriving, from
+/// display text, a link the model already states. The join is now identity
+/// (a schedule row's own backing element, <see cref="ScheduleRow.ElementId"/>),
+/// scope includes anything a candidate schedule actually lists regardless
+/// of category, and no id column or key parameter is required at all. A
+/// key-text join survives only as a fallback for rows that genuinely have
+/// no element behind them (the rendered-table read path), and never
+/// overrides a row that names a different element. What still needs
+/// recognising by name is exactly one thing: which two columns carry
+/// Easting and Northing - a semantic mapping no amount of model
+/// introspection can supply, and which belongs in per-project config.
+/// </para>
+/// <para>
 /// Deliberately structured like <see cref="MetadataReconciliationCheck"/>'s
 /// join (key parameter -&gt; matching row, ambiguity reported rather than
 /// silently resolved, a missing match is its own finding) even though the
