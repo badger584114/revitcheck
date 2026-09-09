@@ -116,26 +116,39 @@ public class RuleConfigSerializerTests
         Assert.Contains("refusing to misread", ex.Message);
     }
 
+    /// <summary>
+    /// Rewritten 2026-09-09. This used to assert that the starter adopted
+    /// every coordinate-looking heading it found, on the reasoning that
+    /// widening a candidate list is harmless. It is not: headings resolve
+    /// per schedule, so adopting one promotes a schedule carrying no setout
+    /// data into a candidate setout schedule. Adopting
+    /// DIT_StartEasting/DIT_StartNorthing - this client's maintenance
+    /// metadata for the bridge's own centrepoint - is what masked a real
+    /// planted 50mm error (PLANNING.md §23). Discovery reports; a person
+    /// adopts.
+    /// </summary>
     [Fact]
-    public void Starter_widens_setout_header_candidates_from_real_schedule_headings()
+    public void Starter_reports_coordinate_headings_it_finds_but_never_adopts_them()
     {
         var model = RevitCheckTestBuilders.Model(schedules: new[]
         {
             new ScheduleInfo
             {
-                Name = "PILE SETOUT",
-                Headers = new List<string> { "PILE REF", "EASTING COORD", "NORTHING COORD" },
+                Name = "ATM_Design_Automation - Added_New_DIT_Parameters",
+                Headers = new List<string> { "DIT_LocationHierarchyCode", "DIT_StartEasting", "DIT_StartNorthing" },
                 Rows = new List<ScheduleRow>(),
             },
         });
 
         var result = RuleConfigStarter.Build(model);
 
-        Assert.Contains("EASTING COORD", result.Config.PileScheduleEastingHeaders);
-        Assert.Contains("NORTHING COORD", result.Config.PileScheduleNorthingHeaders);
-        // Widening, never replacing - the defaults still apply to a model
-        // that uses them.
-        Assert.Contains("EASTING (m)", result.Config.PileScheduleEastingHeaders);
+        Assert.DoesNotContain("DIT_StartEasting", result.Config.PileScheduleEastingHeaders);
+        Assert.DoesNotContain("DIT_StartNorthing", result.Config.PileScheduleNorthingHeaders);
+        // The defaults are left exactly as they were.
+        Assert.Equal(new RuleConfig().PileScheduleEastingHeaders, result.Config.PileScheduleEastingHeaders);
+        // But a reviewer is told the heading exists, so adopting it stays a
+        // one-line config edit rather than a discovery problem.
+        Assert.Contains(result.Diagnostics, d => d.Contains("DIT_StartEasting"));
     }
 
     [Fact]

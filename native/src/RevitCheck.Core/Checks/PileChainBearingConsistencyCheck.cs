@@ -116,9 +116,14 @@ public static class PileChainBearingConsistencyCheck
         var chainSet = PileChainReconstruction.BuildChains(edges);
         var edgeDimensionIds = new HashSet<long>(edges.Select(e => e.DimensionElementId));
 
+        // Which piles this run actually reached a conclusion about, of any
+        // kind. Everything else is named at the end - see UncoveredPilesIssue.
+        var coveredPileIds = new HashSet<long>();
+
         foreach (var component in chainSet.AmbiguousComponents)
         {
             var ids = string.Join(", ", component.Select(p => p.ElementId));
+            coveredPileIds.UnionWith(component.Select(p => p.ElementId));
             issues.Add(new Issue
             {
                 RuleId = RuleId,
@@ -138,7 +143,13 @@ public static class PileChainBearingConsistencyCheck
                 continue;
             }
 
-            EvaluateChain(chain, notes, config, issues, investigated);
+            EvaluateChain(chain, notes, config, issues, investigated, coveredPileIds);
+        }
+
+        var uncovered = piles.Where(p => !coveredPileIds.Contains(p.ElementId)).ToList();
+        if (uncovered.Count > 0)
+        {
+            issues.Add(UncoveredPilesIssue(uncovered, piles.Count, config));
         }
 
         // Real dimensions that plausibly belong to a pile chain but didn't
@@ -194,12 +205,14 @@ public static class PileChainBearingConsistencyCheck
         List<(TextNoteInfo Note, double? Degrees)> notes,
         RuleConfig config,
         List<Issue> issues,
-        List<long> investigated)
+        List<long> investigated,
+        HashSet<long> coveredPileIds)
     {
         var split = PileChainReconstruction.SplitIntoStraightRuns(chain, config);
 
         if (split.PositionsIncomplete)
         {
+            coveredPileIds.UnionWith(chain.PilesInOrder.Select(p => p.ElementId));
             issues.Add(ChainCoverageIssue(chain,
                 $"Reconstructed a {ChainDescription(chain)} but at least one pile has no live position " +
                 "captured - the chain could not be checked for straightness, so no bearing was checked."));
@@ -233,6 +246,7 @@ public static class PileChainBearingConsistencyCheck
             });
 
             investigated.AddRange(bend.DimensionElementIds);
+            coveredPileIds.Add(bend.Pile.ElementId);
         }
 
         foreach (var run in split.Runs)
@@ -243,6 +257,7 @@ public static class PileChainBearingConsistencyCheck
             }
 
             investigated.AddRange(run.DimensionElementIds);
+            coveredPileIds.UnionWith(run.PilesInOrder.Select(p => p.ElementId));
             EvaluateRun(run, split.Bends.Count > 0, notes, config, issues);
         }
     }
@@ -424,6 +439,50 @@ public static class PileChainBearingConsistencyCheck
 
         return BearingMath.AzimuthDegrees(first.X, first.Y, last.X, last.Y);
     }
+
+    /// <summary>
+    /// Names every in-scope pile this run reached no conclusion about at
+    /// all - in no reconstructed chain, or in one too short to evaluate.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added 2026-09-09, from the first real negative control.</b> A 50mm
+    /// move was planted on pile 5506399 and this check said nothing whatever
+    /// about it - the pile appeared nowhere in the output, so there was no
+    /// way to tell "checked and clean" from "never looked at". A chain
+    /// shorter than <see cref="RuleConfig.PileChainMinimumPiles"/> was
+    /// skipped with a bare <c>continue</c>, and a pile with no tag-to-tag
+    /// dimension adjacency was never enumerated at all. On the real run
+    /// roughly eight of thirty-three in-scope piles were in this position
+    /// and the output was silent about every one.
+    /// </para>
+    /// <para>
+    /// Straight from CLAUDE.md: a rule that found nothing because nothing
+    /// was in scope must not look like a rule that found nothing because
+    /// the model is clean. Skipping is a legitimate outcome - a two-pile run
+    /// genuinely has no redundancy to check (§20) - but a silent one is not.
+    /// </para>
+    /// </remarks>
+    private static Issue UncoveredPilesIssue(
+        List<ElementMetadata> uncovered, int totalPiles, RuleConfig config)
+    {
+        var ids = string.Join(", ", uncovered.Take(MaxListedPiles).Select(p => p.ElementId));
+        return new Issue
+        {
+            RuleId = RuleId,
+            Category = "coverage",
+            Severity = "medium",
+            Description =
+                $"{uncovered.Count} of {totalPiles} in-scope pile(s) were not covered by any checked run - " +
+                "they are in no reconstructed tag-to-tag chain, or in one shorter than the " +
+                $"{config.PileChainMinimumPiles}-pile minimum, so this check says nothing about whether they " +
+                $"sit on their setout line: {ids}" +
+                (uncovered.Count > MaxListedPiles ? ", ..." : "") +
+                ". Not a defect - a gap in what could be checked, and these need a human or another check.",
+        };
+    }
+
+    private const int MaxListedPiles = 10;
 
     private static Issue ChainCoverageIssue(PileChain chain, string description) => new()
     {

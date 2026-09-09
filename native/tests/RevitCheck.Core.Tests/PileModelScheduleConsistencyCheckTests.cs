@@ -486,6 +486,124 @@ public class PileModelScheduleConsistencyCheckTests
             i => i.Description.Contains("by up to 0mm"));
     }
 
+    /// <summary>
+    /// A schedule carrying this client's DIT maintenance metadata: the
+    /// bridge's own centrepoint, so one position for the whole structure
+    /// rather than one per element. Real headings and the real constant
+    /// this model states (278441259/6130715213mm).
+    /// </summary>
+    private static ScheduleInfo WholeStructureMetadataSchedule(params long[] rowElementIds)
+        => new()
+        {
+            Name = "ATM_Design_Automation - Added_New_DIT_Parameters "
+                 + "(LocationHierarchyCode StartEasting StartNorthing)",
+            ElementId = 900004,
+            Headers = new List<string> { "DIT_LocationHierarchyCode", "EASTING (m)", "NORTHING (m)" },
+            Rows = rowElementIds
+                .Select(id => new ScheduleRow
+                {
+                    ElementId = id,
+                    Values = new Dictionary<string, string>
+                    {
+                        ["DIT_LocationHierarchyCode"] = "BDK234301",
+                        ["EASTING (m)"] = "278441.259",
+                        ["NORTHING (m)"] = "6130715.213",
+                    },
+                })
+                .ToList(),
+        };
+
+    /// <summary>
+    /// <b>The first negative control this project has ever run</b>
+    /// (2026-09-09, PLANNING.md §23): pile 5506399 was moved 50mm east in a
+    /// scratch model and neither pile check said anything about it.
+    /// </summary>
+    /// <remarks>
+    /// The cause was not the comparison but what counted as a stated
+    /// position. DIT_StartEasting/DIT_StartNorthing had been adopted as
+    /// setout columns, and on this client's projects they are maintenance
+    /// metadata giving the <i>bridge's</i> centrepoint - the same value for
+    /// every element on the structure. Every pile therefore looked 4.3m to
+    /// 20m from where "a schedule" said it was, the check reported the
+    /// schedules as contradicting each other, and it never compared
+    /// anything - masking a real 50mm with a fabricated 4.3m while the
+    /// correct position sat unread in ABUTMENT A PILE SCHEDULE.
+    ///
+    /// Numbers are the real ones: 5506399 is PIL234307, its real quoted
+    /// disagreement was 4319.93mm, and the constant is this model's own.
+    /// </remarks>
+    [Fact]
+    public void A_planted_50mm_move_is_found_despite_a_whole_structure_metadata_column()
+    {
+        // Schedule and frozen Dynamo parameters both still state the
+        // pre-move position; only the live model position has moved 50mm
+        // east. That is exactly the staleness this check exists to catch.
+        var moved = RevitCheckTestBuilders.Pile(
+            5506399, "PIL234307",
+            eastingMm: 278238860.671,   // live: 50mm east of the schedule
+            northingMm: 6130224280.728);
+        // A second, untouched pile - the whole-structure column can only be
+        // recognised by the fact that it says the same thing about both.
+        var untouched = RevitCheckTestBuilders.Pile(5506318, "PIL234302", 278239916.211, 6130220127.579);
+
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { moved, untouched },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "ABUTMENT A PILE SCHEDULE",
+                    new[]
+                    {
+                        (5506399L, "278238.811", "6130224.281"),
+                        (5506318L, "278239.916", "6130220.128"),
+                    }),
+                WholeStructureMetadataSchedule(5506399, 5506318),
+            });
+
+        var issues = PileModelScheduleConsistencyCheck.Run(model, new RuleConfig());
+
+        // The whole-structure column is set aside, with a coverage note
+        // saying so rather than silently.
+        var setAside = Assert.Single(issues, i => i.Category == "coverage");
+        Assert.Contains("same position for every row", setAside.Description);
+
+        // And the real defect is found, at its real magnitude.
+        var found = Assert.Single(issues, i => i.Category == "geometry");
+        Assert.Equal("high", found.Severity);
+        Assert.Equal(5506399, found.ElementId);
+        Assert.Contains("PIL234307", found.Description);
+        Assert.DoesNotContain("disagree with each other", found.Description);
+        Assert.Contains("50", found.Description);
+    }
+
+    /// <summary>
+    /// The guard is about variation in the data, not about the heading, so
+    /// it must not fire on a schedule that states real per-pile positions
+    /// which happen to be read through the same column names.
+    /// </summary>
+    [Fact]
+    public void A_setout_column_stating_different_positions_is_not_treated_as_whole_structure()
+    {
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[]
+            {
+                RevitCheckTestBuilders.Pile(1, "PIL232132", 278238810.671, 6130224280.728),
+                RevitCheckTestBuilders.Pile(2, "PIL232133", 278239916.211, 6130220127.579),
+            },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "ABUTMENT A PILE SCHEDULE",
+                    new[]
+                    {
+                        (1L, "278238.811", "6130224.281"),
+                        (2L, "278239.916", "6130220.128"),
+                    }),
+            });
+
+        Assert.Empty(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
+    }
+
     [Fact]
     public void Blank_key_piles_are_aggregated_into_one_issue()
     {

@@ -85,11 +85,36 @@ public static class PileModelScheduleConsistencyCheck
         // all: rows carry their own element (ScheduleRow.ElementId), so the
         // pile-to-row link is read from the model rather than reconstructed
         // by matching two rendered strings.
-        var candidateSchedules = model.Schedules
+        var allCandidateSchedules = model.Schedules
             .Where(s =>
                 s.ResolveHeader(config.PileScheduleEastingHeaders) is not null &&
                 s.ResolveHeader(config.PileScheduleNorthingHeaders) is not null)
             .ToList();
+
+        // A setout column states where each element is. One that gives every
+        // row the same answer is not doing that, whatever its heading says.
+        var candidateSchedules = allCandidateSchedules
+            .Where(s => !StatesOnePositionForEverything(s, config))
+            .ToList();
+
+        var wholeStructureSchedules = allCandidateSchedules.Except(candidateSchedules).ToList();
+        if (wholeStructureSchedules.Count > 0)
+        {
+            issues.Add(new Issue
+            {
+                RuleId = RuleId,
+                Category = "coverage",
+                Severity = "low",
+                Description =
+                    $"{wholeStructureSchedules.Count} schedule(s) have a configured setout column that states " +
+                    "the same position for every row, so they describe the structure rather than each " +
+                    "element and were not used as a stated pile position: " +
+                    string.Join(", ", wholeStructureSchedules.Take(MaxListed).Select(s => $"'{s.Name}'")) +
+                    (wholeStructureSchedules.Count > MaxListed ? ", ..." : "") +
+                    ". If that is wrong, remove the column from pile_schedule_easting_headers / " +
+                    "pile_schedule_northing_headers rather than leaving it to contradict the real one.",
+            });
+        }
 
         if (candidateSchedules.Count == 0)
         {
@@ -319,6 +344,59 @@ public static class PileModelScheduleConsistencyCheck
         return key is null
             ? $"Pile {pile.ElementId}"
             : $"Pile {pile.ElementId} ('{key}')";
+    }
+
+    /// <summary>
+    /// True when the schedule's configured setout column gives every row it
+    /// can read the same position - so it states something about the whole
+    /// structure, not about each element.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added 2026-09-09, from the first real negative control.</b> A
+    /// deliberately planted 50mm move on pile 5506399 went undetected. The
+    /// cause was <c>DIT_StartEasting</c>/<c>DIT_StartNorthing</c> being
+    /// configured as setout columns: on this client's projects they are
+    /// maintenance metadata carrying the <i>bridge's</i> centrepoint, one
+    /// value for the entire structure. Every pile therefore appeared to sit
+    /// 4.3m to 20m from where "a schedule" said it was, the check reported
+    /// the schedules as contradicting each other, and it refused to compare
+    /// anything at all - masking the 50mm with a fabricated 4.3m, while the
+    /// correct position sat in 'ABUTMENT A PILE SCHEDULE' unread.
+    /// </para>
+    /// <para>
+    /// The heading cannot distinguish these - <c>DIT_StartEasting</c> reads
+    /// exactly like a coordinate, which is why it was adopted - but the data
+    /// can, and unambiguously: a column that answers "where is this
+    /// element?" with one answer for every element is not that column. This
+    /// is a search over real values rather than a judgement about names,
+    /// which is the distinction this project keeps having to relearn.
+    /// </para>
+    /// <para>
+    /// Fewer than two readable rows means there is nothing to compare, so
+    /// the schedule is left alone - absence of variation is only evidence
+    /// when there was a chance to vary.
+    /// </para>
+    /// </remarks>
+    private static bool StatesOnePositionForEverything(ScheduleInfo schedule, RuleConfig config)
+    {
+        var positions = new List<(double E, double N)>();
+        foreach (var row in schedule.Rows)
+        {
+            if (TryReadRowPosition(schedule, row, config, out var e, out var n))
+            {
+                positions.Add((e, n));
+            }
+        }
+
+        if (positions.Count < 2)
+        {
+            return false;
+        }
+
+        return positions.All(p =>
+            Math.Abs(p.E - positions[0].E) <= config.PileSetoutToleranceMm &&
+            Math.Abs(p.N - positions[0].N) <= config.PileSetoutToleranceMm);
     }
 
     /// <summary>
