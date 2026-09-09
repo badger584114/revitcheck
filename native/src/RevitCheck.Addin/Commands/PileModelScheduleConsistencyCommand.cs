@@ -1,3 +1,4 @@
+using RevitCheck.Core.Issues;
 using System.Globalization;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -171,13 +172,7 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
 
         var issues = PileModelScheduleConsistencyCheck.Run(model, config);
 
-        var summary = $"{issues.Count} issue(s) found ({piles.Elements.Count} pile(s) in view '{activeView.Name}', " +
-            $"{schedules.Count} captured schedule(s) checked)" +
-            (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
-            "." +
-            ExtractionErrorSample.Format(model.ExtractionErrors) +
-            ScheduleDiagnostics(piles.Elements, schedules, config);
-        summary += "\n\n" + configDescription + CategoryScope.Note(unresolvedCategories);
+        var summary = Summarise(model, issues, config, piles.Elements.Count, activeView.Name, doc, unresolvedCategories);
 
         if (CheckingSessionHost.Session is { } session)
         {
@@ -202,11 +197,8 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
             // mismatch in a view triage never flagged still reaches the
             // checklist and the reconciled BCF export.
             var sessionNote =
-                "\n\nRecorded against the active checking session, in the checklist's Other Findings " +
-                "column.\n\nThis check does NOT resolve Dimension Triage items, and is not meant to: it " +
-                "compares a pile's position against the schedule, which says nothing about whether a " +
-                "drafted dimension on the drawing is correct. Pile Chain Bearing is the check that " +
-                "resolves triaged pile dimensions.";
+                "\n\nRecorded in the checklist's Other Findings column. This check does not resolve " +
+                "Dimension Triage items - Pile Chain Bearing is the one that does.";
 
             try
             {
@@ -267,126 +259,137 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
     /// rows they carried is useful coverage information on every run, not
     /// just this one.
     /// </summary>
-    private static string ScheduleDiagnostics(List<ElementMetadata> piles, List<ScheduleInfo> schedules, RuleConfig config)
+    /// <summary>
+    /// What the run actually established, and nothing else: how many piles
+    /// were checked, which schedules they were compared against, and which
+    /// piles disagree.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Cut back hard on 2026-09-09, per the user - the dialog was "very
+    /// confusing".</b> It had accumulated a candidate-schedule breakdown
+    /// with per-schedule row and element-id counts, a character-level hex
+    /// dump comparing a pile key against a schedule id, an extraction-error
+    /// sample, the full config path with every setting it pinned, and a
+    /// paragraph explaining what the check does not do. The one thing a
+    /// reader wants - which pile is wrong, and by how much - was the
+    /// hardest thing in it to find.
+    /// </para>
+    /// <para>
+    /// Nothing is lost: every finding, coverage note included, is in the
+    /// JSON/CSV/BCF written beside the model, and in the checklist. The
+    /// dialog keeps a one-line count of the notes it no longer prints, so
+    /// CLAUDE.md's "report a coverage indicator, never fail silently"
+    /// still holds - what changed is that a coverage note is now counted
+    /// here and read there, rather than recited in full.
+    /// </para>
+    /// </remarks>
+    private static string Summarise(
+        RevitModel model,
+        List<Issue> issues,
+        RuleConfig config,
+        int pileCount,
+        string viewName,
+        Document doc,
+        List<string> unresolvedCategories)
     {
-        var candidates = schedules.Where(s =>
-            s.ResolveHeader(config.PileScheduleIdHeaders) is not null &&
-            s.ResolveHeader(config.PileScheduleEastingHeaders) is not null &&
-            s.ResolveHeader(config.PileScheduleNorthingHeaders) is not null)
+        var compared = PileModelScheduleConsistencyCheck.ComparedSchedules(model, config);
+
+        var lines = new List<string>
+        {
+            $"{pileCount} pile(s) in view '{viewName}'.",
+            compared.Count == 0
+                ? "Compared against: nothing - no captured schedule has readable Easting/Northing columns."
+                : "Compared against: " + string.Join(", ", compared.Select(s => $"'{s.Name}'")) + ".",
+        };
+
+        var mismatches = issues
+            .Where(i => string.Equals(i.Category, "geometry", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        if (candidates.Count == 0)
+        lines.Add(string.Empty);
+        if (mismatches.Count == 0)
         {
-            return "\n\nNo captured schedule's headers resolved all of id/Easting/Northing - nothing was a candidate to join against.";
+            lines.Add("No mismatches.");
+        }
+        else
+        {
+            lines.Add($"{mismatches.Count} pile(s) mismatched:");
+            lines.AddRange(mismatches.Select(MismatchLine));
         }
 
-        var lines = candidates.Select(s =>
-        {
-            var idHeader = s.ResolveHeader(config.PileScheduleIdHeaders);
-            var firstRow = s.Rows.Count > 0 ? s.Rows[0] : null;
-            var firstRowId = firstRow is null
-                ? "(no rows captured)"
-                : idHeader is not null && firstRow.Value(idHeader) is { } value
-                    ? $"'{value}'"
-                    : "(no id column - joined by element id)";
-            var elementIdCount = s.Rows.Count(r => r.ElementId is not null);
-            return $"- '{s.Name}': {s.Rows.Count} row(s) captured, {elementIdCount} carrying an element id, " +
-                $"id header '{idHeader ?? "(none)"}', first row's id = {firstRowId}";
-        });
+        // The three indicators that must survive the cut, each shown only
+        // when it has something to say - a clean run stays short, and none
+        // of these can be silent when it matters. Extraction errors in
+        // particular appear nowhere else on this command's path.
+        var notes = issues.Count - mismatches.Count;
+        var footnotes = new List<string>();
 
-        return "\n\nCandidate schedule(s):\n" + string.Join("\n", lines) + CharacterCheck(piles, candidates, config);
+        if (notes > 0)
+        {
+            footnotes.Add($"{notes} note(s) on what could not be checked - see the results file.");
+        }
+
+        if (model.ExtractionErrors.Count > 0)
+        {
+            footnotes.Add($"{model.ExtractionErrors.Count} element(s) could not be read at all.");
+        }
+
+        var pinned = PinnedSettingCount(doc);
+        if (pinned > 0)
+        {
+            footnotes.Add(
+                $"This model's config pins {pinned} setting(s) away from the built-in defaults - " +
+                "Rule Config shows which.");
+        }
+
+        if (footnotes.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.AddRange(footnotes);
+        }
+
+        return string.Join("\n", lines) + CategoryScope.Note(unresolvedCategories);
     }
 
     /// <summary>
-    /// Added 2026-08-28, a safety net alongside the AsString()-vs-
-    /// AsValueString() fix (see RevitScheduleSource.ReadParameterText's own
-    /// remarks): a real run showed a schedule row with an id textually
-    /// identical, by eye, to a failing pile's own key - visible text alone
-    /// can't rule out a hidden-character/normalization mismatch a person
-    /// reading a dialog or a JSON file would never spot. Finds one pile
-    /// whose key loosely (case-insensitive) matches one candidate
-    /// schedule's first row id, then reports both strings' exact length
-    /// and per-character hex code points side by side - if the AsString()
-    /// fix above is what was actually wrong, this should now show an exact
-    /// match; if it still doesn't, the code points say exactly why.
+    /// How many settings this model's config holds away from the current
+    /// defaults - worth one line when non-zero, since a config that pins a
+    /// superseded tolerance is invisible otherwise and has silently decided
+    /// two real runs (PLANNING.md §22, §23).
     /// </summary>
-    private static string CharacterCheck(List<ElementMetadata> piles, List<ScheduleInfo> candidates, RuleConfig config)
+    private static int PinnedSettingCount(Document doc)
     {
-        foreach (var schedule in candidates.Where(s => s.Rows.Count > 0))
+        try
         {
-            var idHeader = schedule.ResolveHeader(config.PileScheduleIdHeaders);
-            if (idHeader is null || schedule.Rows[0].Value(idHeader) is not { } rowId)
-            {
-                // No id column to compare - the identity join needs none.
-                continue;
-            }
-
-            var matchingPile = piles.FirstOrDefault(p =>
-                p.Parameters.TryGetValue(config.PileKeyParameterName, out var v) &&
-                string.Equals((v.RawString ?? v.DisplayString)?.Trim(), rowId.Trim(), StringComparison.OrdinalIgnoreCase));
-
-            if (matchingPile is null)
-            {
-                return $"\n\nCharacter check: no pile's own key even loosely (case-insensitive) matches " +
-                    $"'{rowId}' from '{schedule.Name}' - the join may be comparing the wrong scope, not just a formatting difference.";
-            }
-
-            var pileValue = matchingPile.Parameters[config.PileKeyParameterName];
-            var pileKey = (pileValue.RawString ?? pileValue.DisplayString)!.Trim();
-            var scheduleId = rowId.Trim();
-            var exact = string.Equals(pileKey, scheduleId, StringComparison.Ordinal);
-
-            return $"\n\nCharacter check: pile key '{pileKey}' ({pileKey.Length} char(s): {CodePoints(pileKey)}) vs. " +
-                $"schedule id '{scheduleId}' ({scheduleId.Length} char(s): {CodePoints(scheduleId)}) - exact match: {exact}." +
-                PositionCheck(matchingPile, schedule, config);
+            var json = RuleConfigSource.ReadRaw(doc);
+            return json is null ? 0 : RuleConfigSerializer.DescribeOverrides(json).Count;
         }
-
-        return "";
+        catch
+        {
+            // Never let a reporting nicety fail the run that produced the
+            // findings - Rule Config reports properly on this file anyway.
+            return 0;
+        }
     }
 
-    private static string CodePoints(string value) => string.Join(" ", value.Select(c => ((int)c).ToString("X4")));
-
-    /// <summary>
-    /// Added 2026-08-28 alongside <see cref="CharacterCheck"/> - the id
-    /// join is now confirmed exact-matching for real data, but the issue
-    /// count on that same real run didn't drop, meaning something in the
-    /// Easting/Northing side is now the live failure point instead
-    /// (a genuine mismatch, or - the leading suspect - a units/formatting
-    /// mismatch: <c>ReadParameterText</c> reads a numeric column via
-    /// <c>AsValueString()</c>, which applies the *project's own display
-    /// unit* and may include a unit suffix, while
-    /// <c>PileModelScheduleConsistencyCheck.TryParseMetresToMm</c> expects
-    /// a bare metres number and silently fails to parse anything else).
-    /// Reports, for the same matched pile/schedule-row pair
-    /// <see cref="CharacterCheck"/> already found: the row's raw captured
-    /// Easting/Northing text, whether it parses as a bare number, and the
-    /// pile's own live <c>GetProjectPosition</c> value - enough to tell a
-    /// parse failure from a genuine (or spurious) position mismatch
-    /// without a fourth diagnostic round.
-    /// </summary>
-    private static string PositionCheck(ElementMetadata pile, ScheduleInfo schedule, RuleConfig config)
+    /// <summary>One mismatch, as "5506399 - 50mm" - the id a reviewer types into Select by ID, and how far out it is.</summary>
+    private static string MismatchLine(Issue issue)
     {
-        var eastingHeader = schedule.ResolveHeader(config.PileScheduleEastingHeaders);
-        var northingHeader = schedule.ResolveHeader(config.PileScheduleNorthingHeaders);
-        var row = schedule.Rows.FirstOrDefault(r =>
-            eastingHeader is not null && r.Value(eastingHeader) is not null &&
-            northingHeader is not null && r.Value(northingHeader) is not null);
+        var delta = issue.SuggestedFix is not null &&
+                    issue.SuggestedFix.TryGetValue("delta_mm", out var raw) &&
+                    raw is not null &&
+                    double.TryParse(
+                        raw.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var mm)
+            ? $" - {mm.ToString("0.#", CultureInfo.InvariantCulture)}mm"
+            : string.Empty;
 
-        if (eastingHeader is null || northingHeader is null || row is null)
-        {
-            return "\n\nPosition check: could not find the matched pile's own row again to inspect Easting/Northing.";
-        }
+        var key = issue.SuggestedFix is not null &&
+                  issue.SuggestedFix.TryGetValue("pile_key", out var rawKey) &&
+                  rawKey?.ToString() is { Length: > 0 } k
+            ? $"{k} "
+            : string.Empty;
 
-        var rawEasting = row.Value(eastingHeader);
-        var rawNorthing = row.Value(northingHeader);
-        var eastingParses = double.TryParse((rawEasting ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var eastingMetres);
-        var northingParses = double.TryParse((rawNorthing ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var northingMetres);
-
-        return $"\n\nPosition check: schedule row raw Easting = '{rawEasting}' (parses as a bare number: {eastingParses}" +
-            (eastingParses ? $" -> {(eastingMetres * RuleConfig.ScheduleMetresToMm):0.###}mm" : "") +
-            $"), raw Northing = '{rawNorthing}' (parses: {northingParses}" +
-            (northingParses ? $" -> {(northingMetres * RuleConfig.ScheduleMetresToMm):0.###}mm" : "") +
-            $"). Pile's own live position: Easting = {pile.ProjectPositionEastingMm?.ToString("0.###") ?? "(null)"}mm, " +
-            $"Northing = {pile.ProjectPositionNorthingMm?.ToString("0.###") ?? "(null)"}mm.";
+        return $"  {key}({issue.ElementId?.ToString(CultureInfo.InvariantCulture) ?? "no element"}){delta}";
     }
 }

@@ -604,6 +604,62 @@ public class PileModelScheduleConsistencyCheckTests
         Assert.Empty(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
     }
 
+    /// <summary>
+    /// A run summary has to name which schedules a pile was actually
+    /// compared against, and must not re-derive that list for itself: the
+    /// command used to rebuild it with a stricter rule (it still required
+    /// an id column, dropped by §19's identity join), so its dialog could
+    /// name no candidates on a run that had compared against several.
+    /// </summary>
+    [Fact]
+    public void Compared_schedules_names_what_was_used_and_excludes_whole_structure_metadata()
+    {
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[]
+            {
+                RevitCheckTestBuilders.Pile(5506399, "PIL234307", 278238810.671, 6130224280.728),
+                RevitCheckTestBuilders.Pile(5506318, "PIL234302", 278239916.211, 6130220127.579),
+            },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "ABUTMENT A PILE SCHEDULE",
+                    new[]
+                    {
+                        (5506399L, "278238.811", "6130224.281"),
+                        (5506318L, "278239.916", "6130220.128"),
+                    }),
+                WholeStructureMetadataSchedule(5506399, 5506318),
+            });
+
+        var compared = PileModelScheduleConsistencyCheck.ComparedSchedules(model, new RuleConfig());
+
+        var only = Assert.Single(compared);
+        Assert.Equal("ABUTMENT A PILE SCHEDULE", only.Name);
+    }
+
+    /// <summary>
+    /// The mark a person reads off the drawing travels as data, so a run
+    /// summary never has to scrape it back out of the description.
+    /// </summary>
+    [Fact]
+    public void A_mismatch_carries_the_pile_key_and_distance_as_data()
+    {
+        var model = RevitCheckTestBuilders.Model(
+            // Exactly 50mm due east of the row the schedule states.
+            elements: new[] { RevitCheckTestBuilders.Pile(5506399, "PIL234307", 278238861.0, 6130224281.0) },
+            schedules: new[]
+            {
+                RevitCheckTestBuilders.PileScheduleForElements(
+                    "ABUTMENT A PILE SCHEDULE", new[] { (5506399L, "278238.811", "6130224.281") }),
+            });
+
+        var issue = Assert.Single(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
+
+        Assert.Equal("PIL234307", Assert.Contains("pile_key", issue.SuggestedFix));
+        Assert.Equal(50.0, Assert.IsType<double>(Assert.Contains("delta_mm", issue.SuggestedFix)), 3);
+    }
+
     [Fact]
     public void Blank_key_piles_are_aggregated_into_one_issue()
     {

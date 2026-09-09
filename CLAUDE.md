@@ -100,7 +100,7 @@ native/
     UI/                         # code-behind-only WPF, no XAML
   tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
   tools/RevitCheck.MappingBuilder
-  tests/                        # 391 Core + 7 MappingBuilder tests, ~1s, no Revit
+  tests/                        # 393 Core + 7 MappingBuilder tests, ~1s, no Revit
   diagnostics/                  # throwaway pyRevit probes for answering real
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
@@ -365,6 +365,15 @@ Notes worth not rediscovering:
 - **Verify Revit API members before using them.** They can be checked
   against the real `RevitAPI.dll` via `System.Reflection.MetadataLoadContext`
   with no Revit machine needed.
+- **A run dialog states the answer; the results file carries the detail.**
+  Pile Model/Schedule's dialog is pile count, schedules compared against,
+  and the mismatched piles — nothing else, per the user 2026-09-09 ("very
+  confusing"). Coverage notes, extraction errors and config pins survive as
+  a one-line count each, shown only when non-zero, so "never fail silently"
+  still holds without reciting. A command must not re-derive what a check
+  already knows: this dialog rebuilt the candidate-schedule list with a
+  stricter rule than the check used and could name none on a run that
+  compared against several — `ComparedSchedules` is now the one definition.
 - **Rules must be auditable** — an Issue says how it reached its
   conclusion (which reference, which segment, which view). This is a
   compliance/review tool, not a black box.

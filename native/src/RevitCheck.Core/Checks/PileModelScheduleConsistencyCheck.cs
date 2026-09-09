@@ -76,6 +76,35 @@ public static class PileModelScheduleConsistencyCheck
 
     private const int MaxListed = 5;
 
+    /// <summary>
+    /// Every schedule with both setout headings resolvable, whether or not
+    /// it turns out to state one position for the whole structure.
+    /// </summary>
+    private static List<ScheduleInfo> WithSetoutColumns(RevitModel model, RuleConfig config) =>
+        model.Schedules
+            .Where(s =>
+                s.ResolveHeader(config.PileScheduleEastingHeaders) is not null &&
+                s.ResolveHeader(config.PileScheduleNorthingHeaders) is not null)
+            .ToList();
+
+    /// <summary>
+    /// The schedules this check actually compares a pile against - what a
+    /// run summary should name as "compared against".
+    /// </summary>
+    /// <remarks>
+    /// Public so a command can report the real answer instead of deriving
+    /// its own. <c>PileModelScheduleConsistencyCommand</c> used to rebuild
+    /// this list with a stricter rule - it also required an id column,
+    /// which the identity join dropped in §19 - so its dialog could name no
+    /// candidate schedules on a run where this check had compared against
+    /// several. Two layers computing the same thing differently is a shape
+    /// this project has been bitten by before; there is now one definition.
+    /// </remarks>
+    public static List<ScheduleInfo> ComparedSchedules(RevitModel model, RuleConfig config) =>
+        WithSetoutColumns(model, config)
+            .Where(s => !StatesOnePositionForEverything(s, config))
+            .ToList();
+
     public static List<Issue> Run(RevitModel model, RuleConfig config)
     {
         var issues = new List<Issue>();
@@ -85,17 +114,11 @@ public static class PileModelScheduleConsistencyCheck
         // all: rows carry their own element (ScheduleRow.ElementId), so the
         // pile-to-row link is read from the model rather than reconstructed
         // by matching two rendered strings.
-        var allCandidateSchedules = model.Schedules
-            .Where(s =>
-                s.ResolveHeader(config.PileScheduleEastingHeaders) is not null &&
-                s.ResolveHeader(config.PileScheduleNorthingHeaders) is not null)
-            .ToList();
+        var allCandidateSchedules = WithSetoutColumns(model, config);
 
         // A setout column states where each element is. One that gives every
         // row the same answer is not doing that, whatever its heading says.
-        var candidateSchedules = allCandidateSchedules
-            .Where(s => !StatesOnePositionForEverything(s, config))
-            .ToList();
+        var candidateSchedules = ComparedSchedules(model, config);
 
         var wholeStructureSchedules = allCandidateSchedules.Except(candidateSchedules).ToList();
         if (wholeStructureSchedules.Count > 0)
@@ -692,6 +715,11 @@ public static class PileModelScheduleConsistencyCheck
                 "schedule was last generated, or the schedule was edited independently of the model.",
             SuggestedFix = new Dictionary<string, object?>
             {
+                // The mark a person reads off the drawing, carried as data
+                // rather than left to be scraped back out of Description -
+                // a run summary needs it, and this project's standing rule
+                // is never to reconstruct from rendered text.
+                ["pile_key"] = ResolveKeyValue(pile, config),
                 ["model_easting_mm"] = pileEastingMm,
                 ["model_northing_mm"] = pileNorthingMm,
                 ["schedule_easting_mm"] = scheduleEastingMm,

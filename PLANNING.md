@@ -1241,3 +1241,18 @@ Everything else the run reports is honest: one real 84.56° corner for manual re
 - **The bearing path's detection is still unproven.** Today exercised Model/Schedule only. The equivalent control for bearings is to move a pile that sits *mid-chain*, where a 50mm near-perpendicular offset should read as roughly 0.3°-0.8° and stand well clear of both the 0.2° tolerance and real scatter.
 
 **The lesson, and it is the cheapest one in this document.** One deliberately planted error did more for this project's confidence than four clean real runs and 376 passing tests. It falsified two checks in §23, and in §24 it is the only reason we can say either of them works — a green run on a clean model would have looked identical either way. **The counterpart matters just as much: the fix was only trustworthy because the same planted error was still there to re-run.** A negative control is not a one-off exercise; it is the fixture the model itself carries, and this scratch copy should be kept.
+
+**The Pile Model/Schedule dialog, cut back to what a reader needs (2026-09-09).** Per the user, it was "very confusing": limit it to the number of piles, the schedules compared against, and any mismatched piles.
+
+It had accreted a candidate-schedule breakdown with per-schedule row and element-id counts, a character-level hex dump comparing a pile key against a schedule id, an extraction-error sample, the full config path with every setting it pinned, and a paragraph explaining what the check does not do. The one thing a reader actually wants — **which pile is wrong, and by how much** — was the hardest thing in it to find. On the §24 run that would have been roughly twenty-five lines to convey "PIL234307 is 50mm out".
+
+Two things found while cutting, both real:
+
+- **The dialog re-derived the candidate-schedule list with a stricter rule than the check.** It still required an id column to resolve — a requirement §19's identity join removed — so it could report no candidate schedules on a run where the check had compared against several. Two layers computing the same thing differently, which this project has been bitten by before. `PileModelScheduleConsistencyCheck.ComparedSchedules` is now the single definition, used by both, and it excludes whole-structure metadata schedules exactly as the check does.
+- **The character check was scaffolding for a mechanism that no longer exists.** Added 2026-08-28 to diagnose a text-join failure by printing per-character code points; §19 replaced that join with `ScheduleRow.ElementId` and the check needs neither an id column nor a key parameter. Removed, along with `ScheduleDiagnostics`.
+
+The mismatch line reads `PIL234307 (5506399) - 50mm`. The mark now travels in `SuggestedFix["pile_key"]` rather than being scraped back out of the description — the standing rule about never reconstructing from rendered text applies to this project's own output too.
+
+Nothing is lost: every finding including coverage notes is in the JSON/CSV/BCF and the checklist. Three indicators survive as a one-line count each, shown only when non-zero — coverage notes, extraction errors (which appear nowhere else on this command's path), and the number of settings the model's config pins away from the defaults. A clean run is now four lines; a run with something to say says it first.
+
+393 Core tests passing (391 + 2); `dotnet build` clean including the net48 Addin.
