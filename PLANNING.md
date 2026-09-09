@@ -1282,3 +1282,34 @@ Fixed with the distinction the model already states. `DimensionType.StyleType` r
 **The second half is domain knowledge worth keeping.** A spot coordinate attached to detail linework is **normal and expected**, because a drafter cannot snap a coordinate to model geometry accurately. So the provenance signal that means "risk" for most dimensions does not carry the same weight here. This does **not** change what triage reports — the user's standing position remains that drafted spot coordinates stay flagged rather than suppressed — but it does settle what happens next: no automated check verifies one, so they are manual-review items by construction, and the new coverage note tells a reviewer that instead of leaving them waiting for a tool that will never answer.
 
 396 Core tests passing (393 + 3, including that an unknown style is still checked); `dotnet build` clean including the net48 Addin. Both exclusion tests were confirmed to fail with the filter removed. The adapter half is compile-verified only, as always — and note the distinction only appears on a **new capture**, since `SpotStyle` is null everywhere in the existing ones.
+
+## 25. Captures carry element geometry, and the CheckRunner can finally run the positional checks (2026-09-09)
+
+**The gap, stated plainly:** a capture contained **no element geometry whatsoever** — 0 of 36,626 elements on model 100302 carried a `LocalPoint` or a project position. Three consequences, all paid for already:
+
+- Neither pile check could be replayed off the Revit machine, which is the single thing the capture workflow exists to make possible.
+- Two captures could not be diffed to find what had moved, so §23's negative control could not be audited from the artefacts at all — the moved pile had to be identified by the user.
+- Every change to chain reconstruction, the straight-run split and the collinearity tolerance went to the machine unverified against real data, because no real data reachable here contained a pile position.
+
+**Cause, and it is a small one.** `ElementMetadata.LocalPoint` is a property access on geometry Revit already holds — `Location.Point`, no transform — but it shared the `populateLivePosition` flag with the genuinely expensive per-element `ProjectLocation.GetProjectPosition` call. Capture Model, reasonably, would not pay that cost across every model category, so it passed `false`, and the cheap value went with the expensive one.
+
+Fixed in three parts:
+
+- **`LocalPoint` is no longer gated.** It is always read, for any element with a `LocationPoint`.
+- **Capture Model now pays for survey positions too**, once per project. Consistent with the call the user already made about the all-category sweep — *"a one off time penalty is not a big deal"* — and the cost is now **measured rather than assumed**: the capture dialog reports how many elements have a model position, how many also have a survey one, and how long collection took. Only elements with a `LocationPoint` pay the call at all, so the real proportion was unknown in advance and is worth learning. If no survey position resolves for any of them, it says so and names the likely cause (no Survey Point set) rather than leaving a silently empty column.
+- **The CheckRunner learned the positional rules.** It only ever knew the two dimension checks, so positions alone would not have made a capture replayable. `revitcheck.pile_chain_bearing_consistency` and `revitcheck.spot_elevation_consistency` are now available via `--rule`, opt-in rather than default because a capture predating this change carries no geometry and would produce only coverage noise.
+
+**Demonstrated end to end against the real 2026-09-09 capture**, which predates the fix:
+
+```
+1 issue(s): revitcheck.pile_chain_bearing_consistency
+  34 of 34 in-scope pile(s) were not covered by any checked run ...
+```
+
+Which is the correct and honest answer for a capture with no geometry, and confirms both halves at once: the runner wiring works, and the data really was absent. §23's coverage note is what makes that legible rather than an empty run.
+
+Two Core tests pin the claim the whole workflow rests on and which had never actually been tested for a positional check: that positions survive a capture round trip, and that `PileChainBearingConsistencyCheck` reaches **the same verdict through a capture as it does live**. 398 Core tests passing (396 + 2); `dotnet build` clean including the net48 Addin.
+
+**What this does not fix.** `revitcheck.pile_model_schedule_consistency` still cannot be replayed: it needs schedule *rows*, and reading schedule bodies requires a transaction Capture Model's ReadOnly mode cannot perform (§16), so captures store headers only. That is a documented constraint rather than an oversight, and it means the check that just passed the negative control remains the one check with no off-machine path.
+
+**The lesson, and it is about coupling rather than checks.** Nothing here was a wrong answer; the cheap fact was simply never separable from the expensive one, and no test could see it because the Core suite supplies models that already contain positions. The cost of that coupling was not a bug but an entire class of verification being impossible for months — the capture workflow was half-working in a way its own tests could not express, and only a negative control that needed diffing two captures made it visible.

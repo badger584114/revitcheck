@@ -10,8 +10,8 @@ using RevitCheck.Core.Reporting;
 // and revit.dimension_override_consistency (metadata reconciliation
 // already needs its own reference CSV/mapping and isn't this tool's job).
 // Loads a .capture.json written by Capture Model (or by a real check
-// command's own JSON output, which is a superset), runs both rules against
-// it, and prints the same kind of summary the ribbon buttons' TaskDialog
+// command's own JSON output, which is a superset), runs the selected rules
+// against it, and prints the same kind of summary the ribbon buttons' TaskDialog
 // does - plus optional JSON/CSV/BCF output, same shape as the buttons'
 // IssueOutput.WriteNextToModel, so a capture pulled off the Revit machine
 // can be iterated on with a normal edit/run loop instead of a trip back to
@@ -23,8 +23,14 @@ if (args.Length < 1 || args[0] is "-h" or "--help")
     Console.Error.WriteLine();
     Console.Error.WriteLine("  --all-views   include views not placed on a sheet (off by default - an ");
     Console.Error.WriteLine("                unplaced working view is never issued to anyone)");
-    Console.Error.WriteLine("  --rule        run only this rule id (repeatable); default is both");
-    Console.Error.WriteLine("                revit.dimension_provenance and revit.dimension_override_consistency");
+    Console.Error.WriteLine("  --rule        run only this rule id (repeatable); default is");
+    Console.Error.WriteLine("                revit.dimension_provenance + revit.dimension_override_consistency.");
+    Console.Error.WriteLine("                Also available, opt-in (need a capture taken 2026-09-09 or later,");
+    Console.Error.WriteLine("                which is when element positions started being captured):");
+    Console.Error.WriteLine($"                  {PileChainBearingConsistencyCheck.RuleId}");
+    Console.Error.WriteLine($"                  {SpotElevationConsistencyCheck.RuleId}");
+    Console.Error.WriteLine($"                  {PileModelScheduleConsistencyCheck.RuleId} (needs schedule rows,");
+    Console.Error.WriteLine("                    which a capture cannot carry - see PLANNING.md §16)");
     return args.Length < 1 ? 1 : 0;
 }
 
@@ -76,6 +82,31 @@ if (enabled.Contains(DimensionProvenanceCheck.RuleId))
 if (enabled.Contains(DimensionOverrideConsistencyCheck.RuleId))
 {
     issues.AddRange(DimensionOverrideConsistencyCheck.Run(model, config));
+}
+
+// The positional checks, runnable off-machine since 2026-09-09 (§25):
+// captures now carry each element's own position, so a pile chain can be
+// reconstructed and a spot checked here rather than only inside Revit.
+// Not in the default set - they are opt-in via --rule, because a capture
+// taken before that change carries no geometry and they would report only
+// coverage noise on one.
+if (enabled.Contains(PileChainBearingConsistencyCheck.RuleId))
+{
+    issues.AddRange(PileChainBearingConsistencyCheck.Run(model, config));
+}
+
+if (enabled.Contains(SpotElevationConsistencyCheck.RuleId))
+{
+    issues.AddRange(SpotElevationConsistencyCheck.Run(model, config));
+}
+
+// Included for completeness, though a capture cannot currently feed it:
+// schedule bodies need a read a ReadOnly transaction cannot perform, so
+// Capture Model stores headers only (PLANNING.md §16). It will report that
+// it had nothing to compare, which is the honest answer.
+if (enabled.Contains(PileModelScheduleConsistencyCheck.RuleId))
+{
+    issues.AddRange(PileModelScheduleConsistencyCheck.Run(model, config));
 }
 
 // Always included, same as the ribbon commands - an extraction failure

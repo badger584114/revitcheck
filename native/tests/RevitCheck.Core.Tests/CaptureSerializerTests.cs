@@ -1,3 +1,5 @@
+using System.Linq;
+using RevitCheck.Core.Checks;
 using RevitCheck.Core.Capture;
 using RevitCheck.Core.Ir;
 using RevitCheck.Core.Tests.Fixtures;
@@ -121,5 +123,75 @@ public class CaptureSerializerTests
         {
             File.Delete(path);
         }
+    }
+
+    /// <summary>
+    /// The point of §25: a capture has to carry element geometry, or a
+    /// positional check cannot be replayed off the Revit machine and two
+    /// captures cannot be diffed to find what moved. Real captures carried
+    /// none - 0 of 36,626 elements - because LocalPoint shared a flag with
+    /// the expensive per-element GetProjectPosition call.
+    /// </summary>
+    [Fact]
+    public void Element_positions_survive_a_capture_round_trip()
+    {
+        var model = RevitCheckTestBuilders.Model(elements: new[]
+        {
+            RevitCheckTestBuilders.Pile(
+                5506399, "PIL234307",
+                eastingMm: 278437528.42,
+                northingMm: 6130713126.57,
+                localPoint: new Point3D { X = 1234.5, Y = 6789.0, Z = 250.25 }),
+        });
+
+        var pile = Assert.Single(CaptureSerializer.Loads(CaptureSerializer.Dumps(model)).Elements);
+
+        Assert.Equal(278437528.42, pile.ProjectPositionEastingMm!.Value, 3);
+        Assert.Equal(6130713126.57, pile.ProjectPositionNorthingMm!.Value, 3);
+        Assert.NotNull(pile.LocalPoint);
+        Assert.Equal(1234.5, pile.LocalPoint!.X, 3);
+        Assert.Equal(6789.0, pile.LocalPoint.Y, 3);
+    }
+
+    /// <summary>
+    /// And the check itself must reach the same verdict through a capture
+    /// as it does in Revit - which is the whole claim the capture workflow
+    /// rests on, never actually tested for a positional check before.
+    /// </summary>
+    [Fact]
+    public void A_positional_check_reaches_the_same_verdict_through_a_capture()
+    {
+        var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
+        var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var model = RevitCheckTestBuilders.Model(
+            elements: new[] { pileA, pileB, pileC },
+            dimensions: new[]
+            {
+                RevitCheckTestBuilders.PileChainDimension(
+                    100, 1,
+                    RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
+                    RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000))),
+                RevitCheckTestBuilders.PileChainDimension(
+                    101, 1,
+                    RevitCheckTestBuilders.TagRef(202, RevitCheckTestBuilders.Pt(0, 1000)),
+                    RevitCheckTestBuilders.TagRef(203, RevitCheckTestBuilders.Pt(0, 2000))),
+            },
+            textNotes: new[]
+            {
+                // Printed 90 degrees against a chain running due north - a
+                // real disagreement, so there is a verdict to compare.
+                RevitCheckTestBuilders.TextNote(300, 1, "90\u00b0 00' 00\"", RevitCheckTestBuilders.Pt(50, 500)),
+            });
+
+        var config = new RuleConfig();
+        var live = PileChainBearingConsistencyCheck.Run(model, config);
+        var replayed = PileChainBearingConsistencyCheck.Run(
+            CaptureSerializer.Loads(CaptureSerializer.Dumps(model)), config);
+
+        Assert.NotEmpty(live);
+        Assert.Equal(
+            live.Select(i => (i.RuleId, i.Category, i.Severity, i.ElementId)),
+            replayed.Select(i => (i.RuleId, i.Category, i.Severity, i.ElementId)));
     }
 }

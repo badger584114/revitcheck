@@ -70,19 +70,20 @@ public static class RevitMetadataElementSource
     /// to avoid.
     /// </param>
     /// <param name="populateLivePosition">
-    /// When true, also computes each collected element's own
-    /// <see cref="ElementMetadata.LocalPoint"/> (its <c>Location.Point</c>,
-    /// mm, no survey transform) and <see cref="ElementMetadata.ProjectPositionEastingMm"/>/
+    /// When true, also computes each collected element's
+    /// <see cref="ElementMetadata.ProjectPositionEastingMm"/>/
     /// <see cref="ElementMetadata.ProjectPositionNorthingMm"/>/
     /// <see cref="ElementMetadata.ProjectPositionElevationMm"/> (a live
     /// <c>ProjectLocation.GetProjectPosition</c> call per element). Off by
     /// default - this is real per-element API cost
     /// (<c>InspectPileSetout.pushbutton</c>'s diagnostic confirmed the call
-    /// itself works and gives real coordinates, PLANNING.md §14, but every
-    /// existing caller of this method today is metadata reconciliation,
-    /// which never needs a position at all) - on for the two pile commands
-    /// (<c>PileModelScheduleConsistencyCommand</c>/
-    /// <c>PileChainBearingConsistencyCommand</c>), the only callers that do.
+    /// itself works and gives real coordinates, PLANNING.md §14) - on for
+    /// the two pile commands and, since 2026-09-09, for Capture Model,
+    /// which pays it once per project so a capture can replay a positional
+    /// check (§25). <see cref="ElementMetadata.LocalPoint"/> is no longer
+    /// gated by this flag: it is a property access on geometry Revit
+    /// already holds, and sharing a flag with the expensive call is why
+    /// captures carried no element geometry whatsoever.
     /// A failure computing either value for one element is soft - left null,
     /// same local try/catch discipline <see cref="ReadValue"/> already uses
     /// for a parameter that won't read - not an <see cref="MetadataCollectionResult.ExtractionErrors"/>
@@ -341,9 +342,15 @@ public static class RevitMetadataElementSource
         double? eastingMm = null;
         double? northingMm = null;
         double? elevationMm = null;
-        if (populateLivePosition && element.Location is LocationPoint locationPoint)
+        if (element.Location is LocationPoint locationPoint)
         {
             var rawPoint = locationPoint.Point;
+
+            // Always read - a property access on geometry Revit already
+            // holds. It was withheld only because it shared a flag with the
+            // expensive call below, and a capture carrying no element
+            // geometry at all cannot replay a positional check or be diffed
+            // against a later one (§25).
             localPoint = PointOf(rawPoint);
 
             // A live GetProjectPosition call per element - real API cost,
@@ -352,16 +359,19 @@ public static class RevitMetadataElementSource
             // parameter reads above: this element's other facts are still
             // worth keeping even if its survey-adjusted position can't be
             // computed (e.g. no configured Survey Point).
-            try
+            if (populateLivePosition)
             {
-                var position = doc.ActiveProjectLocation.GetProjectPosition(rawPoint);
-                eastingMm = position.EastWest * MmPerFoot;
-                northingMm = position.NorthSouth * MmPerFoot;
-                elevationMm = position.Elevation * MmPerFoot;
-            }
-            catch
-            {
-                // Left null - see the param doc on Collect.
+                try
+                {
+                    var position = doc.ActiveProjectLocation.GetProjectPosition(rawPoint);
+                    eastingMm = position.EastWest * MmPerFoot;
+                    northingMm = position.NorthSouth * MmPerFoot;
+                    elevationMm = position.Elevation * MmPerFoot;
+                }
+                catch
+                {
+                    // Left null - see the param doc on Collect.
+                }
             }
         }
 

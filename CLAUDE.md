@@ -100,7 +100,7 @@ native/
     UI/                         # code-behind-only WPF, no XAML
   tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
   tools/RevitCheck.MappingBuilder
-  tests/                        # 396 Core + 7 MappingBuilder tests, ~1s, no Revit
+  tests/                        # 398 Core + 7 MappingBuilder tests, ~1s, no Revit
   diagnostics/                  # throwaway pyRevit probes for answering real
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
@@ -434,12 +434,15 @@ Still invisible if it fails, and unchanged for four sessions:
   on a real cloud model, the lever is "active view only", not narrowing
   categories back.
 
-**A capture cannot replay either pile check** — it stores schedule headers
-with zero rows, and **no element positions whatever** (0 of 36,626 carry
-`local_point` or a project position). So neither can be reproduced or
-diffed off-machine, and §23's control had to be interpreted from the
-user's own account of what moved. Fixing that is the difference between a
-negative control we can audit and one we take on trust.
+**Captures now carry element positions (§25)**, so Pile Chain Bearing and
+Spot Elevation can be replayed off-machine via the CheckRunner's `--rule`
+(opt-in — a capture taken before 2026-09-09 has no geometry and reports
+only coverage). **Pile Model/Schedule still cannot be**: it needs schedule
+rows, and reading schedule bodies needs a transaction Capture Model's
+ReadOnly mode cannot perform (§16), so captures store headers only. The
+one check proven to detect a defect is the one with no off-machine path.
+**Take a fresh capture before relying on any of this** — the existing ones
+predate the change.
 
 **2. Negative controls — the method is proven; extend it.** §23 planted
 one 50mm move and it falsified two checks that 376 passing tests and four

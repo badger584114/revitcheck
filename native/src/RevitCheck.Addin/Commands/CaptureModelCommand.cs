@@ -62,6 +62,7 @@ public class CaptureModelCommand : IExternalCommand
 
         MetadataCollectionResult collectedMetadata;
         DimensionCollectionResult collectedDimensions;
+        var captureStopwatch = new System.Diagnostics.Stopwatch();
         try
         {
             // Every model category the document defines, not the five
@@ -70,12 +71,23 @@ public class CaptureModelCommand : IExternalCommand
             // heard of has to show up here or the config step cannot
             // reveal it. Per the user, 2026-09-07 - modellers put strange
             // content into models. See ModelCategoryIds's own remarks.
+            // Survey positions are computed here, once per project, and
+            // deliberately: without them a capture cannot replay either
+            // pile check or be diffed against a later one, which is what
+            // made the 2026-09-09 negative control impossible to audit
+            // off-machine (§25). Same call the user already made about the
+            // all-category sweep - "a one off time penalty is not a big
+            // deal" - and the cost is reported rather than assumed, since
+            // only elements with a LocationPoint pay it at all.
+            captureStopwatch.Start();
             collectedMetadata = RevitMetadataElementSource.Collect(
                 doc,
                 captureScope.MappingScopeViewName,
                 allModelCategories: true,
+                populateLivePosition: true,
                 scopeView: captureScope.ScopeView);
             collectedDimensions = RevitDimensionSource.Collect(doc, scopeView: captureScope.ScopeView);
+            captureStopwatch.Stop();
         }
         catch (Exception ex)
         {
@@ -126,6 +138,7 @@ public class CaptureModelCommand : IExternalCommand
             return Result.Failed;
         }
 
+        var positionNote = PositionCoverage(collectedMetadata.Elements, captureStopwatch.Elapsed);
         var starterNote = WriteStarterConfig(doc, model);
         var portableNote = WritePortableConfigBesideCapture(doc, savePath);
 
@@ -134,7 +147,8 @@ public class CaptureModelCommand : IExternalCommand
             $"{collectedDimensions.Views.Count} view(s), {collectedDimensions.Dimensions.Count} dimension(s), " +
             $"{collectedSchedules.Count} schedule(s) captured" +
             (extractionErrors.Count > 0 ? $", {extractionErrors.Count} extraction error(s)" : "") +
-            $".\n\n{captureScope.Description}\n\nWritten to:\n{savePath}\n\n{starterNote}{portableNote}\n\n" +
+            $".\n\n{positionNote}\n\n{captureScope.Description}\n\nWritten to:\n{savePath}\n\n" +
+            $"{starterNote}{portableNote}\n\n" +
             "Treat this file like a real model capture (PLANNING.md §2) - it contains real " +
             "parameter values from a real project.");
 
@@ -173,6 +187,50 @@ public class CaptureModelCommand : IExternalCommand
     /// it beside the capture makes exporting it free rather than a separate
     /// step someone has to remember.
     /// </remarks>
+    /// <summary>
+    /// How much of this capture actually carries geometry, and what that
+    /// cost - reported rather than assumed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added 2026-09-09 (§25).</b> Captures carried no element geometry
+    /// at all - 0 of 36,626 elements on the real model - because
+    /// <c>LocalPoint</c> shared a flag with the per-element
+    /// <c>GetProjectPosition</c> call and Capture Model, reasonably, would
+    /// not pay that. The consequence was that neither pile check could be
+    /// replayed off-machine and two captures could not be diffed to find a
+    /// moved element, which is exactly what the first negative control
+    /// needed.
+    /// </para>
+    /// <para>
+    /// Only elements with a <c>LocationPoint</c> get a position at all, so
+    /// the real count is unknown in advance and worth stating: it says how
+    /// much of a model a positional check can ever reach, and the elapsed
+    /// time says whether paying for it once per project stays reasonable on
+    /// a large cloud model. Measured, not guessed - the same discipline the
+    /// all-category sweep was given.
+    /// </para>
+    /// </remarks>
+    private static string PositionCoverage(List<ElementMetadata> elements, TimeSpan elapsed)
+    {
+        var withLocal = elements.Count(e => e.LocalPoint is not null);
+        var withSurvey = elements.Count(e => e.ProjectPositionEastingMm is not null);
+
+        var note =
+            $"{withLocal} of {elements.Count} element(s) have a position in the model, " +
+            $"{withSurvey} of those also in survey coordinates. " +
+            $"Collection took {elapsed.TotalSeconds:0.#}s.";
+
+        if (withLocal > 0 && withSurvey == 0)
+        {
+            note +=
+                " No survey position could be computed for any of them - check this model has a Survey Point " +
+                "set, since the pile checks compare against schedule Eastings/Northings.";
+        }
+
+        return note;
+    }
+
     private static string WritePortableConfigBesideCapture(Document doc, string capturePath)
     {
         try
