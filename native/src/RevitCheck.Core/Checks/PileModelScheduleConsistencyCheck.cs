@@ -245,7 +245,18 @@ public static class PileModelScheduleConsistencyCheck
                 continue;
             }
 
-            if (matches.Count > 1 && !RowsAgree(matches, config, out var disagreementMm))
+            // A row only takes part in the position comparison if it
+            // actually states a position this check can read. See
+            // PartitionByReadablePosition: silence is not contradiction.
+            var readable = PartitionByReadablePosition(matches, config, out var unreadable);
+
+            if (readable.Count == 0)
+            {
+                issues.Add(NoStatedPositionIssue(pile, label, matches, config));
+                continue;
+            }
+
+            if (readable.Count > 1 && !RowsAgree(readable, config, out var disagreementMm))
             {
                 issues.Add(new Issue
                 {
@@ -255,16 +266,20 @@ public static class PileModelScheduleConsistencyCheck
                     ElementId = pile.ElementId,
                     UniqueId = pile.UniqueId,
                     Description =
-                        $"{label} appears in {matches.Count} schedule rows that disagree with each other by up " +
-                        $"to {FormatMm(disagreementMm)}mm (" +
-                        string.Join(", ", matches.Select(m => $"'{m.Schedule.Name}'")) +
+                        $"{label} appears in {readable.Count} schedule rows that state a position, and they " +
+                        $"disagree with each other by up to {FormatMm(disagreementMm)}mm (" +
+                        string.Join(", ", readable.Select(m => $"'{m.Schedule.Name}'")) +
                         ") - the schedules themselves are inconsistent about where this pile is, so there is no " +
-                        "single stated position to check the model against.",
+                        "single stated position to check the model against." +
+                        (unreadable.Count > 0
+                            ? $" ({unreadable.Count} further row(s) state no readable position and were not " +
+                              "counted either way.)"
+                            : string.Empty),
                 });
                 continue;
             }
 
-            ComparePosition(pile, label, matches[0].Schedule, matches[0].Row, config, issues);
+            ComparePosition(pile, label, readable[0].Schedule, readable[0].Row, config, issues);
         }
 
         if (blankKeyElementIds.Count > 0)
@@ -328,8 +343,10 @@ public static class PileModelScheduleConsistencyCheck
     }
 
     /// <summary>
-    /// True when every matched row states the same position, within
-    /// <see cref="RuleConfig.PileSetoutToleranceMm"/>.
+    /// True when every row that states a position states the same one,
+    /// within <see cref="RuleConfig.PileSetoutToleranceMm"/>. Rows stating
+    /// no readable position never reach here - see
+    /// <see cref="PartitionByReadablePosition"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -351,36 +368,169 @@ public static class PileModelScheduleConsistencyCheck
     /// </para>
     /// </remarks>
     private static bool RowsAgree(
-        List<(ScheduleInfo Schedule, ScheduleRow Row)> matches, RuleConfig config, out double worstDisagreementMm)
+        List<ReadableRow> readable, RuleConfig config, out double worstDisagreementMm)
     {
         worstDisagreementMm = 0;
 
-        var positions = new List<(double E, double N)>();
-        foreach (var (schedule, row) in matches)
+        for (var i = 0; i < readable.Count; i++)
         {
-            if (!TryReadRowPosition(schedule, row, config, out var e, out var n))
+            for (var j = i + 1; j < readable.Count; j++)
             {
-                // An unreadable row can't be shown to agree, so it can't be
-                // collapsed away - fall through to the normal single-row
-                // path only when every row is readable.
-                return false;
-            }
-
-            positions.Add((e, n));
-        }
-
-        for (var i = 0; i < positions.Count; i++)
-        {
-            for (var j = i + 1; j < positions.Count; j++)
-            {
-                var dE = positions[i].E - positions[j].E;
-                var dN = positions[i].N - positions[j].N;
+                var dE = readable[i].EastingMm - readable[j].EastingMm;
+                var dN = readable[i].NorthingMm - readable[j].NorthingMm;
                 worstDisagreementMm = Math.Max(worstDisagreementMm, Math.Sqrt((dE * dE) + (dN * dN)));
             }
         }
 
         return worstDisagreementMm <= config.PileSetoutToleranceMm;
     }
+
+    /// <summary>One matched row that does state a position, with it already read.</summary>
+    private readonly struct ReadableRow
+    {
+        public ReadableRow(ScheduleInfo schedule, ScheduleRow row, double eastingMm, double northingMm)
+        {
+            Schedule = schedule;
+            Row = row;
+            EastingMm = eastingMm;
+            NorthingMm = northingMm;
+        }
+
+        public ScheduleInfo Schedule { get; }
+
+        public ScheduleRow Row { get; }
+
+        public double EastingMm { get; }
+
+        public double NorthingMm { get; }
+    }
+
+    /// <summary>
+    /// Splits the matched rows into the ones that state a readable position
+    /// and the ones that do not.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why this exists, added 2026-09-09 from a real run.</b> The previous
+    /// code asked "do all the matched rows agree?" and treated an unreadable
+    /// row as a row that disagreed. On model 100302 every pile matches seven
+    /// rows, and only one of those schedules ('ABUTMENT A PILE SCHEDULE')
+    /// carries a heading the config recognises - the rest are
+    /// <c>XYZ_Easting</c>, <c>DIT_Easting</c>, <c>DIT_StartEasting</c>. So
+    /// 32 of 33 piles were reported high severity as "schedules that
+    /// disagree with each other by up to 0mm", the message quoting the
+    /// untouched initial value of a disagreement that had never been
+    /// measured, and <see cref="ComparePosition"/> - the check's actual job -
+    /// never ran at all.
+    /// </para>
+    /// <para>
+    /// <b>A row that states nothing is not a row that contradicts.</b> This
+    /// is the same error as the 2026-09-07 one directly above (duplication
+    /// read as conflict) one step over: unreadability read as conflict. The
+    /// rows that state a position are compared with each other; the rows
+    /// that state none are counted and reported, never allowed to veto a
+    /// comparison they take no part in.
+    /// </para>
+    /// </remarks>
+    private static List<ReadableRow> PartitionByReadablePosition(
+        List<(ScheduleInfo Schedule, ScheduleRow Row)> matches,
+        RuleConfig config,
+        out List<(ScheduleInfo Schedule, ScheduleRow Row)> unreadable)
+    {
+        var readable = new List<ReadableRow>();
+        unreadable = new List<(ScheduleInfo Schedule, ScheduleRow Row)>();
+
+        foreach (var match in matches)
+        {
+            if (TryReadRowPosition(match.Schedule, match.Row, config, out var e, out var n))
+            {
+                readable.Add(new ReadableRow(match.Schedule, match.Row, e, n));
+            }
+            else
+            {
+                unreadable.Add(match);
+            }
+        }
+
+        return readable;
+    }
+
+    /// <summary>
+    /// Coverage, not a verdict: this pile is in the schedules but none of
+    /// its rows state a position this check can read, so nothing was
+    /// compared.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every matched row comes from a candidate schedule, and a schedule is
+    /// only a candidate if both setout headings resolve - so reaching here
+    /// means the columns exist and the cells hold nothing this check can
+    /// parse (blank, or not a number), not that the column was missing.
+    /// The finding says which columns it read, since that is the difference
+    /// between "the schedule doesn't say" and "the tool can't tell".
+    /// </para>
+    /// <para>
+    /// It also names any other coordinate-looking heading in those
+    /// schedules, because where the configured column is blank a populated
+    /// one alongside it is usually the right one, and the fix is then a
+    /// config edit rather than a code change. Naming candidates is a search
+    /// and is safe to automate; choosing which column actually carries the
+    /// pile's setout position is a judgement - a linear asset's
+    /// <c>DIT_StartEasting</c> is a start point, not a centre - and is left
+    /// to a person, the same split <c>RuleConfigStarter</c> already draws.
+    /// </para>
+    /// </remarks>
+    private static Issue NoStatedPositionIssue(
+        ElementMetadata pile,
+        string label,
+        List<(ScheduleInfo Schedule, ScheduleRow Row)> matches,
+        RuleConfig config)
+    {
+        var consulted = matches
+            .SelectMany(m => new[]
+            {
+                m.Schedule.ResolveHeader(config.PileScheduleEastingHeaders),
+                m.Schedule.ResolveHeader(config.PileScheduleNorthingHeaders),
+            })
+            .Where(h => h is not null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var alternatives = matches
+            .SelectMany(m => m.Schedule.Headers)
+            .Where(LooksLikeCoordinateHeader)
+            .Where(h => !consulted.Contains(h, StringComparer.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(MaxListed)
+            .ToList();
+
+        return new Issue
+        {
+            RuleId = RuleId,
+            Category = "coverage",
+            Severity = "low",
+            ElementId = pile.ElementId,
+            UniqueId = pile.UniqueId,
+            Description =
+                $"{label} appears in {matches.Count} schedule row(s), none of which state a position this check " +
+                "can read, so its model position was not compared against anything (" +
+                string.Join(", ", matches.Select(m => $"'{m.Schedule.Name}'")) +
+                "). The setout column(s) read were " +
+                string.Join(", ", consulted.Select(h => $"'{h}'")) +
+                " - present, but blank or not a number for this element." +
+                (alternatives.Count > 0
+                    ? " These schedules also carry coordinate-looking columns that are not configured: " +
+                      string.Join(", ", alternatives.Select(c => $"'{c}'")) +
+                      " - add the right one to pile_schedule_easting_headers / " +
+                      "pile_schedule_northing_headers if it is the pile's setout position."
+                    : string.Empty),
+        };
+    }
+
+    /// <summary>A heading a human would recognise as a coordinate - used only to suggest, never to read a value.</summary>
+    private static bool LooksLikeCoordinateHeader(string header) =>
+        header.IndexOf("easting", StringComparison.OrdinalIgnoreCase) >= 0 ||
+        header.IndexOf("northing", StringComparison.OrdinalIgnoreCase) >= 0;
 
     private static string? ResolveKeyValue(ElementMetadata pile, RuleConfig config)
     {

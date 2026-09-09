@@ -173,7 +173,31 @@ public class CaptureModelCommand : IExternalCommand
 
         if (File.Exists(path))
         {
-            return $"This model already has a config, left untouched:\n{path}";
+            // Still never overwritten - a project's own settings are not
+            // this button's to discard. But an existing file written before
+            // 2026-09-09 records every setting as it stood then, so it
+            // silently overrides later recalibration; saying which settings
+            // it pins is what turns that from invisible into a decision.
+            var message = $"This model already has a config, left untouched:\n{path}";
+            try
+            {
+                var pinned = RuleConfigSerializer.DescribeOverrides(File.ReadAllText(path));
+                if (pinned.Count > 0)
+                {
+                    message +=
+                        $"\n\nIt pins {pinned.Count} setting(s) away from the current built-in defaults:\n  " +
+                        string.Join("\n  ", pinned) +
+                        "\n\nA setting recorded here does not track later recalibration. If any of these were " +
+                        "not chosen deliberately for this project, delete the file and run Capture Model again " +
+                        "to write a fresh starter config.";
+                }
+            }
+            catch (Exception ex)
+            {
+                message += $"\n\n(Could not read what it pins: {ExceptionMessage.Full(ex)})";
+            }
+
+            return message;
         }
 
         try

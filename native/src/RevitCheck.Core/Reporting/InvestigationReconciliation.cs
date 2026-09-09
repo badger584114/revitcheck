@@ -109,13 +109,49 @@ public static class InvestigationReconciliation
     /// <summary>
     /// The <see cref="Issue.Category"/> value an investigation check uses
     /// to mark "I examined this dimension but can't give a confident
-    /// automated verdict - a human needs to look at the drawing." Any
-    /// other category on an investigation issue is treated as a confirmed
-    /// problem. A recognized constant rather than a magic string, so a
-    /// future check can reference it directly instead of risking a typo
-    /// that would silently misroute a finding into the wrong output list.
+    /// automated verdict - a human needs to look at the drawing." A
+    /// recognized constant rather than a magic string, so a future check
+    /// can reference it directly instead of risking a typo that would
+    /// silently misroute a finding into the wrong output list.
     /// </summary>
     public const string ManualReviewCategory = "manual_review";
+
+    /// <summary>
+    /// The <see cref="Issue.Category"/> for "this could not be checked" -
+    /// a statement about the tool's reach, never about the drawing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Recognized here since 2026-09-09, from a real run.</b> The split
+    /// below was two-way - <see cref="ManualReviewCategory"/> against
+    /// everything else - so an investigation check's coverage note landed
+    /// in <see cref="ReconciliationResult.ConfirmedProblems"/>, the one
+    /// list that auto-exports to BCF. On model 100302 both "Confirmed
+    /// Problem" rows a reviewer saw were
+    /// <c>PileChainBearingConsistencyCheck</c> saying "no bearing call
+    /// could be confidently matched to this run" - which is the check
+    /// reporting that it could not reach a verdict, presented as a
+    /// confirmed defect.
+    /// </para>
+    /// <para>
+    /// §21 fixed exactly this for the standalone path
+    /// (<c>CheckingSession.ExportableConfirmedProblems</c> excludes
+    /// coverage from <c>OtherInvestigationFindings</c>) and left the
+    /// dimension-linked path with a two-way split where the semantics need
+    /// three. It is the mirror of the failure this whole class exists to
+    /// prevent: there, "not yet checked" promoted to "confirmed clean";
+    /// here, "not checkable" promoted to "confirmed defect".
+    /// </para>
+    /// <para>
+    /// A coverage finding now routes to
+    /// <see cref="ReconciliationResult.NeedsManualReview"/>, which is what
+    /// it has always meant - examined, and genuinely not settleable
+    /// automatically. That is the outcome §21 added the third verdict for.
+    /// Dimension accounting is unaffected: a resolved dimension counts the
+    /// same from either list.
+    /// </para>
+    /// </remarks>
+    public const string CoverageCategory = "coverage";
 
     /// <summary>
     /// The <see cref="Issue.RuleId"/> a human's own per-dimension verdict
@@ -141,10 +177,23 @@ public static class InvestigationReconciliation
     /// dimension ElementId that investigation check actually examined,
     /// regardless of outcome; <paramref name="investigationIssues"/> is
     /// whatever it flagged - each one categorized as a confirmed problem
-    /// unless it carries <see cref="ManualReviewCategory"/>. See this
-    /// class's own remarks for the full reasoning behind the three-way
-    /// split this returns.
+    /// unless it carries <see cref="ManualReviewCategory"/> or
+    /// <see cref="CoverageCategory"/>, both of which mean the check
+    /// examined the dimension without reaching a verdict. See this class's
+    /// own remarks for the full reasoning behind the three-way split this
+    /// returns.
     /// </summary>
+    /// <summary>
+    /// True when an investigation issue states a defect the check is
+    /// confident about - as opposed to examining a dimension and saying so
+    /// without a verdict (<see cref="ManualReviewCategory"/>) or reporting
+    /// that it could not check at all (<see cref="CoverageCategory"/>).
+    /// Only these auto-export; the other two are for a person to read.
+    /// </summary>
+    public static bool IsAutomatedVerdict(Issue issue) =>
+        !string.Equals(issue.Category, ManualReviewCategory, StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(issue.Category, CoverageCategory, StringComparison.OrdinalIgnoreCase);
+
     public static ReconciliationResult Reconcile(
         IEnumerable<Issue> triageIssues,
         IReadOnlyCollection<long> investigatedElementIds,
@@ -153,8 +202,8 @@ public static class InvestigationReconciliation
         var investigationList = investigationIssues as IReadOnlyList<Issue> ?? investigationIssues.ToList();
         var investigatedSet = investigatedElementIds as ISet<long> ?? new HashSet<long>(investigatedElementIds);
 
-        var confirmedProblems = investigationList.Where(i => i.Category != ManualReviewCategory).ToList();
-        var needsManualReview = investigationList.Where(i => i.Category == ManualReviewCategory).ToList();
+        var confirmedProblems = investigationList.Where(IsAutomatedVerdict).ToList();
+        var needsManualReview = investigationList.Where(i => !IsAutomatedVerdict(i)).ToList();
 
         var problemIds = new HashSet<long>(
             confirmedProblems.Where(i => i.ElementId is not null).Select(i => i.ElementId!.Value));

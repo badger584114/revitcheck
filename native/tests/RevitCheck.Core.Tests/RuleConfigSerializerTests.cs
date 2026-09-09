@@ -40,6 +40,73 @@ public class RuleConfigSerializerTests
         Assert.Equal(new RuleConfig().PileSetoutToleranceMm, loaded.PileSetoutToleranceMm);
     }
 
+    /// <summary>
+    /// The real 2026-09-09 failure. Dumps used to serialize every property,
+    /// so the starter config Capture Model wrote froze that day's defaults
+    /// permanently - and since the starter never overwrites an existing
+    /// file, model 100302 ran on 09-09 still using the 09-07 morning's
+    /// 60-arcsecond collinearity tolerance and 2-pile minimum. §20's retune
+    /// to 0.2° and 3, calibrated against that very model, never reached it.
+    /// A setting nobody chose must track the compiled default.
+    /// </summary>
+    [Fact]
+    public void An_unremarked_setting_is_not_written_so_it_tracks_later_recalibration()
+    {
+        var json = RuleConfigSerializer.Dumps(new RuleConfig { PileCategoryName = "Generic Models" });
+
+        Assert.Contains("pile_category_name", json);
+        Assert.DoesNotContain("pile_chain_collinearity_tolerance_degrees", json);
+        Assert.DoesNotContain("pile_chain_minimum_piles", json);
+    }
+
+    [Fact]
+    public void A_config_differing_on_nothing_writes_only_its_schema_version()
+    {
+        var json = RuleConfigSerializer.Dumps(new RuleConfig());
+
+        var loaded = RuleConfigSerializer.Loads(json);
+
+        Assert.Equal(new RuleConfig().PileChainMinimumPiles, loaded.PileChainMinimumPiles);
+        Assert.Equal(
+            new RuleConfig().PileChainCollinearityToleranceDegrees,
+            loaded.PileChainCollinearityToleranceDegrees);
+        Assert.Contains("schema_version", json);
+    }
+
+    /// <summary>
+    /// A value equal to the current default is dropped, but a project can
+    /// still pin one deliberately by naming it in the file by hand - the
+    /// read path honours any field present.
+    /// </summary>
+    [Fact]
+    public void A_hand_pinned_field_is_still_honoured_on_read()
+    {
+        var loaded = RuleConfigSerializer.Loads("{\"pile_chain_minimum_piles\": 2}");
+
+        Assert.Equal(2, loaded.PileChainMinimumPiles);
+    }
+
+    /// <summary>
+    /// The stale file already on the machine still pins everything, and
+    /// nothing in the build can see that - only the run can say it. These
+    /// are the two real values model 100302's config was pinning.
+    /// </summary>
+    [Fact]
+    public void Settings_pinned_away_from_the_current_defaults_are_described_for_the_run_summary()
+    {
+        var described = RuleConfigSerializer.DescribeOverrides(
+            "{\"schema_version\": 1, \"pile_chain_minimum_piles\": 2, " +
+            "\"pile_chain_collinearity_tolerance_degrees\": 0.016666666666666666, " +
+            $"\"pile_category_name\": \"{new RuleConfig().PileCategoryName}\"}}");
+
+        Assert.Equal(2, described.Count);
+        Assert.Contains(described, d => d.StartsWith("pile_chain_minimum_piles = 2") && d.Contains("default is 3"));
+        Assert.Contains(described, d => d.StartsWith("pile_chain_collinearity_tolerance_degrees"));
+        // Recorded at the same value as the default, so it changes nothing
+        // and is not worth a reviewer's attention.
+        Assert.DoesNotContain(described, d => d.StartsWith("pile_category_name"));
+    }
+
     [Fact]
     public void A_newer_schema_version_is_refused_rather_than_misread()
     {

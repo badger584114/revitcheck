@@ -65,7 +65,23 @@ internal static class RuleConfigSource
 
         try
         {
-            return (RuleConfigSerializer.Load(path), $"Using per-model config:\n{path}");
+            // What the file pins is reported, not just that a file was
+            // used. A config written before 2026-09-09 records every
+            // setting as it stood when the model was first captured, so it
+            // silently overrides every later recalibration - which is
+            // exactly what happened to model 100302 between 09-07 and
+            // 09-09. Only the run can say so; nothing else can see it.
+            var (config, overrides) = RuleConfigSerializer.LoadWithOverrides(path);
+            var description = $"Using per-model config:\n{path}";
+            if (overrides.Count > 0)
+            {
+                description +=
+                    $"\n\nIt overrides {overrides.Count} built-in default(s) - check these are still what this " +
+                    "project wants, since a value recorded here does not track later recalibration:\n  " +
+                    string.Join("\n  ", overrides);
+            }
+
+            return (config, description);
         }
         catch (Exception ex)
         {
