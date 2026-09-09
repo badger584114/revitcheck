@@ -107,10 +107,7 @@ public static class PileChainBearingConsistencyCheck
             return (issues, investigated);
         }
 
-        var notes = model.TextNotes
-            .Select(n => (Note: n, Degrees: BearingText.TryParseDegrees(n.RawText)))
-            .Where(t => t.Degrees is not null && t.Note.LocalPoint is not null)
-            .ToList();
+        var notes = BearingCalls(model);
 
         var edges = PileChainReconstruction.BuildEdges(model, piles, config);
         var chainSet = PileChainReconstruction.BuildChains(edges);
@@ -192,6 +189,22 @@ public static class PileChainBearingConsistencyCheck
 
         return (issues, investigated.Distinct().ToList());
     }
+
+    /// <summary>
+    /// Every text note that reads as a bearing call and has a position -
+    /// what this check compares a run against.
+    /// </summary>
+    /// <remarks>
+    /// Public so a run summary can say how many bearing calls were actually
+    /// found, rather than reporting the raw text-note count (most notes in
+    /// a pile view are not bearing calls) or re-deriving the predicate and
+    /// drifting from it.
+    /// </remarks>
+    public static List<(TextNoteInfo Note, double? Degrees)> BearingCalls(RevitModel model) =>
+        model.TextNotes
+            .Select(n => (Note: n, Degrees: BearingText.TryParseDegrees(n.RawText)))
+            .Where(t => t.Degrees is not null && t.Note.LocalPoint is not null)
+            .ToList();
 
     /// <summary>
     /// Splits the chain into geometrically straight runs first, then checks
@@ -321,6 +334,9 @@ public static class PileChainBearingConsistencyCheck
                 $"{FormatDegrees(delta)} apart, beyond the {FormatDegrees(config.PileChainBearingToleranceDegrees)} tolerance.",
             SuggestedFix = new Dictionary<string, object?>
             {
+                // How a reviewer refers to a run - carried as data so a run
+                // summary need not scrape it back out of Description.
+                ["run_endpoints"] = $"{first.ElementId} \u2192 {last.ElementId}",
                 ["reconstructed_bearing_degrees"] = bearing,
                 ["reciprocal_bearing_degrees"] = reciprocal,
                 ["note_bearing_degrees"] = noteDegrees.Value,

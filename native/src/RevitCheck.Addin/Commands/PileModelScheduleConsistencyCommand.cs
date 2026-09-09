@@ -79,7 +79,7 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
         // Per-model config if this project has one, compiled defaults
         // otherwise - either way the run's own output says which
         // (RuleConfigSource's remarks).
-        var (config, configDescription) = RuleConfigSource.Resolve(doc);
+        var (config, _) = RuleConfigSource.Resolve(doc);
 
         // Which categories to sweep is config, not a constant: piles are
         // Structural Foundations on one real model and Generic Models on
@@ -260,30 +260,10 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
     /// just this one.
     /// </summary>
     /// <summary>
-    /// What the run actually established, and nothing else: how many piles
-    /// were checked, which schedules they were compared against, and which
-    /// piles disagree.
+    /// Piles checked, schedules compared against, piles that disagree -
+    /// see <see cref="RunSummary"/> for why the rest of what this dialog
+    /// used to say now lives in the results file.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Cut back hard on 2026-09-09, per the user - the dialog was "very
-    /// confusing".</b> It had accumulated a candidate-schedule breakdown
-    /// with per-schedule row and element-id counts, a character-level hex
-    /// dump comparing a pile key against a schedule id, an extraction-error
-    /// sample, the full config path with every setting it pinned, and a
-    /// paragraph explaining what the check does not do. The one thing a
-    /// reader wants - which pile is wrong, and by how much - was the
-    /// hardest thing in it to find.
-    /// </para>
-    /// <para>
-    /// Nothing is lost: every finding, coverage note included, is in the
-    /// JSON/CSV/BCF written beside the model, and in the checklist. The
-    /// dialog keeps a one-line count of the notes it no longer prints, so
-    /// CLAUDE.md's "report a coverage indicator, never fail silently"
-    /// still holds - what changed is that a coverage note is now counted
-    /// here and read there, rather than recited in full.
-    /// </para>
-    /// </remarks>
     private static string Summarise(
         RevitModel model,
         List<Issue> issues,
@@ -295,101 +275,19 @@ public class PileModelScheduleConsistencyCommand : IExternalCommand
     {
         var compared = PileModelScheduleConsistencyCheck.ComparedSchedules(model, config);
 
-        var lines = new List<string>
-        {
-            $"{pileCount} pile(s) in view '{viewName}'.",
-            compared.Count == 0
-                ? "Compared against: nothing - no captured schedule has readable Easting/Northing columns."
-                : "Compared against: " + string.Join(", ", compared.Select(s => $"'{s.Name}'")) + ".",
-        };
-
-        var mismatches = issues
-            .Where(i => string.Equals(i.Category, "geometry", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        lines.Add(string.Empty);
-        if (mismatches.Count == 0)
-        {
-            lines.Add("No mismatches.");
-        }
-        else
-        {
-            lines.Add($"{mismatches.Count} pile(s) mismatched:");
-            lines.AddRange(mismatches.Select(MismatchLine));
-        }
-
-        // The three indicators that must survive the cut, each shown only
-        // when it has something to say - a clean run stays short, and none
-        // of these can be silent when it matters. Extraction errors in
-        // particular appear nowhere else on this command's path.
-        var notes = issues.Count - mismatches.Count;
-        var footnotes = new List<string>();
-
-        if (notes > 0)
-        {
-            footnotes.Add($"{notes} note(s) on what could not be checked - see the results file.");
-        }
-
-        if (model.ExtractionErrors.Count > 0)
-        {
-            footnotes.Add($"{model.ExtractionErrors.Count} element(s) could not be read at all.");
-        }
-
-        var pinned = PinnedSettingCount(doc);
-        if (pinned > 0)
-        {
-            footnotes.Add(
-                $"This model's config pins {pinned} setting(s) away from the built-in defaults - " +
-                "Rule Config shows which.");
-        }
-
-        if (footnotes.Count > 0)
-        {
-            lines.Add(string.Empty);
-            lines.AddRange(footnotes);
-        }
-
-        return string.Join("\n", lines) + CategoryScope.Note(unresolvedCategories);
-    }
-
-    /// <summary>
-    /// How many settings this model's config holds away from the current
-    /// defaults - worth one line when non-zero, since a config that pins a
-    /// superseded tolerance is invisible otherwise and has silently decided
-    /// two real runs (PLANNING.md §22, §23).
-    /// </summary>
-    private static int PinnedSettingCount(Document doc)
-    {
-        try
-        {
-            var json = RuleConfigSource.ReadRaw(doc);
-            return json is null ? 0 : RuleConfigSerializer.DescribeOverrides(json).Count;
-        }
-        catch
-        {
-            // Never let a reporting nicety fail the run that produced the
-            // findings - Rule Config reports properly on this file anyway.
-            return 0;
-        }
-    }
-
-    /// <summary>One mismatch, as "5506399 - 50mm" - the id a reviewer types into Select by ID, and how far out it is.</summary>
-    private static string MismatchLine(Issue issue)
-    {
-        var delta = issue.SuggestedFix is not null &&
-                    issue.SuggestedFix.TryGetValue("delta_mm", out var raw) &&
-                    raw is not null &&
-                    double.TryParse(
-                        raw.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var mm)
-            ? $" - {mm.ToString("0.#", CultureInfo.InvariantCulture)}mm"
-            : string.Empty;
-
-        var key = issue.SuggestedFix is not null &&
-                  issue.SuggestedFix.TryGetValue("pile_key", out var rawKey) &&
-                  rawKey?.ToString() is { Length: > 0 } k
-            ? $"{k} "
-            : string.Empty;
-
-        return $"  {key}({issue.ElementId?.ToString(CultureInfo.InvariantCulture) ?? "no element"}){delta}";
+        return RunSummary.Build(
+            new[]
+            {
+                $"{pileCount} pile(s) in view '{viewName}'.",
+                compared.Count == 0
+                    ? "Compared against: nothing - no captured schedule has readable Easting/Northing columns."
+                    : "Compared against: " + string.Join(", ", compared.Select(s => $"'{s.Name}'")) + ".",
+            },
+            issues,
+            i => $"  {RunSummary.Label(i)}{RunSummary.Amount(i, "delta_mm", "mm")}",
+            "pile",
+            model.ExtractionErrors,
+            doc,
+            unresolvedCategories);
     }
 }

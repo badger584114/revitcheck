@@ -366,14 +366,19 @@ Notes worth not rediscovering:
   against the real `RevitAPI.dll` via `System.Reflection.MetadataLoadContext`
   with no Revit machine needed.
 - **A run dialog states the answer; the results file carries the detail.**
-  Pile Model/Schedule's dialog is pile count, schedules compared against,
-  and the mismatched piles — nothing else, per the user 2026-09-09 ("very
-  confusing"). Coverage notes, extraction errors and config pins survive as
-  a one-line count each, shown only when non-zero, so "never fail silently"
-  still holds without reciting. A command must not re-derive what a check
-  already knows: this dialog rebuilt the candidate-schedule list with a
-  stricter rule than the check used and could name none on a run that
-  compared against several — `ComparedSchedules` is now the one definition.
+  Every check command renders through `Commands/RunSummary.cs`: what was
+  looked at, what it was compared against, what disagrees — then one line
+  per indicator that has something to say (manual review, coverage,
+  extraction errors, config pins), each shown only when non-zero, so
+  "never fail silently" holds without reciting. Per the user 2026-09-09,
+  the dialogs were "very confusing". One implementation, not four: the
+  bespoke version had already drifted from its own check, rebuilding the
+  candidate-schedule list under a stricter rule and naming none where the
+  check had compared against several. **A command must not re-derive what
+  a check already knows** — `ComparedSchedules` and `BearingCalls` are the
+  single definitions. Anything the dialog names (a pile mark, a run's
+  endpoints) travels in `SuggestedFix`, never scraped back out of a
+  Description.
 - **Rules must be auditable** — an Issue says how it reached its
   conclusion (which reference, which segment, which view). This is a
   compliance/review tool, not a black box.

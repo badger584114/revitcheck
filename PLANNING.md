@@ -1256,3 +1256,17 @@ The mismatch line reads `PIL234307 (5506399) - 50mm`. The mark now travels in `S
 Nothing is lost: every finding including coverage notes is in the JSON/CSV/BCF and the checklist. Three indicators survive as a one-line count each, shown only when non-zero — coverage notes, extraction errors (which appear nowhere else on this command's path), and the number of settings the model's config pins away from the defaults. A clean run is now four lines; a run with something to say says it first.
 
 393 Core tests passing (391 + 2); `dotnet build` clean including the net48 Addin.
+
+**The same cut applied to the other dialogs (2026-09-09), per the user.** Dimension Triage needed nothing — it opens the checklist window and shows no summary. The other three each had their own accumulation of input counts, an unconditional extraction-error block, the full config path with every setting it pinned, and in the pile cases a paragraph about what the check does not do.
+
+All four now render through one helper, `Commands/RunSummary.cs`: *what was looked at, what it was compared against, what disagrees*, then one line per indicator that has something to say. **One implementation rather than four is the point** — the bespoke version had already drifted from its own check, and four copies would drift the same way.
+
+Three deliberate properties:
+
+- **Manual review and coverage are counted separately, never lumped.** One says a person has to decide; the other says nothing could be decided. Collapsing them would undo the distinction §21 and §22 were spent establishing.
+- **Extraction errors bring their messages, but only when there are any.** They reach no Issue on these commands' paths, so the dialog is the only place they appear at all — a bare count would leave a real extraction failure undiagnosable, while printing the block unconditionally is what made these dialogs long to begin with. `ExtractionErrorSample` survives for exactly that case.
+- **Everything the dialog names travels as data.** A pile's mark is `SuggestedFix["pile_key"]`, a run's endpoints `["run_endpoints"]`, added alongside this change. The standing rule about never reconstructing from rendered text applies to this project's own output, not only to Revit's.
+
+Two more single-definition helpers came out of it, for the same reason `ComparedSchedules` did: `PileChainBearingConsistencyCheck.BearingCalls` (so a summary reports bearing calls actually found, rather than the raw text-note count — most notes in a pile view are not bearing calls) and the shared verdict/manual-review/coverage split inside `RunSummary`.
+
+393 Core tests passing; `dotnet build` clean including the net48 Addin, 0 warnings. All Addin-side and compile-verified only.

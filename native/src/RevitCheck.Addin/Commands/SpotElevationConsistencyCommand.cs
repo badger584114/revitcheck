@@ -88,7 +88,7 @@ public class SpotElevationConsistencyCommand : IExternalCommand
         // Per-model config if this project has one, compiled defaults
         // otherwise - either way the run's own output says which
         // (RuleConfigSource's remarks).
-        var (config, configDescription) = RuleConfigSource.Resolve(doc);
+        var (config, _) = RuleConfigSource.Resolve(doc);
 
         DimensionCollectionResult collected;
         try
@@ -124,11 +124,17 @@ public class SpotElevationConsistencyCommand : IExternalCommand
         var (issues, investigatedElementIds) = SpotElevationConsistencyCheck.RunWithScope(model, config);
         var spotCount = collected.Dimensions.Count(d => d.IsSpot);
 
-        var summary = $"{issues.Count} issue(s) found ({spotCount} Spot Elevation(s) in view '{activeView.Name}')" +
-            (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
-            "." +
-            ExtractionErrorSample.Format(model.ExtractionErrors);
-        summary += "\n\n" + configDescription;
+        var summary = RunSummary.Build(
+            new[]
+            {
+                $"{spotCount} Spot Elevation(s) in view '{activeView.Name}'.",
+                "Compared against: real horizontal faces found near each one.",
+            },
+            issues,
+            i => $"  {RunSummary.Label(i)}{RunSummary.Amount(i, "delta_mm", "mm")}",
+            "spot elevation",
+            model.ExtractionErrors,
+            doc);
 
         if (CheckingSessionHost.Session is { } session)
         {

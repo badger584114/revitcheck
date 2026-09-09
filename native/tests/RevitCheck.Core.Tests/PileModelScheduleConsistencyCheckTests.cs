@@ -656,8 +656,9 @@ public class PileModelScheduleConsistencyCheckTests
 
         var issue = Assert.Single(PileModelScheduleConsistencyCheck.Run(model, new RuleConfig()));
 
-        Assert.Equal("PIL234307", Assert.Contains("pile_key", issue.SuggestedFix));
-        Assert.Equal(50.0, Assert.IsType<double>(Assert.Contains("delta_mm", issue.SuggestedFix)), 3);
+        var fix = Assert.IsType<Dictionary<string, object?>>(issue.SuggestedFix);
+        Assert.Equal("PIL234307", Assert.Contains("pile_key", fix));
+        Assert.Equal(50.0, Assert.IsType<double>(Assert.Contains("delta_mm", fix)), 3);
     }
 
     [Fact]

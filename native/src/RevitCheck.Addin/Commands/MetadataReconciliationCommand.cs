@@ -108,10 +108,17 @@ public class MetadataReconciliationCommand : IExternalCommand
         // per element (see IssueGrouping's own docstring).
         var issues = IssueGrouping.GroupMetadataMismatches(model, rawIssues);
 
-        var groupingNote = rawIssues.Count != issues.Count
-            ? $" ({rawIssues.Count} before grouping repeated findings together)"
-            : "";
-        var summary = $"{issues.Count} issue(s) found{groupingNote} ({collected.Elements.Count} element(s) checked).";
+        var summary = RunSummary.Build(
+            new[]
+            {
+                $"{collected.Elements.Count} element(s) checked.",
+                $"Compared against: '{System.IO.Path.GetFileName(csvPath)}'.",
+            },
+            issues,
+            i => $"  {RunSummary.Label(i, "field")}",
+            "element",
+            collected.ExtractionErrors,
+            doc);
 
         string? outputPath;
         try

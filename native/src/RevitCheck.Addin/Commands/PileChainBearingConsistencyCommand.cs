@@ -67,7 +67,7 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
         // Per-model config if this project has one, compiled defaults
         // otherwise - either way the run's own output says which
         // (RuleConfigSource's remarks).
-        var (config, configDescription) = RuleConfigSource.Resolve(doc);
+        var (config, _) = RuleConfigSource.Resolve(doc);
 
         // Which categories to sweep is config, not a constant: piles are
         // Structural Foundations on one real model and Generic Models on
@@ -125,12 +125,22 @@ public class PileChainBearingConsistencyCommand : IExternalCommand
 
         var (issues, investigatedDimensionIds) = PileChainBearingConsistencyCheck.RunWithScope(model, config);
 
-        var summary = $"{issues.Count} issue(s) found ({piles.Elements.Count} pile(s), {dims.Dimensions.Count} dimension(s), " +
-            $"{dims.TextNotes.Count} text note(s) in view '{activeView.Name}' checked)" +
-            (model.ExtractionErrors.Count > 0 ? $", {model.ExtractionErrors.Count} extraction error(s)" : "") +
-            "." +
-            ExtractionErrorSample.Format(model.ExtractionErrors);
-        summary += "\n\n" + configDescription + CategoryScope.Note(unresolvedCategories);
+        var bearingCalls = PileChainBearingConsistencyCheck.BearingCalls(model).Count;
+        var summary = RunSummary.Build(
+            new[]
+            {
+                $"{piles.Elements.Count} pile(s) and {dims.Dimensions.Count} dimension(s) in " +
+                $"view '{activeView.Name}'.",
+                bearingCalls == 0
+                    ? "Compared against: nothing - no text note in this view reads as a bearing call."
+                    : $"Compared against: {bearingCalls} bearing call(s) found in the view.",
+            },
+            issues,
+            i => $"  {RunSummary.Text(i, "run_endpoints") ?? RunSummary.Label(i)}{RunSummary.Amount(i, "delta_degrees", "°", "0.####")}",
+            "run",
+            model.ExtractionErrors,
+            doc,
+            unresolvedCategories);
 
         if (CheckingSessionHost.Session is { } session)
         {
