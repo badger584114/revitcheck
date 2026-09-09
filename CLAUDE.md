@@ -100,7 +100,7 @@ native/
     UI/                         # code-behind-only WPF, no XAML
   tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
   tools/RevitCheck.MappingBuilder
-  tests/                        # 393 Core + 7 MappingBuilder tests, ~1s, no Revit
+  tests/                        # 396 Core + 7 MappingBuilder tests, ~1s, no Revit
   diagnostics/                  # throwaway pyRevit probes for answering real
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
@@ -206,7 +206,7 @@ Dated history for each is in PLANNING.md.
 | `revitcheck.metadata_reconciliation` | Joins captured model elements to an external reference CSV via a per-run-chosen mapping file; flags missing/mismatched fields. | Validated, calibrated against two real reference tables (§13) |
 | `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Rows from several schedules that agree are one answer stated twice; rows that disagree are a real finding. **Standalone — resolves no dimension triage, by design (§21).** | **Proven to detect**: found a planted 50mm move at exactly 50.00mm, one finding and no noise, 2026-09-09 (§24) — the only check in this project with that evidence |
 | `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs (each edge against the run's **running mean**, never its predecessor — §20), and compares each run's bearing against its own call. Bearing calls are matched by **rotation first, distance second, ties refused** — a call is drawn parallel to its line, and distance alone provably mis-assigns them (§20). A corner is reported for manual review, never averaged across. | Resolved 28 of 30 triaged dimensions on a second model (§22). Its coverage note now names the piles no run reached, which showed the planted pile was **never in a chain** rather than missed (§24). **Detection itself still unproven** — needs a mid-chain control |
-| `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere. | Validated standalone (§18); session path fixed but **not re-confirmed** |
+| `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere, but **only Spot Elevations** — a spot coordinate states a plan position, so it is set aside with a coverage note (2026-09-09). | Validated standalone (§18); session path fixed but **not re-confirmed** |
 
 **The ribbon is three panels, and the split is the workflow, not tidying:**
 
@@ -247,6 +247,19 @@ Notes worth not rediscovering:
   real planted 50mm error (§23). More generally, **not every heading
   containing EASTING is a per-element position**, and only the data can
   tell you — a column that gives every row the same answer is not one.
+- **A spot coordinate is not a spot elevation, and linework under one is
+  normal.** Every spot family subclasses `SpotDimension`, so `IsSpot` alone
+  cannot tell them apart — `DimensionInfo.SpotStyle` carries the raw
+  `DimensionType.StyleType` name. A spot **coordinate** states a plan
+  position (E/N), so `revitcheck.spot_elevation_consistency` — which
+  compares a drafted level against horizontal faces — cannot answer
+  anything about one, and now sets them aside with a coverage note instead
+  of mis-answering. **Per the user (2026-09-09): they are often attached to
+  detail linework by design, because a drafter cannot snap a coordinate to
+  model geometry accurately** — so a coordinate on linework is not evidence
+  of a defect on its own. Triage still flags them (the user's standing
+  position); no automated check resolves one, so they are manual-review
+  items by construction.
 - **Grids, levels and reference planes are datums, not risks.**
   Dimensioning to a grid is good practice and must not be lumped in with
   detail linework. `ImportInstance` **is** a risk despite not being

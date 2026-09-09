@@ -18,12 +18,14 @@ public class SpotElevationConsistencyCheckTests
         long viewId = 10,
         double? originZMm = 1000.0,
         bool shelfSearchPerformed = true,
-        List<NearbyFaceInfo>? faces = null) =>
+        List<NearbyFaceInfo>? faces = null,
+        string? spotStyle = null) =>
         new()
         {
             ElementId = elementId,
             ViewId = viewId,
             IsSpot = true,
+            SpotStyle = spotStyle,
             Origin = originZMm is { } z ? new Point3D { X = 0, Y = 0, Z = z } : null,
             ShelfSearchPerformed = shelfSearchPerformed,
             NearbyHorizontalFaces = faces ?? new List<NearbyFaceInfo>(),
@@ -31,6 +33,74 @@ public class SpotElevationConsistencyCheckTests
 
     private static Issues.Issue Coverage(List<Issues.Issue> issues) =>
         Assert.Single(issues, i => i.Category == "coverage" && i.SuggestedFix != null);
+
+    /// <summary>
+    /// From the user, 2026-09-09: "the spot elevation check is finding spot
+    /// coordinates, they will often be attached to linework as they will
+    /// not snap to model geometry accurately." A spot coordinate answers
+    /// where in plan, not at what level, so this check's comparison cannot
+    /// say anything about one - and a wrong-looking Z on one must never
+    /// become a finding.
+    /// </summary>
+    [Fact]
+    public void A_spot_coordinate_is_set_aside_rather_than_answered_wrongly()
+    {
+        var faces = new List<NearbyFaceInfo> { new() { ZMm = 5000.0, Distance2DMm = 10.0, SourceElementId = 99 } };
+        var model = new RevitModel
+        {
+            Dimensions = new List<DimensionInfo>
+            {
+                // Its Z is 3m from the only face near it - which would be a
+                // loud mismatch if this were a Spot Elevation.
+                SpotDimension(1, originZMm: 8000.0, faces: faces, spotStyle: "SpotCoordinate"),
+            },
+        };
+
+        var issues = Run(model);
+
+        Assert.DoesNotContain(issues, i => i.Category == "geometry");
+        Assert.Contains(issues, i =>
+            i.Category == "coverage" && i.Description.Contains("not Spot Elevations"));
+    }
+
+    /// <summary>
+    /// The exclusion is by style, not by the check quietly finding nothing:
+    /// a real Spot Elevation alongside it is still checked and still flagged.
+    /// </summary>
+    [Fact]
+    public void A_real_spot_elevation_beside_a_coordinate_is_still_checked()
+    {
+        var faces = new List<NearbyFaceInfo> { new() { ZMm = 5000.0, Distance2DMm = 10.0, SourceElementId = 99 } };
+        var model = new RevitModel
+        {
+            Dimensions = new List<DimensionInfo>
+            {
+                SpotDimension(1, originZMm: 8000.0, faces: faces, spotStyle: "SpotCoordinate"),
+                SpotDimension(2, originZMm: 8000.0, faces: faces, spotStyle: "SpotElevation"),
+            },
+        };
+
+        var flagged = Assert.Single(Run(model), i => i.Category == "geometry");
+        Assert.Equal(2, flagged.ElementId);
+    }
+
+    /// <summary>
+    /// A capture predating SpotStyle carries null for every spot. Narrowing
+    /// those to nothing would turn an old capture into a confidently empty
+    /// run - this project's most repeated failure - so an unknown style is
+    /// still checked.
+    /// </summary>
+    [Fact]
+    public void A_spot_of_unknown_style_is_still_checked_not_silently_skipped()
+    {
+        var faces = new List<NearbyFaceInfo> { new() { ZMm = 5000.0, Distance2DMm = 10.0, SourceElementId = 99 } };
+        var model = new RevitModel
+        {
+            Dimensions = new List<DimensionInfo> { SpotDimension(1, originZMm: 8000.0, faces: faces) },
+        };
+
+        Assert.Contains(Run(model), i => i.Category == "geometry");
+    }
 
     [Fact]
     public void NoSpotDimensionsReportsCoverageNotSilence()

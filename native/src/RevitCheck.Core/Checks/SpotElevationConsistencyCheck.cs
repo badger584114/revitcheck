@@ -73,11 +73,93 @@ public static class SpotElevationConsistencyCheck
     /// needs this scope kept separate from issues, same reasoning as every
     /// other investigation check in this codebase.
     /// </summary>
+    /// <summary>
+    /// True for a spot this check can actually answer for: a Spot
+    /// Elevation, or a spot whose style is unknown.
+    /// </summary>
+    /// <remarks>
+    /// <b>An unknown style is checked, not skipped.</b> A capture taken
+    /// before <see cref="DimensionInfo.SpotStyle"/> existed carries null for
+    /// every spot, and silently narrowing those to nothing would turn an old
+    /// capture into a confidently empty run - this project's most repeated
+    /// failure. Failing towards "look at it" costs a possible wrong-kind
+    /// finding a person can dismiss; failing the other way costs a real
+    /// defect nobody ever sees.
+    /// </remarks>
+    private static bool IsElevationSpot(DimensionInfo dimension) =>
+        dimension.SpotStyle is null ||
+        string.Equals(dimension.SpotStyle, "SpotElevation", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Coverage, never a defect: spots of a kind this check does not answer
+    /// for were set aside, and it says which and how many.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>From the user, 2026-09-09:</b> "the spot elevation check is
+    /// finding spot coordinates, they will often be attached to linework as
+    /// they will not snap to model geometry accurately." Both halves matter.
+    /// A spot coordinate answers <i>where in plan</i>, not <i>at what
+    /// level</i>, so this check's comparison is meaningless for one. And
+    /// being attached to detail linework is <b>normal and expected</b> for
+    /// them, because a drafter cannot snap a coordinate to model geometry
+    /// accurately - so a coordinate on linework is not evidence of anything
+    /// on its own.
+    /// </para>
+    /// <para>
+    /// They are still counted and named, not dropped. Dimension triage will
+    /// keep flagging a drafted spot coordinate, which remains the user's
+    /// standing position - but no automated check can currently resolve one,
+    /// so it is a manual-review item by construction, and this note is what
+    /// tells a reviewer that rather than leaving them waiting for a tool
+    /// that will never answer.
+    /// </para>
+    /// </remarks>
+    private static Issue NotThisKindOfSpot(List<DimensionInfo> others)
+    {
+        var byStyle = others
+            .GroupBy(d => d.SpotStyle ?? "unknown", StringComparer.OrdinalIgnoreCase)
+            .Select(g => $"{g.Count()} {g.Key}")
+            .ToList();
+
+        return new Issue
+        {
+            RuleId = RuleId,
+            Category = "coverage",
+            Severity = "low",
+            Description =
+                $"{others.Count} spot dimension(s) are not Spot Elevations and were not checked " +
+                $"({string.Join(", ", byStyle)}). This rule compares a drafted level against real horizontal " +
+                "faces; a spot coordinate states a plan position instead, so that comparison cannot answer " +
+                "anything about one. They are often attached to detail linework by design - a drafter cannot " +
+                "snap a coordinate to model geometry accurately - so that on its own is not a defect. No " +
+                "automated check currently verifies them: they are a reviewer's call.",
+            SuggestedFix = new Dictionary<string, object?>
+            {
+                ["not_checked_count"] = others.Count,
+                ["by_style"] = byStyle,
+                ["element_ids"] = others.Select(d => d.ElementId).ToList(),
+            },
+        };
+    }
+
     public static (List<Issue> Issues, List<long> InvestigatedElementIds) RunWithScope(RevitModel model, RuleConfig config)
     {
         var issues = new List<Issue>();
         var investigated = new List<long>();
-        var spotDimensions = model.Dimensions.Where(d => d.IsSpot).ToList();
+        var allSpots = model.Dimensions.Where(d => d.IsSpot).ToList();
+
+        // A spot COORDINATE states a plan position (Easting/Northing); this
+        // check compares a drafted level against real horizontal faces, so
+        // it asks a question a coordinate does not answer. Excluded here
+        // rather than checked and mis-answered - see NotThisKindOfSpot.
+        var spotDimensions = allSpots.Where(IsElevationSpot).ToList();
+        var otherSpots = allSpots.Count - spotDimensions.Count;
+
+        if (otherSpots > 0)
+        {
+            issues.Add(NotThisKindOfSpot(allSpots.Where(d => !IsElevationSpot(d)).ToList()));
+        }
 
         if (spotDimensions.Count == 0)
         {

@@ -391,6 +391,26 @@ public static class RevitDimensionSource
                         }
 
                         var isSpot = element is SpotDimension;
+
+                        // Which spot family, read off DimensionType.StyleType
+                        // (verified against the real RevitAPI.dll before use).
+                        // A spot coordinate states a plan position, not a
+                        // level - see DimensionInfo.SpotStyle.
+                        string? spotStyle = null;
+                        if (isSpot)
+                        {
+                            try
+                            {
+                                spotStyle = element.DimensionType?.StyleType.ToString();
+                            }
+                            catch
+                            {
+                                // Costs a distinction, not a finding - the
+                                // check treats an unknown style as still
+                                // worth looking at rather than skipping it.
+                                spotStyle = null;
+                            }
+                        }
                         var shelfSearchPerformed = false;
                         var nearbyHorizontalFaces = new List<Core.Ir.NearbyFaceInfo>();
                         // Spot dimensions only - an ordinary linear
@@ -418,6 +438,7 @@ public static class RevitDimensionSource
                             ElementId = elementId,
                             ViewId = view.ElementId,
                             IsSpot = isSpot,
+                            SpotStyle = spotStyle,
                             References = references,
                             Segments = ReadSegments(element),
                             Origin = origin,

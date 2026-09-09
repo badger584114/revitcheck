@@ -10,6 +10,30 @@ public sealed class DimensionInfo
     /// <summary>Spot dimensions (elevation/coordinate/slope) subclass Dimension in the API and are collected alongside ordinary ones. They matter more here, not less - a spot coordinate placed on detail linework looks authoritative and tracks nothing.</summary>
     public bool IsSpot { get; init; }
 
+    /// <summary>
+    /// Which kind of spot this is, as the raw <c>DimensionStyleType</c>
+    /// enum name - "SpotElevation", "SpotCoordinate", "SpotSlope". Null for
+    /// a non-spot dimension, and null on a capture taken before 2026-09-09.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added 2026-09-09, from the user:</b> the Spot Elevation check was
+    /// picking up spot <i>coordinates</i>, which state a plan position (E/N)
+    /// rather than a level - so comparing their Z against nearby horizontal
+    /// faces asks a question they do not answer. <c>IsSpot</c> alone cannot
+    /// tell them apart: every spot family subclasses <c>SpotDimension</c>.
+    /// </para>
+    /// <para>
+    /// The raw enum <i>name</i> rather than a parsed enum of our own, for
+    /// the reason this project keeps relearning: it is internal data, it
+    /// survives a Revit version adding a style type this build has never
+    /// heard of, and it needs no serializer support. A type <i>name</i>
+    /// ("Spot Elevations") is display text a project can rename freely;
+    /// <c>DimensionType.StyleType</c> is not.
+    /// </para>
+    /// </remarks>
+    public string? SpotStyle { get; init; }
+
     public List<ReferenceInfo> References { get; init; } = new();
     public List<DimensionSegmentInfo> Segments { get; init; } = new();
     public Point3D? Origin { get; init; }
