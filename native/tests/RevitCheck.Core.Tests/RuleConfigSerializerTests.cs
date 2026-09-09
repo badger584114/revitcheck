@@ -107,6 +107,41 @@ public class RuleConfigSerializerTests
         Assert.DoesNotContain(described, d => d.StartsWith("pile_category_name"));
     }
 
+    /// <summary>
+    /// A config is now an artefact that travels with its model to Forma
+    /// rather than a file on one machine's C: drive (2026-09-09, the
+    /// user's direction), so it has to say when it was written and for
+    /// what. A run that cannot tell a config written this morning from one
+    /// written before three recalibrations is the situation §22 and §23
+    /// were both spent in.
+    /// </summary>
+    [Fact]
+    public void A_written_config_records_when_and_what_it_was_written_for()
+    {
+        var json = RuleConfigSerializer.Dumps(
+            new RuleConfig { PileCategoryName = "Generic Models" }, "T2DPAA-BR-M3D-100302_Peter.Griggs");
+
+        var provenance = RuleConfigSerializer.DescribeProvenance(json);
+
+        Assert.NotNull(provenance);
+        Assert.Contains("T2DPAA-BR-M3D-100302_Peter.Griggs", provenance!);
+        // And it must not become a phantom setting on the way back in.
+        Assert.Equal("Generic Models", RuleConfigSerializer.Loads(json).PileCategoryName);
+        Assert.DoesNotContain(RuleConfigSerializer.DescribeOverrides(json), d => d.Contains("written_"));
+    }
+
+    /// <summary>
+    /// The real 2026-09-07 file, which carries no provenance. Its absence
+    /// is the signal that it predates diff-writing and therefore pins
+    /// everything - so it must be reported, not silently treated as fine.
+    /// </summary>
+    [Fact]
+    public void A_config_with_no_provenance_is_reported_as_such_rather_than_assumed_current()
+    {
+        Assert.Null(RuleConfigSerializer.DescribeProvenance(
+            "{\"schema_version\": 1, \"pile_chain_minimum_piles\": 2}"));
+    }
+
     [Fact]
     public void A_newer_schema_version_is_refused_rather_than_misread()
     {
@@ -116,26 +151,39 @@ public class RuleConfigSerializerTests
         Assert.Contains("refusing to misread", ex.Message);
     }
 
+    /// <summary>
+    /// Rewritten 2026-09-09. This used to assert that the starter adopted
+    /// every coordinate-looking heading it found, on the reasoning that
+    /// widening a candidate list is harmless. It is not: headings resolve
+    /// per schedule, so adopting one promotes a schedule carrying no setout
+    /// data into a candidate setout schedule. Adopting
+    /// DIT_StartEasting/DIT_StartNorthing - this client's maintenance
+    /// metadata for the bridge's own centrepoint - is what masked a real
+    /// planted 50mm error (PLANNING.md §23). Discovery reports; a person
+    /// adopts.
+    /// </summary>
     [Fact]
-    public void Starter_widens_setout_header_candidates_from_real_schedule_headings()
+    public void Starter_reports_coordinate_headings_it_finds_but_never_adopts_them()
     {
         var model = RevitCheckTestBuilders.Model(schedules: new[]
         {
             new ScheduleInfo
             {
-                Name = "PILE SETOUT",
-                Headers = new List<string> { "PILE REF", "EASTING COORD", "NORTHING COORD" },
+                Name = "ATM_Design_Automation - Added_New_DIT_Parameters",
+                Headers = new List<string> { "DIT_LocationHierarchyCode", "DIT_StartEasting", "DIT_StartNorthing" },
                 Rows = new List<ScheduleRow>(),
             },
         });
 
         var result = RuleConfigStarter.Build(model);
 
-        Assert.Contains("EASTING COORD", result.Config.PileScheduleEastingHeaders);
-        Assert.Contains("NORTHING COORD", result.Config.PileScheduleNorthingHeaders);
-        // Widening, never replacing - the defaults still apply to a model
-        // that uses them.
-        Assert.Contains("EASTING (m)", result.Config.PileScheduleEastingHeaders);
+        Assert.DoesNotContain("DIT_StartEasting", result.Config.PileScheduleEastingHeaders);
+        Assert.DoesNotContain("DIT_StartNorthing", result.Config.PileScheduleNorthingHeaders);
+        // The defaults are left exactly as they were.
+        Assert.Equal(new RuleConfig().PileScheduleEastingHeaders, result.Config.PileScheduleEastingHeaders);
+        // But a reviewer is told the heading exists, so adopting it stays a
+        // one-line config edit rather than a discovery problem.
+        Assert.Contains(result.Diagnostics, d => d.Contains("DIT_StartEasting"));
     }
 
     [Fact]

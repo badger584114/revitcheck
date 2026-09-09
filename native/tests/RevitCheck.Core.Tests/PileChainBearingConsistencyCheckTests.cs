@@ -1,3 +1,4 @@
+using RevitCheck.Core.Issues;
 using RevitCheck.Core.Checks;
 using RevitCheck.Core.Reporting;
 using RevitCheck.Core.Tests.Fixtures;
@@ -14,6 +15,15 @@ namespace RevitCheck.Core.Tests;
 /// </summary>
 public class PileChainBearingConsistencyCheckTests
 {
+    /// <summary>
+    /// Findings that say something about the drawing, as opposed to the
+    /// coverage note naming piles no run reached (added 2026-09-09). Tests
+    /// whose subject is a verdict filter it out; tests about coverage
+    /// assert on it directly.
+    /// </summary>
+    private static List<Issue> Verdicts(IEnumerable<Issue> issues) =>
+        issues.Where(i => i.Category != "coverage").ToList();
+
     [Fact]
     public void Real_two_pile_chain_is_no_longer_given_a_verdict_at_all()
     {
@@ -48,25 +58,36 @@ public class PileChainBearingConsistencyCheckTests
         // could not support. The empty investigated scope is what proves
         // the difference; asserting only on the issue list would let a
         // skipped run masquerade as a clean one.
-        Assert.Empty(issues);
+        Assert.Empty(Verdicts(issues));
         Assert.Empty(investigated);
+        // Skipped, and no longer silently: since 2026-09-09 a pile no run
+        // covered is named, so "empty because skipped" can never again read
+        // as "empty because clean" - which is how a real planted 50mm error
+        // on pile 5506399 went unmentioned (PLANNING.md §23).
+        var skipped = Assert.Single(issues);
+        Assert.Equal("coverage", skipped.Category);
+        Assert.Contains("not covered by any checked run", skipped.Description);
     }
 
     [Fact]
     public void Synthetic_clean_chain_with_a_matching_note_reports_nothing()
     {
+        // Three piles, not two. This test read as "a clean chain reports
+        // nothing" while actually asserting that a chain below the 3-pile
+        // minimum is skipped - vacuous since §20 raised that minimum, and
+        // only visible once a skipped chain stopped being silent
+        // (2026-09-09). A genuinely clean chain reports nothing and leaves
+        // no pile uncovered, which is what this now checks.
         var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
         var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
-        var dim = RevitCheckTestBuilders.PileChainDimension(
-            100, 1,
-            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
-            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var dims = new[] { Edge(100, pileA, pileB, 200, 201), Edge(101, pileB, pileC, 202, 203) };
         // Due north (0deg) or due south (180deg, the reciprocal) - use a
         // note reading exactly "0° 00' 00"".
         var note = RevitCheckTestBuilders.TextNote(300, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(50, 500));
 
         var model = RevitCheckTestBuilders.Model(
-            elements: new[] { pileA, pileB }, dimensions: new[] { dim }, textNotes: new[] { note });
+            elements: new[] { pileA, pileB, pileC }, dimensions: dims, textNotes: new[] { note });
 
         var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig());
 
@@ -180,7 +201,11 @@ public class PileChainBearingConsistencyCheckTests
 
         var issues = PileChainBearingConsistencyCheck.Run(model, new RuleConfig { PileChainMinimumPiles = 3 });
 
-        Assert.Empty(issues);
+        // No verdict - but the two piles it declined to check are named.
+        Assert.Empty(Verdicts(issues));
+        var skipped = Assert.Single(issues);
+        Assert.Equal("coverage", skipped.Category);
+        Assert.Contains("1", skipped.Description);
     }
 
     [Fact]
@@ -217,7 +242,7 @@ public class PileChainBearingConsistencyCheckTests
 
         var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig { PileChainMinimumPiles = 3 });
 
-        Assert.Empty(issues);
+        Assert.Empty(Verdicts(issues));
         // This check never reached a verdict on dimension 100 - it must
         // not be claimed as investigated, or a real triage finding on it
         // would silently reconcile as clean.
@@ -244,7 +269,7 @@ public class PileChainBearingConsistencyCheckTests
 
         var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
 
-        var issue = Assert.Single(issues);
+        var issue = Assert.Single(Verdicts(issues));
         Assert.Equal(RevitCheck.Core.Reporting.InvestigationReconciliation.ManualReviewCategory, issue.Category);
         Assert.Equal(100, issue.ElementId);
         // Manual review still counts as examined - the whole point is that
@@ -267,7 +292,7 @@ public class PileChainBearingConsistencyCheckTests
 
         var (issues, _) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
 
-        var issue = Assert.Single(issues);
+        var issue = Assert.Single(Verdicts(issues));
         Assert.Equal(RevitCheck.Core.Reporting.InvestigationReconciliation.ManualReviewCategory, issue.Category);
     }
 
@@ -289,23 +314,23 @@ public class PileChainBearingConsistencyCheckTests
 
         var (issues, investigated) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
 
-        Assert.Empty(issues);
+        Assert.Empty(Verdicts(issues));
         Assert.Empty(investigated);
     }
 
     [Fact]
     public void A_dimension_already_part_of_a_real_evaluated_chain_is_not_also_flagged_for_manual_review()
     {
+        // Three piles, so the chain is actually evaluated - see
+        // Synthetic_clean_chain_with_a_matching_note_reports_nothing.
         var pileA = RevitCheckTestBuilders.Pile(1, "P1", 0, 0);
         var pileB = RevitCheckTestBuilders.Pile(2, "P2", 0, 1000);
-        var dim = RevitCheckTestBuilders.PileChainDimension(
-            100, 1,
-            RevitCheckTestBuilders.TagRef(200, RevitCheckTestBuilders.Pt(0, 0)),
-            RevitCheckTestBuilders.TagRef(201, RevitCheckTestBuilders.Pt(0, 1000)));
+        var pileC = RevitCheckTestBuilders.Pile(3, "P3", 0, 2000);
+        var dims = new[] { Edge(100, pileA, pileB, 200, 201), Edge(101, pileB, pileC, 202, 203) };
         var note = RevitCheckTestBuilders.TextNote(300, 1, "0° 00' 00\"", RevitCheckTestBuilders.Pt(50, 500));
 
         var model = RevitCheckTestBuilders.Model(
-            elements: new[] { pileA, pileB }, dimensions: new[] { dim }, textNotes: new[] { note });
+            elements: new[] { pileA, pileB, pileC }, dimensions: dims, textNotes: new[] { note });
 
         var (issues, _) = PileChainBearingConsistencyCheck.RunWithScope(model, new RuleConfig());
 

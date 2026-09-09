@@ -44,12 +44,16 @@ public static class RuleConfigStarter
         var easting = DiscoverHeaders(model, config.PileScheduleEastingHeaders, "EASTING");
         var northing = DiscoverHeaders(model, config.PileScheduleNorthingHeaders, "NORTHING");
 
-        if (easting.Added.Count > 0 || northing.Added.Count > 0)
+        if (easting.Count > 0 || northing.Count > 0)
         {
             diagnostics.Add(
-                "Added setout column heading(s) found in this model: " +
-                string.Join(", ", easting.Added.Concat(northing.Added).Select(h => $"'{h}'")) +
-                " - confirm these are the columns carrying real coordinates.");
+                "Coordinate-looking schedule heading(s) found in this model that are NOT configured: " +
+                string.Join(", ", easting.Concat(northing).Select(h => $"'{h}'")) +
+                ". They are listed, not adopted - add any that genuinely carry each element's own setout " +
+                "position to pile_schedule_easting_headers / pile_schedule_northing_headers. Not every " +
+                "heading containing EASTING is one: on this project DIT_StartEasting/DIT_StartNorthing are " +
+                "maintenance metadata giving the bridge's centrepoint, the same value for every element on " +
+                "the structure.");
         }
 
         // Categories are a judgement, not a search: report the real
@@ -90,26 +94,49 @@ public static class RuleConfigStarter
 
         return new Result
         {
-            Config = config with
-            {
-                PileScheduleEastingHeaders = easting.Candidates,
-                PileScheduleNorthingHeaders = northing.Candidates,
-            },
+            Config = config,
             Diagnostics = diagnostics,
         };
     }
 
     /// <summary>
-    /// Every captured schedule heading containing <paramref name="token"/>
-    /// that isn't already a candidate. Widening a candidate list is safe -
-    /// the check tries them all and uses the first that resolves - which is
-    /// what makes this a search rather than a judgement.
+    /// Captured schedule headings containing <paramref name="token"/> that
+    /// are not already configured - reported for a person to choose from,
+    /// never adopted.
     /// </summary>
-    private static (List<string> Candidates, List<string> Added) DiscoverHeaders(
+    /// <remarks>
+    /// <para>
+    /// <b>Changed 2026-09-09, from a real negative control.</b> This used to
+    /// add every match straight into the candidate list, on the reasoning
+    /// that "widening a candidate list is safe - the check tries them all
+    /// and uses the first that resolves". <b>That reasoning was wrong.</b>
+    /// Headings resolve <i>per schedule</i>, so widening does not merely add
+    /// a fallback: it promotes a schedule that carries no setout data at all
+    /// into a candidate setout schedule, which then states a position that
+    /// contradicts the real one.
+    /// </para>
+    /// <para>
+    /// The real case: <c>DIT_StartEasting</c>/<c>DIT_StartNorthing</c>
+    /// matched on the substring and were adopted. On this client's projects
+    /// they are maintenance metadata carrying the <i>bridge's</i>
+    /// centrepoint - one value for the whole structure, not per element -
+    /// so every pile appeared to be 4.3m to 20m from where "a schedule"
+    /// said it was. <c>PileModelScheduleConsistencyCheck</c> then reported
+    /// the schedules as contradicting each other and refused to compare
+    /// anything, which masked a deliberately planted 50mm error on pile
+    /// 5506399 (PLANNING.md §23). The correct answer was present in
+    /// 'ABUTMENT A PILE SCHEDULE' the whole time.
+    /// </para>
+    /// <para>
+    /// So this is a search that <i>reports</i>, and adopting a heading is a
+    /// judgement left to a person - the same split the category shortlist
+    /// below already draws, and which this method was the sole exception to.
+    /// </para>
+    /// </remarks>
+    private static List<string> DiscoverHeaders(
         RevitModel model, List<string> existing, string token)
     {
-        var candidates = new List<string>(existing);
-        var added = new List<string>();
+        var found = new List<string>();
 
         foreach (var header in model.Schedules.SelectMany(s => s.Headers).Distinct(StringComparer.OrdinalIgnoreCase))
         {
@@ -118,15 +145,14 @@ public static class RuleConfigStarter
                 continue;
             }
 
-            if (candidates.Contains(header, StringComparer.OrdinalIgnoreCase))
+            if (existing.Contains(header, StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            candidates.Add(header);
-            added.Add(header);
+            found.Add(header);
         }
 
-        return (candidates, added);
+        return found;
     }
 }

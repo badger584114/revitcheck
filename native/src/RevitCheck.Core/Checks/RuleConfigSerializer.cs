@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -34,6 +35,22 @@ namespace RevitCheck.Core.Checks;
 public static class RuleConfigSerializer
 {
     public const int SchemaVersion = 1;
+
+    /// <summary>
+    /// Keys carrying provenance rather than settings - stripped before
+    /// deserializing, and never reported as overrides.
+    /// </summary>
+    /// <remarks>
+    /// Added 2026-09-09. A config is now an artefact that travels with its
+    /// model through Forma rather than a file on one machine's C: drive, so
+    /// it has to be able to say where it came from and when. A run that
+    /// cannot tell a config written this morning from one written before
+    /// three recalibrations is the situation §22/§23 spent two sessions in.
+    /// </remarks>
+    private static readonly string[] ProvenanceKeys =
+    {
+        "schema_version", "written_at_utc", "written_for_model",
+    };
 
     /// <summary>The conventional file name suffix, alongside the model - see <c>RuleConfigSource</c> in the Addin for the lookup.</summary>
     public const string FileSuffix = ".revitcheck.json";
@@ -76,7 +93,7 @@ public static class RuleConfigSerializer
     /// name the field in the file by hand, and the read path honours it.
     /// </para>
     /// </remarks>
-    public static string Dumps(RuleConfig config)
+    public static string Dumps(RuleConfig config, string? writtenForModel = null)
     {
         var node = JsonSerializer.SerializeToNode(config, Options)!.AsObject();
         var defaults = DefaultsNode();
@@ -90,7 +107,40 @@ public static class RuleConfigSerializer
         }
 
         node["schema_version"] = SchemaVersion;
+        node["written_at_utc"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        if (!string.IsNullOrWhiteSpace(writtenForModel))
+        {
+            node["written_for_model"] = writtenForModel;
+        }
+
         return node.ToJsonString(Options);
+    }
+
+    /// <summary>
+    /// A one-line description of when this config was written and for which
+    /// model, or null when it carries no provenance (written before
+    /// 2026-09-09).
+    /// </summary>
+    public static string? DescribeProvenance(string json)
+    {
+        var node = JsonNode.Parse(json)?.AsObject();
+        if (node is null)
+        {
+            return null;
+        }
+
+        var written = node["written_at_utc"]?.GetValue<string>();
+        var model = node["written_for_model"]?.GetValue<string>();
+
+        if (written is null && model is null)
+        {
+            return null;
+        }
+
+        var forModel = model is null ? string.Empty : $" for {model}";
+        return written is null
+            ? $"Written{forModel} (no date recorded)."
+            : $"Written {written}{forModel}.";
     }
 
     /// <summary>
@@ -118,7 +168,7 @@ public static class RuleConfigSerializer
 
         foreach (var property in node)
         {
-            if (property.Key == "schema_version")
+            if (ProvenanceKeys.Contains(property.Key, StringComparer.Ordinal))
             {
                 continue;
             }
@@ -160,14 +210,18 @@ public static class RuleConfigSerializer
                 $"({SchemaVersion}); refusing to misread it.");
         }
 
-        node.Remove("schema_version");
+        foreach (var key in ProvenanceKeys)
+        {
+            node.Remove(key);
+        }
+
         return node.Deserialize<RuleConfig>(Options)
             ?? throw new InvalidOperationException("Rule config JSON did not deserialize to a RuleConfig.");
     }
 
-    public static string Save(RuleConfig config, string path)
+    public static string Save(RuleConfig config, string path, string? writtenForModel = null)
     {
-        File.WriteAllText(path, Dumps(config));
+        File.WriteAllText(path, Dumps(config, writtenForModel));
         return path;
     }
 
