@@ -105,7 +105,8 @@ native/
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
                                 #   en_gb_variants.json — data ahead of its rules
-samples/                        # one real capture, kept as a test fixture
+samples/                        # one real capture + zipped real-machine run
+                                #   artefacts (results, config, screenshots)
 ```
 
 `native/README.md` covers building, deploying to a Revit machine, and
@@ -184,6 +185,14 @@ the way this project treats uploaded drawings and check before it lands
 in git. Its per-view dimension attribution predates the `OwnerViewId` fix
 below and should not be trusted.
 
+**The zips are real-machine run artefacts**, uploaded from the Revit
+machine via Forma — results JSON/CSV/BCF, and from `03.zip` onward the
+model's own `.revitcheck.json`. They are the only record of what actually
+ran, since **a capture cannot replay either pile check** (schedule headers
+without rows, and no element positions at all). Newest first: `03.zip` is
+the run where the negative control passed (§24); `02.zip` is the one where
+it failed (§23). Same real-client caution applies as to a capture.
+
 ## Built state
 
 Every rule is a real ribbon button in the native add-in unless noted.
@@ -195,8 +204,8 @@ Dated history for each is in PLANNING.md.
 | `revit.dimension_override_consistency` | Where a drafter typed over the measured value, is the difference explainable as rounding to a sensible grid? A stated limit (`500 MIN.`) is checked against the limit instead. An override with no stated limit is not flagged (§17). Always reports how much was checkable. | Validated |
 | `revit.capture_coverage` | Turns per-element extraction failures into a visible Issue, plus a low-severity note for any workset excluded by user choice. | Validated |
 | `revitcheck.metadata_reconciliation` | Joins captured model elements to an external reference CSV via a per-run-chosen mapping file; flags missing/mismatched fields. | Validated, calibrated against two real reference tables (§13) |
-| `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Rows from several schedules that agree are one answer stated twice; rows that disagree are a real finding. **Standalone — resolves no dimension triage, by design (§21).** | **Failed the project's first negative control** — a planted 50mm move went undetected 2026-09-09 (§23); fixed, **unrun since** |
-| `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs (each edge against the run's **running mean**, never its predecessor — §20), and compares each run's bearing against its own call. Bearing calls are matched by **rotation first, distance second, ties refused** — a call is drawn parallel to its line, and distance alone provably mis-assigns them (§20). A corner is reported for manual review, never averaged across. | Resolved 28 of 30 triaged dimensions on a second model (§22), but **said nothing about a planted 50mm move** (§23); coverage note added, unrun since |
+| `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Rows from several schedules that agree are one answer stated twice; rows that disagree are a real finding. **Standalone — resolves no dimension triage, by design (§21).** | **Proven to detect**: found a planted 50mm move at exactly 50.00mm, one finding and no noise, 2026-09-09 (§24) — the only check in this project with that evidence |
+| `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs (each edge against the run's **running mean**, never its predecessor — §20), and compares each run's bearing against its own call. Bearing calls are matched by **rotation first, distance second, ties refused** — a call is drawn parallel to its line, and distance alone provably mis-assigns them (§20). A corner is reported for manual review, never averaged across. | Resolved 28 of 30 triaged dimensions on a second model (§22). Its coverage note now names the piles no run reached, which showed the planted pile was **never in a chain** rather than missed (§24). **Detection itself still unproven** — needs a mid-chain control |
 | `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere. | Validated standalone (§18); session path fixed but **not re-confirmed** |
 
 **The ribbon is three panels, and the split is the workflow, not tidying:**
@@ -365,33 +374,31 @@ Notes worth not rediscovering:
 
 ## Next
 
-**1. Re-run on a real machine — and start by deleting the config file.**
-2026-09-09 ran §19–§22 inside Revit twice. The workflow half is proven (a
-real pile view went `0 / 29` → **28 / 30** and reached a terminal state),
-and two of the three §22 fixes are confirmed working. Everything from §23
-is unrun.
+**1. Prove the bearing path can detect, as Model/Schedule now has.**
+2026-09-09 closed the loop on everything from §19-§23: the workflow chain
+works (`0 / 29` → **28 / 30**, terminal state reached), the config is
+correct and portable, and **Pile Model/Schedule found a planted 50mm move
+at exactly 50.00mm with no noise** (§24). That is the project's only
+evidence that any check detects anything.
 
-Do these in order:
-- **Rule Config > Reset, then run Capture Model.** Use the button, not the
-  file — the 2026-09-09 run deleted a file that turned out not to be the
-  one being read, because the real path is
-  `%LOCALAPPDATA%\RevitCheck\T2DPAA-T2D-C3S-BR-M3D-100302_Peter.Griggs.revitcheck.json`
-  and the `_Peter.Griggs` suffix is easy to miss. The stale config pins the
-  pre-§20 tolerances (`pile_chain_minimum_piles: 2`,
-  `pile_chain_collinearity_tolerance_degrees: 0.0167`) *and* the adopted
-  `DIT_StartEasting`/`DIT_StartNorthing` columns that caused §23. Rule
-  Config shows all of that before you reset, which is how you confirm which
-  file is actually in force.
-- **Re-run the negative control.** The 50mm move on pile 5506399 should now
-  be reported at ~50mm by Pile Model/Schedule. This is the single most
-  valuable check in the list: it is the only one that tests detection
-  rather than agreement.
-- **Read the new coverage notes.** Pile Chain Bearing now names every
-  in-scope pile no run covered (~8 of 33 last time, all silent before).
-  Whether 5506399 is among them answers the one thing §23 could not
-  determine — whether that check missed it or never saw it.
+Pile Chain Bearing has no such evidence. Today's control never reached it
+— its new coverage note showed pile 5506399 is **in no reconstructed
+chain at all**. The control it needs is a pile moved **mid-chain**, where
+a 50mm near-perpendicular offset should read as roughly 0.3°–0.8°,
+clear of both the 0.2° tolerance and real scatter (which reaches 306″).
+Keep the scratch model: a planted error is only useful while it is still
+there to re-run, and it is what made §23's fixes trustworthy.
 
-Still invisible if it fails, and unchanged for three sessions:
+Also open from the same run:
+- **Three piles are in no chain** (5506399, 6491094, 6492138 of 28). Now
+  visible rather than silent, but still a real gap — a moved pile among
+  them is catchable only by Model/Schedule. A throwaway diagnostic would
+  say why they carry no tag-to-tag adjacency; most likely no dimension
+  connects them.
+- **Spot Elevation's session path** is still fixed-but-unconfirmed (§18),
+  and is now the only check carrying that status.
+
+Still invisible if it fails, and unchanged for four sessions:
 - **If `TextNote.BaseDirection` comes back empty**, the rotation filter
   silently stops applying and note matching reverts to distance-only. The
   run summary does not say so. That is the least visible failure in the
@@ -400,25 +407,21 @@ Still invisible if it fails, and unchanged for three sessions:
   on a real cloud model, the lever is "active view only", not narrowing
   categories back.
 
-**A capture cannot replay Pile Model/Schedule at all** — it stores schedule
-headers with zero rows, and **no element positions whatever** (0 of 36,626
-have `local_point` or a project position). So neither pile check can be
-reproduced or diffed off-machine, and §23's negative control could not be
-verified from the artefacts — the moved pile had to be identified by the
-user. Fixing that is the difference between a negative control we can audit
-and one we have to take on trust.
+**A capture cannot replay either pile check** — it stores schedule headers
+with zero rows, and **no element positions whatever** (0 of 36,626 carry
+`local_point` or a project position). So neither can be reproduced or
+diffed off-machine, and §23's control had to be interpreted from the
+user's own account of what moved. Fixing that is the difference between a
+negative control we can audit and one we take on trust.
 
-**2. Negative controls — still the biggest evidence gap, and now the
-clearest one.** Every verification check has only ever returned zero or
-noise on real data. The tool is proven to agree with a clean model, which
-is far weaker than proven to detect drift — and §22 showed the gap is not
-theoretical: a check shipped 32 false defects while 376 tests passed,
-because every fixture is written by someone who knows what the check
-needs. Move one pile 50mm in a scratch copy without
-rerunning Dynamo, retype a Spot Elevation, and confirm each check flags
-it at the right magnitude. One session, and it is the only thing that
-will exercise the placeholder tolerances — several of which were retuned
-on 2026-09-07 against real *scatter*, never against a known-bad case.
+**2. Negative controls — the method is proven; extend it.** §23 planted
+one 50mm move and it falsified two checks that 376 passing tests and four
+clean real runs had not; §24 is the only reason we can say either was
+fixed. Extend it to the checks with no such evidence: Spot Elevation
+(retype a value), the bearing path (above), and the override check. **A
+fixture is written by someone who already knows what the check needs**,
+which is why a full green suite sat on top of a check that answered
+nothing — two tests here had been vacuous for a week and read as passing.
 
 **3. More models.** Contact with two beyond BR08 broke all three pile
 paths in three different ways. That risk is partly retired, not measured

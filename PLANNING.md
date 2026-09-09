@@ -1213,3 +1213,31 @@ The local copy stays, and deliberately: it is what lets a check run with no prom
 391 Core tests passing (389 + 2); `dotnet build` clean including the net48 Addin. All of it Addin-side and compile-verified only.
 
 **The lesson is about diagnosis, not code.** I concluded in §22 that a stale config was pinning old values, and that was right; the user acted on it, deleted a config, and the symptoms persisted — at which point the tempting move is to doubt the diagnosis. Re-deriving it from the arithmetic instead showed the diagnosis was correct and *my instruction* was wrong. **A correct finding paired with an unusable instruction fails exactly like a wrong finding, and looks like one.** Worth naming a file by the path the code actually builds, not by the name in one's head.
+
+## 24. The negative control passed (2026-09-09)
+
+**The first run in this project's history to demonstrate that a check can detect a defect**, rather than that it agrees with a clean model. The user cleared the stale config via the new Rule Config button, re-captured, and re-ran both pile buttons against the same scratch model carrying §23's planted 50mm move on pile 5506399.
+
+**Pile Model/Schedule returned exactly one finding:**
+
+> `Pile 5506399 ('PIL234307'): live model position is 50mm from the schedule's 'ABUTMENT A PILE SCHEDULE' row (live model E/N 278437528.42/6130713126.57mm, schedule 278437478.59/6130713122.46mm) - beyond the 10mm tolerance.`
+
+Checked against the quoted coordinates: dE 49.83mm, dN 4.11mm, **50.00mm**, in the direction the user described. **One true positive, zero noise** — against 32 high-severity false positives and a missed defect on the same model that morning.
+
+**§23's open question is answered by the run itself.** The new coverage note names the pile: *"3 of 28 in-scope pile(s) were not covered by any checked run... 5506399, 6491094, 6492138."* So Pile Chain Bearing did not miss a defect it examined — **it never examined the pile**, which is in no reconstructed tag-to-tag chain. That was undecidable from §23's artefacts and required guessing between two very different failures; the tool now states it directly.
+
+**Four further things landed in the same run, each of which had failed at least once before:**
+
+- **The config is finally correct, and provably so.** 141 bytes: a schema version, `written_at_utc: 2026-09-09T07:06:42Z`, `written_for_model`, and **not one setting** — this project differs from the compiled defaults on nothing. Diff-writing (§22), provenance (§23 follow-up) and the starter's no-adopt fix (§23) are all confirmed at once, and `DIT_StartEasting`/`DIT_StartNorthing` are gone.
+- **The config travelled off the machine**, arriving in the upload beside its capture. The Forma route works as designed.
+- **§20's tolerance retune finally reached the model it was calibrated against.** The 0.04925° false corner is gone (0.2°) and the two-pile run is no longer given a verdict (minimum 3). Both had still been using pre-§20 values twelve hours earlier, through two separate attempts to clear them.
+- **Scope narrowed from 33 elements to exactly 28 piles.** §20 established that only 28 of those were genuine piles, the rest being two voids, two conduits and a floor pulled in by schedule membership. Dropping the DIT schedules as candidates narrowed scope to precisely the real count, without any category coupling — the identity join doing what §19 intended.
+
+Everything else the run reports is honest: one real 84.56° corner for manual review, six near-miss dimensions, and one five-pile chain with no matchable bearing call.
+
+**Still open, and now visible rather than silent:**
+
+- **Three piles are in no chain at all** (5506399, 6491094, 6492138). A moved pile among them is invisible to the bearing check and catchable only by Model/Schedule. Worth a diagnostic to find out why they carry no tag-to-tag adjacency — most likely simply no dimension between them.
+- **The bearing path's detection is still unproven.** Today exercised Model/Schedule only. The equivalent control for bearings is to move a pile that sits *mid-chain*, where a 50mm near-perpendicular offset should read as roughly 0.3°-0.8° and stand well clear of both the 0.2° tolerance and real scatter.
+
+**The lesson, and it is the cheapest one in this document.** One deliberately planted error did more for this project's confidence than four clean real runs and 376 passing tests. It falsified two checks in §23, and in §24 it is the only reason we can say either of them works — a green run on a clean model would have looked identical either way. **The counterpart matters just as much: the fix was only trustworthy because the same planted error was still there to re-run.** A negative control is not a one-off exercise; it is the fixture the model itself carries, and this scratch copy should be kept.
