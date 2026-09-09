@@ -29,6 +29,62 @@ namespace RevitCheck.Addin;
 /// </remarks>
 internal static class RuleConfigSource
 {
+    /// <summary>
+    /// The conventional name for this model's config as a portable file -
+    /// what it is called when it sits beside the capture, or in Forma.
+    /// </summary>
+    public static string FileNameFor(Document doc) =>
+        DocumentPaths.SafeBaseName(doc) + RuleConfigSerializer.FileSuffix;
+
+    /// <summary>
+    /// Replaces this model's working copy with <paramref name="json"/>,
+    /// after checking it parses.
+    /// </summary>
+    /// <remarks>
+    /// Added 2026-09-09, per the user: the config must be able to live off
+    /// the machine, in Forma alongside the model, so that nothing depends on
+    /// a file on one person's C: drive. The local copy stays - it is what
+    /// makes a run need no prompts, and what works offline - but it is now a
+    /// cache of a portable artefact rather than the only copy in existence.
+    /// This is also the only way to clear a stale config without hunting
+    /// through LocalApplicationData, which blocked two consecutive real runs
+    /// (PLANNING.md §23).
+    /// </remarks>
+    public static void Install(Document doc, string json)
+    {
+        // Parse first: a file that won't load must not replace one that
+        // will, and Loads refuses a newer schema rather than misreading it.
+        RuleConfigSerializer.Loads(json);
+        File.WriteAllText(PathFor(doc), json);
+    }
+
+    /// <summary>The raw JSON of this model's working copy, or null if it has none.</summary>
+    public static string? ReadRaw(Document doc)
+    {
+        try
+        {
+            var path = PathFor(doc);
+            return File.Exists(path) ? File.ReadAllText(path) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Deletes this model's working copy, so the next run uses the compiled defaults.</summary>
+    public static bool Reset(Document doc)
+    {
+        var path = PathFor(doc);
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+
+        File.Delete(path);
+        return true;
+    }
+
     public static string PathFor(Document doc)
     {
         var root = Path.Combine(
@@ -73,6 +129,12 @@ internal static class RuleConfigSource
             // 09-09. Only the run can say so; nothing else can see it.
             var (config, overrides) = RuleConfigSerializer.LoadWithOverrides(path);
             var description = $"Using per-model config:\n{path}";
+
+            var provenance = RuleConfigSerializer.DescribeProvenance(File.ReadAllText(path));
+            description += provenance is null
+                ? "\n\nIt records no date - written before 2026-09-09, so it pins every setting as it stood " +
+                  "then, including any recalibrated since. Re-import or reset it if that is not deliberate."
+                : $"\n{provenance}";
             if (overrides.Count > 0)
             {
                 description +=

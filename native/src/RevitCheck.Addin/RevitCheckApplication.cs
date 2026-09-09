@@ -87,6 +87,23 @@ public class RevitCheckApplication : IExternalApplication
 
         capturePanel.AddItem(captureButton);
 
+        var ruleConfigButton = new PushButtonData(
+            "RevitCheck.RuleConfig",
+            "Rule\nConfig",
+            assemblyPath,
+            typeof(RuleConfigCommand).FullName)
+        {
+            ToolTip = "Show this model's config - where it is, when it was written, and every setting it " +
+                      "holds away from the built-in defaults - and export it for Forma, import one back, or " +
+                      "reset to defaults. The config belongs alongside the model's capture rather than only " +
+                      "on this machine, and a config written before 2026-09-09 pins every setting as it stood " +
+                      "then, including tolerances recalibrated since.",
+        };
+
+        SetIcons(ruleConfigButton, "CaptureModel");
+
+        capturePanel.AddItem(ruleConfigButton);
+
         var dimensionTriageButton = new PushButtonData(
             "RevitCheck.DimensionTriage",
             "Dimension\nTriage",

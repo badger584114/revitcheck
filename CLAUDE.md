@@ -100,7 +100,7 @@ native/
     UI/                         # code-behind-only WPF, no XAML
   tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
   tools/RevitCheck.MappingBuilder
-  tests/                        # 389 Core + 7 MappingBuilder tests, ~1s, no Revit
+  tests/                        # 391 Core + 7 MappingBuilder tests, ~1s, no Revit
   diagnostics/                  # throwaway pyRevit probes for answering real
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
@@ -203,7 +203,7 @@ Dated history for each is in PLANNING.md.
 
 | Panel | Buttons | What they are |
 | --- | --- | --- |
-| **Capture** | Capture Model | The snapshot + starter config for a model. |
+| **Capture** | Capture Model, Rule Config | The snapshot + starter config for a model, and the config's own show/export/import/reset. |
 | **Dimension Checking** | Dimension Triage, Pile Chain Bearing, Spot Elevation | The button that raises triage, and exactly the checks that can resolve it. |
 | **Model Checks** | Pile Model/Schedule, Metadata Reconciliation | Report independently. They flag real problems but resolve nothing triage raised — see §21. |
 
@@ -270,6 +270,16 @@ Notes worth not rediscovering:
 - **New rules go in the catalog** (`CheckRegistry`), not hardcoded into a
   command, so a project-specific check is a config change rather than a
   code change.
+- **A config must be able to leave the machine.** The working copy lives at
+  `%LOCALAPPDATA%\RevitCheck\<SafeBaseName>.revitcheck.json` — where
+  `SafeBaseName` is the same string the result files carry, `_Peter.Griggs`
+  suffix and all — but that is a *cache*, not the only copy. Capture Model
+  copies it next to the capture so both upload to Forma together, and the
+  **Rule Config** button exports, imports and resets it. Nothing may depend
+  on a file that exists only on one person's C: drive (the user's
+  direction, 2026-09-09). A config also stamps `written_at_utc`; **absence
+  of that stamp means it predates diff-writing and therefore pins every
+  setting**, which is reported rather than assumed benign.
 - **Config must be reachable without a rebuild.** `RuleConfig` is loaded
   per-model from a file (`RuleConfigSerializer`, written as a starter by
   Capture Model); a command resolves it via `RuleConfigSource`, never
@@ -362,13 +372,16 @@ and two of the three §22 fixes are confirmed working. Everything from §23
 is unrun.
 
 Do these in order:
-- **Delete `T2DPAA-T2D-C3S-BR-M3D-100302.revitcheck.json` on the Revit
-  machine, then run Capture Model.** Nothing else clears it. It pins the
+- **Rule Config > Reset, then run Capture Model.** Use the button, not the
+  file — the 2026-09-09 run deleted a file that turned out not to be the
+  one being read, because the real path is
+  `%LOCALAPPDATA%\RevitCheck\T2DPAA-T2D-C3S-BR-M3D-100302_Peter.Griggs.revitcheck.json`
+  and the `_Peter.Griggs` suffix is easy to miss. The stale config pins the
   pre-§20 tolerances (`pile_chain_minimum_piles: 2`,
   `pile_chain_collinearity_tolerance_degrees: 0.0167`) *and* the adopted
-  `DIT_StartEasting`/`DIT_StartNorthing` columns that caused §23. Both
-  buttons now print what a config pins, and Capture Model says so when it
-  declines to overwrite — that output is how you confirm it worked.
+  `DIT_StartEasting`/`DIT_StartNorthing` columns that caused §23. Rule
+  Config shows all of that before you reset, which is how you confirm which
+  file is actually in force.
 - **Re-run the negative control.** The 50mm move on pile 5506399 should now
   be reported at ~50mm by Pile Model/Schedule. This is the single most
   valuable check in the list: it is the only one that tests detection

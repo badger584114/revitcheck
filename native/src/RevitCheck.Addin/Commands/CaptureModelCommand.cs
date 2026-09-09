@@ -127,13 +127,14 @@ public class CaptureModelCommand : IExternalCommand
         }
 
         var starterNote = WriteStarterConfig(doc, model);
+        var portableNote = WritePortableConfigBesideCapture(doc, savePath);
 
         TaskDialog.Show("RevitCheck - Capture Model",
             $"{collectedMetadata.Elements.Count} element(s), {collectedDimensions.Sheets.Count} sheet(s), " +
             $"{collectedDimensions.Views.Count} view(s), {collectedDimensions.Dimensions.Count} dimension(s), " +
             $"{collectedSchedules.Count} schedule(s) captured" +
             (extractionErrors.Count > 0 ? $", {extractionErrors.Count} extraction error(s)" : "") +
-            $".\n\n{captureScope.Description}\n\nWritten to:\n{savePath}\n\n{starterNote}\n\n" +
+            $".\n\n{captureScope.Description}\n\nWritten to:\n{savePath}\n\n{starterNote}{portableNote}\n\n" +
             "Treat this file like a real model capture (PLANNING.md §2) - it contains real " +
             "parameter values from a real project.");
 
@@ -159,6 +160,48 @@ public class CaptureModelCommand : IExternalCommand
     /// which the checks built afterwards never joined - see
     /// <see cref="RuleConfigStarter"/>'s remarks.
     /// </remarks>
+    /// <summary>
+    /// Copies this model's config next to the capture file just written, so
+    /// the two travel together to Forma.
+    /// </summary>
+    /// <remarks>
+    /// Added 2026-09-09, per the user: "the config needs to be able to be
+    /// saved off the machine, to Forma so that nothing is relying on having
+    /// a file that lives on someone's C: drive." A capture already leaves
+    /// this machine that way; the config is the other half of reproducing a
+    /// run, and until now existed only under LocalApplicationData. Writing
+    /// it beside the capture makes exporting it free rather than a separate
+    /// step someone has to remember.
+    /// </remarks>
+    private static string WritePortableConfigBesideCapture(Document doc, string capturePath)
+    {
+        try
+        {
+            var json = RuleConfigSource.ReadRaw(doc);
+            if (json is null)
+            {
+                return string.Empty;
+            }
+
+            var folder = Path.GetDirectoryName(capturePath);
+            if (string.IsNullOrEmpty(folder))
+            {
+                return string.Empty;
+            }
+
+            var portable = Path.Combine(folder, RuleConfigSource.FileNameFor(doc));
+            File.WriteAllText(portable, json);
+            return
+                $"\n\nThis model's config was copied next to the capture:\n{portable}\nUpload it to Forma " +
+                "alongside the capture - it is the other half of reproducing this run, and Rule Config > " +
+                "Import puts it back on any machine.";
+        }
+        catch (Exception ex)
+        {
+            return $"\n\n(Could not copy the config next to the capture: {ExceptionMessage.Full(ex)})";
+        }
+    }
+
     private static string WriteStarterConfig(Document doc, RevitModel model)
     {
         string path;
@@ -203,7 +246,7 @@ public class CaptureModelCommand : IExternalCommand
         try
         {
             var starter = RuleConfigStarter.Build(model);
-            RuleConfigSerializer.Save(starter.Config, path);
+            RuleConfigSerializer.Save(starter.Config, path, DocumentPaths.SafeBaseName(doc));
             return
                 $"Starter config written to:\n{path}\n\nReview it before trusting a run - " +
                 string.Join("\n\n", starter.Diagnostics);

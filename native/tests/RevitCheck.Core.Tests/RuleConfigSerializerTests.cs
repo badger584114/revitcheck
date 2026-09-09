@@ -107,6 +107,41 @@ public class RuleConfigSerializerTests
         Assert.DoesNotContain(described, d => d.StartsWith("pile_category_name"));
     }
 
+    /// <summary>
+    /// A config is now an artefact that travels with its model to Forma
+    /// rather than a file on one machine's C: drive (2026-09-09, the
+    /// user's direction), so it has to say when it was written and for
+    /// what. A run that cannot tell a config written this morning from one
+    /// written before three recalibrations is the situation §22 and §23
+    /// were both spent in.
+    /// </summary>
+    [Fact]
+    public void A_written_config_records_when_and_what_it_was_written_for()
+    {
+        var json = RuleConfigSerializer.Dumps(
+            new RuleConfig { PileCategoryName = "Generic Models" }, "T2DPAA-BR-M3D-100302_Peter.Griggs");
+
+        var provenance = RuleConfigSerializer.DescribeProvenance(json);
+
+        Assert.NotNull(provenance);
+        Assert.Contains("T2DPAA-BR-M3D-100302_Peter.Griggs", provenance!);
+        // And it must not become a phantom setting on the way back in.
+        Assert.Equal("Generic Models", RuleConfigSerializer.Loads(json).PileCategoryName);
+        Assert.DoesNotContain(RuleConfigSerializer.DescribeOverrides(json), d => d.Contains("written_"));
+    }
+
+    /// <summary>
+    /// The real 2026-09-07 file, which carries no provenance. Its absence
+    /// is the signal that it predates diff-writing and therefore pins
+    /// everything - so it must be reported, not silently treated as fine.
+    /// </summary>
+    [Fact]
+    public void A_config_with_no_provenance_is_reported_as_such_rather_than_assumed_current()
+    {
+        Assert.Null(RuleConfigSerializer.DescribeProvenance(
+            "{\"schema_version\": 1, \"pile_chain_minimum_piles\": 2}"));
+    }
+
     [Fact]
     public void A_newer_schema_version_is_refused_rather_than_misread()
     {
