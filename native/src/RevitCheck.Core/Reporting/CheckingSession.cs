@@ -90,7 +90,8 @@ public sealed class ViewChecklistEntry
             // those is not Flagged (2026-09-07). It still shows in the
             // checklist's Other Findings column and the audit output.
             if (LastReconciliation.ConfirmedProblems.Count > 0 ||
-                OtherInvestigationFindings.Any(i => !string.Equals(i.Category, "coverage", StringComparison.OrdinalIgnoreCase)))
+                OtherInvestigationFindings.Any(i => !string.Equals(
+                    i.Category, InvestigationReconciliation.CoverageCategory, StringComparison.OrdinalIgnoreCase)))
             {
                 return ViewInvestigationStatus.Flagged;
             }
@@ -394,7 +395,8 @@ public sealed class CheckingSession
 
     /// <summary>A standalone finding that states a defect rather than a gap in what could be checked.</summary>
     private static bool IsRealProblem(Issue issue) =>
-        !string.Equals(issue.Category, "coverage", StringComparison.OrdinalIgnoreCase);
+        !string.Equals(
+            issue.Category, InvestigationReconciliation.CoverageCategory, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Investigated, but inconclusive - needs a human to read the drawing.

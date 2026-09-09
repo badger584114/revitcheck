@@ -7,6 +7,82 @@ namespace RevitCheck.Core.Tests;
 
 public class InvestigationReconciliationTests
 {
+    /// <summary>
+    /// The real 2026-09-09 shape: PileChainBearingConsistencyCheck's
+    /// RunCoverageIssue, carrying the run's first pile as its ElementId.
+    /// </summary>
+    private static Issue InvestigationCoverage(long elementId) => new()
+    {
+        RuleId = PileChainBearingConsistencyCheck.RuleId,
+        Category = InvestigationReconciliation.CoverageCategory,
+        Severity = "medium",
+        ElementId = elementId,
+        Description =
+            "Reconstructed a straight run of 3 piles, real bearing 355 08 39.54 - no bearing call could be " +
+            "confidently matched to it.",
+    };
+
+    /// <summary>
+    /// Both "Confirmed Problem" rows on the real model 100302 run were this
+    /// check reporting that it could not reach a verdict, presented to the
+    /// reviewer as confirmed defects - and ConfirmedProblems is the one
+    /// list that auto-exports to BCF. "Could not be checked" is not a
+    /// verdict, in either direction.
+    /// </summary>
+    [Fact]
+    public void An_investigation_checks_coverage_note_is_not_a_confirmed_problem()
+    {
+        var result = InvestigationReconciliation.Reconcile(
+            new[] { PerDimensionTriage(41) },
+            new long[] { 41 },
+            new[] { InvestigationCoverage(41) });
+
+        Assert.Empty(result.ConfirmedProblems);
+        var issue = Assert.Single(result.NeedsManualReview);
+        Assert.Equal(InvestigationReconciliation.CoverageCategory, issue.Category);
+    }
+
+    /// <summary>
+    /// A coverage note still counts the dimension as examined, exactly as
+    /// a manual-review verdict does - the point is which list it lands in,
+    /// not whether the work happened.
+    /// </summary>
+    [Fact]
+    public void A_coverage_note_still_counts_the_dimension_as_investigated()
+    {
+        var result = InvestigationReconciliation.Reconcile(
+            new[] { PerDimensionTriage(41) },
+            new long[] { 41 },
+            new[] { InvestigationCoverage(41) });
+
+        Assert.Empty(result.StillOpenTriage);
+        Assert.Equal(0, result.OpenDimensionCount);
+        Assert.Equal(1, result.ResolvedDimensionCount);
+    }
+
+    /// <summary>A real defect must still reach ConfirmedProblems and still export.</summary>
+    [Fact]
+    public void A_real_geometry_finding_is_still_a_confirmed_problem()
+    {
+        var result = InvestigationReconciliation.Reconcile(
+            new[] { PerDimensionTriage(41) },
+            new long[] { 41 },
+            new[]
+            {
+                new Issue
+                {
+                    RuleId = PileChainBearingConsistencyCheck.RuleId,
+                    Category = "geometry",
+                    Severity = "high",
+                    ElementId = 41,
+                    Description = "Reconstructed bearing is 0.4 degrees from its call.",
+                },
+            });
+
+        Assert.Single(result.ConfirmedProblems);
+        Assert.Empty(result.NeedsManualReview);
+    }
+
     private static Issue PerDimensionTriage(long elementId) => new()
     {
         RuleId = DimensionProvenanceCheck.RuleId,
