@@ -1,0 +1,56 @@
+{
+  "cut_plane": {
+    "crop_box_active": true,
+    "origin": {
+      "x": 444510.6122157648,
+      "y": 1715470.27216349,
+      "z": 18093.249785541713
+    },
+    "right_direction": {
+      "x": 25.86440372071574,
+      "y": -303.7006299304824,
+      "z": 0.0
+    },
+    "up_direction": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 304.8
+    },
+    "view_direction": {
+      "x": -303.7006299304824,
+      "y": -25.86440372071574,
+      "z": 0.0
+    },
+    "view_id": 5488353,
+    "view_name": "DRG-2871072 - ABUTMENT B CONCRETE ELEVATION"
+  },
+  "dimensions": [
+    {
+      "dimension_id": 6209507,
+      "reference_count": 2,
+      "references": [
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6209490,
+          "view_specific": true
+        },
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6209500,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 1249.9999999999995,
+          "override": null
+        }
+      ]
+    }
+  ],
+  "source": "selection"
+}

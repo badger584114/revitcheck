@@ -1,0 +1,205 @@
+{
+  "cut_plane": {
+    "crop_box_active": true,
+    "origin": {
+      "x": 223946.78332857284,
+      "y": 1235651.2418135079,
+      "z": 10849.492730614396
+    },
+    "right_direction": {
+      "x": 28.336386397865294,
+      "y": -303.4799650815699,
+      "z": 0.0
+    },
+    "up_direction": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 304.8
+    },
+    "view_direction": {
+      "x": -303.4799650815699,
+      "y": -28.336386397865294,
+      "z": 0.0
+    },
+    "view_id": 5764753,
+    "view_name": "DRG - 2873174 - SECTION 1"
+  },
+  "dimensions": [
+    {
+      "dimension_id": 6117441,
+      "reference_count": 2,
+      "references": [
+        {
+          "class_name": "FilledRegion",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 5766248,
+          "view_specific": true
+        },
+        {
+          "class_name": "FilledRegion",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 5766248,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 99.99999999999459,
+          "override": ""
+        }
+      ]
+    },
+    {
+      "dimension_id": 6965977,
+      "reference_count": 2,
+      "references": [
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6965975,
+          "view_specific": true
+        },
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6965976,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 338.5650830606666,
+          "override": null
+        }
+      ]
+    },
+    {
+      "dimension_id": 6965978,
+      "reference_count": 2,
+      "references": [
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6965976,
+          "view_specific": true
+        },
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6965975,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 9.96177839417594,
+          "override": null
+        }
+      ]
+    },
+    {
+      "dimension_id": 6965979,
+      "reference_count": 3,
+      "references": [
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 5766201,
+          "view_specific": true
+        },
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8190165,
+          "view_specific": true
+        },
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6965976,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 34.62499999998563,
+          "override": "VARIES"
+        },
+        {
+          "measured_mm": 1200.3526483295188,
+          "override": ""
+        }
+      ]
+    },
+    {
+      "dimension_id": 8011889,
+      "reference_count": 2,
+      "references": [
+        {
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6965976,
+          "view_specific": true
+        },
+        {
+          "class_name": "DetailLine",
+          "curve_end": {
+            "x": 224074.5691466045,
+            "y": 1234282.6680282094,
+            "z": 23415.860123720635
+          },
+          "curve_start": {
+            "x": 224074.5691466045,
+            "y": 1234282.6680282094,
+            "z": 22055.86012372063
+          },
+          "element_id": 5769322,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 211.54369017511414,
+          "override": null
+        }
+      ]
+    },
+    {
+      "dimension_id": 9198596,
+      "reference_count": 2,
+      "references": [
+        {
+          "class_name": "FilledRegion",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6117414,
+          "view_specific": true
+        },
+        {
+          "class_name": "FilledRegion",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6117420,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 500.56364094021484,
+          "override": "500 MAX\u200e"
+        }
+      ]
+    }
+  ],
+  "source": "every dimension in the active view"
+}
