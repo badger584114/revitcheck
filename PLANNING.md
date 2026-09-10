@@ -1405,3 +1405,13 @@ Also added: **`anchor_separation_mm`, to be read before any face result.** It is
 `ReferenceInfo.CurveStart`/`CurveEnd` stays: it is correct, it is the right anchor for the DetailLine population, and the 154 `DetailLine`→`DetailLine` dimensions counted on model 100302 are real — they simply live mostly in drafting views (150 of 187), not in the sections this probe was pointed at.
 
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+**Drafting views scoped out, by decision (2026-09-11).** Per the user: *"the drafting views can be ignored for this tool, unless we can come up with a way to cross check views across plans, section and multiple sheets - I think they are out of the scope of what can be done for now."*
+
+This settles what §26 had only inferred. That section classified drafting-view dimensions as unreachable because a drafting view has no model behind it — structurally true, but stated as a limitation the tool had discovered. It is now a scope decision with a named condition for reopening, which is a different and more useful thing to have recorded: the next person to look at those 150 dimensions needs to know nobody is coming for them, and why.
+
+**The condition is real, not a formality.** A detail has no model to check against — but two drawings of the same detail can still be checked against each other, and that is a check with no model in it at all. This project already has the shape working in miniature: `PileDimensionConsistencyCheck`'s second comparison finds the same pile pair dimensioned differently in two places, needing nothing but the two drawings. Generalising it means matching *the same physical measurement* across views without a shared element to key on — which is exactly the hard part, and exactly what the archived pipeline's cross-sheet reference graph (§4/§5a) existed to solve before the Revit pivot. Worth knowing that groundwork exists rather than starting from nothing if this reopens.
+
+**What does not change:** triage still raises them. A project-specific setout drawn as a standard detail is a real drift risk, and CLAUDE.md's wording for drafting views already says so. What is settled is that no automated check will settle one — so they route to manual review with that reason, which is what §26 built.
+
+414 Core tests passing; `dotnet build` clean including the net48 Addin.

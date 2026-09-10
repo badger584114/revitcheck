@@ -270,7 +270,11 @@ Notes worth not rediscovering:
   and different finding, and it is the unit the follow-up tool operates on.
 - **Drafting views get different wording and severity.** A section could
   have been live and someone chose otherwise; a drafting view never had a
-  model behind it.
+  model behind it. **They are out of scope for automated verification** —
+  the user's decision, 2026-09-11 — with one named condition for
+  reopening: a way to cross-check views against each other across plans,
+  sections and sheets, which needs no model at all. Triage still raises
+  them; nothing settles them but a person.
 - **"Investigated" must mean triage's own question was answered.** A check
   that consumes a dimension as input can mark it examined without ever
   examining it: Pile Chain Bearing counted 59 dimensions as investigated

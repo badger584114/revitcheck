@@ -34,6 +34,17 @@ namespace RevitCheck.Core.Checks;
 /// no model behind it at all.
 /// </para>
 /// <para>
+/// <b>Drafting views are out of scope by decision, not only by
+/// limitation</b> (the user, 2026-09-11): "the drafting views can be
+/// ignored for this tool, unless we can come up with a way to cross check
+/// views across plans, section and multiple sheets - I think they are out
+/// of the scope of what can be done for now." That names the one condition
+/// under which it reopens, and it is a real one: a detail has no model to
+/// check against, but two drawings of the same detail can still be checked
+/// against each other. Until that exists, a drafting view's dimensions are
+/// raised by triage and settled by a person.
+/// </para>
+/// <para>
 /// So this is a statement of reach, not a guess about difficulty, and it
 /// belongs in code rather than in a document nobody reads at review time.
 /// A dimension no check can reach is a reviewer's call by construction -
