@@ -514,6 +514,21 @@ largest group it is already captured — an `AnnotationSymbol`'s
 first: if the two anchors are not already the dimension's own measured
 value apart, nothing built on them can mean anything.
 
+**This probe decides more than one check.** Per the user, 2026-09-11: if
+the cut-plane approach cannot be made to work, *"the whole thing is kind
+of redundant"* — triage would be raising dimensions that nothing can ever
+verify, on model-backed views, which is most of what it raises. So treat
+the re-run as load-bearing for the tool's value, not as one more feature.
+
+**Deferred until it comes back:** whether to suppress the unreachable
+detail-linework/mixed dimensions in sections and plans (23 of 54
+per-dimension findings on model 100302, plus 5 of 11 whole rollups, all
+auto-routed to manual review). They are noise today and would be real
+findings if the cut-plane check lands, so the decision waits on the
+answer. Drafting views are already excluded and are not the source of
+that noise — `SkipUnlinkedDraftingViews` defaults true and drops all 111
+of them on model 100302.
+
 Still worth doing when the checklist is next touched: surface the rollup's
 `dimension_types` breakdown as its own column, so the "which button" answer
 is visible without opening a finding.
