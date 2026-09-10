@@ -36,9 +36,15 @@ to the dimension."* Two things make it a genuinely different bet:
 **The real open questions this has to answer, before any check is
 written:**
 
-1. Do the two referenced detail lines resolve to real curves, and how
-   often — is `Location.Curve` reliable here the way `GlobalPoint` was
-   not?
+1. **Answered, negatively, by the first real run (2026-09-11) — and the
+   probe was rewritten because of it.** Across two real sections, 15
+   references: 9 `AnnotationSymbol` (detail components), 5 `FilledRegion`
+   (2D hatch), **1** `DetailLine`. So "a drafted dimension references a
+   detail line" was simply wrong, no witness pair ever resolved, and
+   questions 2-4 were never reached. The anchor exists regardless, just
+   held per class - `Location.Point`, `Location.Curve`, `GetBoundaries()` -
+   and this now tries each and records which answered, so the next run
+   says how the real population splits.
 2. Is there real model geometry near each witness line at all? §14's
    equivalent search found document-wide noise and, for the two dimensions
    with real model references, *zero* nearby elements — but it searched
@@ -49,6 +55,12 @@ written:**
 4. **The payoff:** does the distance between the two projected points
    match what the dimension states? If it does on real data, the check is
    buildable exactly as described. If it does not, the numbers say why.
+
+Read `anchor_separation_mm` before any of the face results: it is the
+distance between the two witness anchors themselves. If that does not
+already match the dimension's own measured value, the anchors are not
+where the dimension measures and nothing built on them can mean anything -
+which is a cheaper way to find out than reading face projections.
 
 Nothing here judges — it dumps. Every number needed to decide is in the
 output, including the runners-up, so the decision is made from data
@@ -212,21 +224,72 @@ def project_faces(anchor_xyz):
     return candidates[:FACE_CANDIDATES], errors
 
 
-def witness_curve(reference_element):
-    """A referenced element's own curve endpoints, when it has one."""
+def witness_anchor(reference_element):
+    """A single real point on whatever the drafter snapped the dimension to.
+
+    **Rewritten 2026-09-11, after the first real run of this probe.** It
+    originally looked only for ``Location.Curve``, on the assumption that a
+    drafted dimension references a DetailLine. Two real sections said
+    otherwise: of 15 references, 9 were ``AnnotationSymbol`` (detail
+    components), 5 were ``FilledRegion`` (2D hatch), and exactly **one** was
+    a DetailLine. So the probe resolved no witness pair at all and never
+    reached the questions it exists to answer.
+
+    That is the assumption dying cheaply, which is the point of a probe -
+    but the anchor is still there, just held on a different property per
+    class. This asks each in turn and records which one answered, so the
+    next run says how the real population actually splits:
+
+    - ``Location.Point`` - an AnnotationSymbol/FamilyInstance's insertion
+      point. Already the anchor pile tags use, and the largest group here.
+    - ``Location.Curve`` - a DetailLine, the original assumption.
+    - ``GetBoundaries()`` - a FilledRegion's own boundary loops; its
+      centroid is the least arbitrary single point on a 2D region.
+    """
     try:
         location = reference_element.Location
-        curve = getattr(location, "Curve", None)
-        if curve is None or not curve.IsBound:
-            return None
-        return {
-            "start": point(curve.GetEndPoint(0)),
-            "end": point(curve.GetEndPoint(1)),
-            "start_xyz": curve.GetEndPoint(0),
-            "end_xyz": curve.GetEndPoint(1),
-        }
     except Exception:  # noqa: BLE001
-        return None
+        location = None
+
+    try:
+        curve = getattr(location, "Curve", None)
+        if curve is not None and curve.IsBound:
+            a = curve.GetEndPoint(0)
+            b = curve.GetEndPoint(1)
+            mid = XYZ((a.X + b.X) / 2.0, (a.Y + b.Y) / 2.0, (a.Z + b.Z) / 2.0)
+            return {"xyz": mid, "from": "location_curve",
+                    "curve_start": point(a), "curve_end": point(b)}
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        pt = getattr(location, "Point", None)
+        if pt is not None:
+            return {"xyz": pt, "from": "location_point"}
+    except Exception:  # noqa: BLE001
+        pass
+
+    # A filled region has no Location at all - its geometry is its
+    # boundary loops. Averaging every boundary vertex is crude, and
+    # deliberately so: this is a probe establishing whether a usable
+    # anchor exists here at all, not the final rule for picking one.
+    try:
+        loops = reference_element.GetBoundaries()
+        xs, ys, zs, n = 0.0, 0.0, 0.0, 0
+        for loop in loops:
+            for edge in loop:
+                p0 = edge.GetEndPoint(0)
+                xs += p0.X
+                ys += p0.Y
+                zs += p0.Z
+                n += 1
+        if n:
+            return {"xyz": XYZ(xs / n, ys / n, zs / n), "from": "filled_region_centroid",
+                    "boundary_point_count": n}
+    except Exception:  # noqa: BLE001
+        pass
+
+    return None
 
 
 def stated_value(dimension):
@@ -320,14 +383,16 @@ for dimension in dimensions:
             "view_specific": element.ViewSpecific if element else None,
         }
 
-        curve = witness_curve(element) if element else None
-        if curve:
-            described["curve_start"] = curve["start"]
-            described["curve_end"] = curve["end"]
-            witnesses.append(curve)
+        anchor = witness_anchor(element) if element else None
+        if anchor:
+            described["anchor_from"] = anchor["from"]
+            described["anchor_point"] = point(anchor["xyz"])
+            described["curve_start"] = anchor.get("curve_start")
+            described["curve_end"] = anchor.get("curve_end")
+            witnesses.append(anchor)
         else:
-            described["curve_start"] = None
-            described["curve_end"] = None
+            described["anchor_from"] = None
+            described["anchor_point"] = None
 
         entry["references"].append(described)
 
@@ -336,18 +401,21 @@ for dimension in dimensions:
     if len(witnesses) == 2:
         probes = []
         for witness in witnesses:
-            # Midpoint of the witness line: a detail line is drawn along
-            # the thing it measures to, so its middle is the least
-            # arbitrary single anchor on it.
-            mid = XYZ(
-                (witness["start_xyz"].X + witness["end_xyz"].X) / 2.0,
-                (witness["start_xyz"].Y + witness["end_xyz"].Y) / 2.0,
-                (witness["start_xyz"].Z + witness["end_xyz"].Z) / 2.0,
-            )
-            faces, errors = project_faces(mid)
-            probes.append({"anchor": point(mid), "faces": faces, "errors": errors})
+            faces, errors = project_faces(witness["xyz"])
+            probes.append({
+                "anchor": point(witness["xyz"]),
+                "anchor_from": witness["from"],
+                "faces": faces,
+                "errors": errors,
+            })
 
         entry["witness_probes"] = probes
+
+        # The drafted separation, straight from the two anchors. If this
+        # already matches the stated value the anchors are the right ones,
+        # whatever the model then says - and if it does not, no comparison
+        # built on them can mean anything.
+        entry["anchor_separation_mm"] = distance_mm(witnesses[0]["xyz"], witnesses[1]["xyz"])
 
         if probes[0]["faces"] and probes[1]["faces"]:
             a = probes[0]["faces"][0]["projected_point"]
@@ -377,8 +445,19 @@ output.print_md("`{0}`".format(path))
 output.print_md("")
 output.print_md("- {0} dimension(s) examined, from {1}".format(len(results), source))
 output.print_md(
-    "- {0} had two resolvable witness curves".format(
+    "- {0} had two resolvable witness anchors".format(
         sum(1 for r in results if r.get("witness_probes"))
+    )
+)
+
+anchor_kinds = {}
+for r in results:
+    for ref in r.get("references") or []:
+        key = ref.get("anchor_from") or "NONE"
+        anchor_kinds[key] = anchor_kinds.get(key, 0) + 1
+output.print_md(
+    "- anchors by source: {0}".format(
+        ", ".join("{0} {1}".format(v, k) for k, v in sorted(anchor_kinds.items()))
     )
 )
 output.print_md(

@@ -498,11 +498,17 @@ witness points. The referenced **detail line's own curve** is readable
 projected from the value text, 527m away on a real case. The plan, per the
 user: take the section's cut plane, find model geometry near each witness
 line, project onto its faces, compare the distance to the dimension.
-`ReferenceInfo.CurveStart`/`CurveEnd` is built;
-**`native/diagnostics/InspectSectionCutGeometry.pushbutton` must be run on
-a real section before the check is written** — read `delta_vs_measured_mm`
-first, then the runner-up faces, since a near-tie means the pick is a
-coin-flip.
+**First real run (2026-09-11) killed the premise**: across two sections and
+15 references, 9 were `AnnotationSymbol`, 5 `FilledRegion` and **1**
+`DetailLine` — drafters snap to detail components and filled regions, not
+detail lines, so no witness pair resolved and the cut-plane idea is still
+completely untested. The anchor exists per class regardless
+(`Location.Point` / `Location.Curve` / `GetBoundaries()`), and for the
+largest group it is already captured — an `AnnotationSymbol`'s
+`Location.Point` is the anchor pile tags use. The probe now tries each.
+**Re-run it before writing the check**, and read `anchor_separation_mm`
+first: if the two anchors are not already the dimension's own measured
+value apart, nothing built on them can mean anything.
 
 Still worth doing when the checklist is next touched: surface the rollup's
 `dimension_types` breakdown as its own column, so the "which button" answer

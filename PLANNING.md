@@ -1383,3 +1383,25 @@ It dumps and judges nothing. Every number needed to decide is in the output, run
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
 
 **Run it on a real section carrying drafted dimensions**, take the JSON away, and read `delta_vs_measured_mm` first. If it lands, the check is buildable exactly as described and closes the 54 §26 wrote off. If it does not, the numbers will say which of the four questions failed — which is worth as much, and is what seven blind attempts at the other approach cost.
+
+**First real run of the section-cut probe, and it killed the premise (2026-09-11).** Two sections from two different models — `DRG-2871072 - ABUTMENT B CONCRETE ELEVATION` (100302) and `DRG - 2873174 - SECTION 1` (100304). **Zero dimensions resolved a witness pair, so questions 2-4 were never reached at all.**
+
+The reason is the assumption underneath the whole design. Of 15 real references across 7 dimensions:
+
+| Referenced class | References | Anchor it actually holds |
+| --- | --- | --- |
+| `AnnotationSymbol` (detail component) | 9 | `Location.Point` |
+| `FilledRegion` (2D hatch) | 5 | `GetBoundaries()` |
+| `DetailLine` | **1** | `Location.Curve` |
+
+**"A drafted dimension references a detail line" is wrong on real sections.** Drafters snap to detail components and filled regions. The probe looked only for `Location.Curve`, found it once in fifteen, and bailed before doing anything useful.
+
+This is the assumption dying for the price of one probe run instead of a built check — which is the entire argument for running one first, and the third time this exact class of thing has been caught this way (§14's witness points, §18's `Start Level Offset` not generalising, now this). It also lines up exactly with what §17 and §18 already found from the other direction: a plan-view coordinate spot resolving to a DetailLine/Detail-Component, and an abutment spot resolving to a `FilledRegion` — *"the reference isn't what the value actually comes from"*, recorded twice before and not connected to this design until real data forced it.
+
+**The approach is not dead, and nothing about the cut-plane idea has been tested yet.** The anchor exists for every one of those classes, just held on a different property — and for the largest group it is already captured today, since an `AnnotationSymbol`'s `Location.Point` is the same anchor pile tags use. The probe now tries each in turn and records which answered, so the next run states how the real population splits rather than assuming it again.
+
+Also added: **`anchor_separation_mm`, to be read before any face result.** It is the distance between the two witness anchors themselves. If that does not already match the dimension's own measured value, the anchors are not where the dimension measures and nothing built on them can mean anything — a far cheaper falsification than reading face projections, and the check this run would have failed first had it existed.
+
+`ReferenceInfo.CurveStart`/`CurveEnd` stays: it is correct, it is the right anchor for the DetailLine population, and the 154 `DetailLine`→`DetailLine` dimensions counted on model 100302 are real — they simply live mostly in drafting views (150 of 187), not in the sections this probe was pointed at.
+
+414 Core tests passing; `dotnet build` clean including the net48 Addin.
