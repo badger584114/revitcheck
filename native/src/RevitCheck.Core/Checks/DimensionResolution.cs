@@ -101,7 +101,12 @@ public static class DimensionResolution
         var references = dimension.References;
         if (references.Count >= 2 && references.All(IsPileTag))
         {
-            return new Path(PileChainBearingConsistencyCheck.RuleId, null);
+            // Named as the dimension check rather than the bearing one:
+            // both reconcile a triaged pile dimension, but only this one
+            // compares the dimension's own stated distance against the
+            // model. The bearing check uses it as chain topology and never
+            // reads its value (2026-09-10).
+            return new Path(PileDimensionConsistencyCheck.RuleId, null);
         }
 
         return new Path(null,
@@ -136,7 +141,7 @@ public static class DimensionResolution
             var path = For(dimension, view);
             var label = path.RuleId switch
             {
-                PileChainBearingConsistencyCheck.RuleId => "pile tag-to-tag",
+                PileDimensionConsistencyCheck.RuleId => "pile tag-to-tag",
                 SpotElevationConsistencyCheck.RuleId => "spot elevation",
                 _ => "unreachable",
             };

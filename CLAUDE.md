@@ -100,7 +100,7 @@ native/
     UI/                         # code-behind-only WPF, no XAML
   tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
   tools/RevitCheck.MappingBuilder
-  tests/                        # 406 Core + 7 MappingBuilder tests, ~1s, no Revit
+  tests/                        # 414 Core + 7 MappingBuilder tests, ~1s, no Revit
   diagnostics/                  # throwaway pyRevit probes for answering real
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
@@ -206,6 +206,7 @@ Dated history for each is in PLANNING.md.
 | `revitcheck.metadata_reconciliation` | Joins captured model elements to an external reference CSV via a per-run-chosen mapping file; flags missing/mismatched fields. | Validated, calibrated against two real reference tables (§13) |
 | `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Rows from several schedules that agree are one answer stated twice; rows that disagree are a real finding. **Standalone — resolves no dimension triage, by design (§21).** | **Proven to detect**: found a planted 50mm move at exactly 50.00mm, one finding and no noise, 2026-09-09 (§24) — the only check in this project with that evidence |
 | `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs (each edge against the run's **running mean**, never its predecessor — §20), and compares each run's bearing against its own call. Bearing calls are matched by **rotation first, distance second, ties refused** — a call is drawn parallel to its line, and distance alone provably mis-assigns them (§20). A corner is reported for manual review, never averaged across. | Resolved 28 of 30 triaged dimensions on a second model (§22). Its coverage note now names the piles no run reached, which showed the planted pile was **never in a chain** rather than missed (§24). **Detection itself still unproven** — needs a mid-chain control |
+| `revitcheck.pile_dimension_consistency` | Each pile-to-pile dimension's **stated distance** against the model's real pile spacing, and against every other dimension of the same pile pair (cross-view contradiction). Needs no witness points — the tag-to-tag join already resolves it to two real elements. A non-numeric override is skipped, counted and named. | **Built 2026-09-10 (§27), unrun** |
 | `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere, but **only Spot Elevations** — a spot coordinate states a plan position, so it is set aside with a coverage note (2026-09-09). | Validated standalone (§18); session path fixed but **not re-confirmed** |
 
 **The ribbon is three panels, and the split is the workflow, not tidying:**
@@ -270,6 +271,12 @@ Notes worth not rediscovering:
 - **Drafting views get different wording and severity.** A section could
   have been live and someone chose otherwise; a drafting view never had a
   model behind it.
+- **"Investigated" must mean triage's own question was answered.** A check
+  that consumes a dimension as input can mark it examined without ever
+  examining it: Pile Chain Bearing counted 59 dimensions as investigated
+  while reading only their chain topology, never their stated values (§27).
+  Reconciling a triage flag is a claim that the specific thing triage
+  raised has been checked.
 - **Not every triaged dimension is reachable, and the tool says which.**
   `DimensionResolution` maps a triaged dimension to the check that can
   settle it, or states why none can. On real model 100302 **54 of 133

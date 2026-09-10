@@ -28,6 +28,7 @@ if (args.Length < 1 || args[0] is "-h" or "--help")
     Console.Error.WriteLine("                Also available, opt-in (need a capture taken 2026-09-09 or later,");
     Console.Error.WriteLine("                which is when element positions started being captured):");
     Console.Error.WriteLine($"                  {PileChainBearingConsistencyCheck.RuleId}");
+    Console.Error.WriteLine($"                  {PileDimensionConsistencyCheck.RuleId}");
     Console.Error.WriteLine($"                  {SpotElevationConsistencyCheck.RuleId}");
     Console.Error.WriteLine($"                  {PileModelScheduleConsistencyCheck.RuleId} (needs schedule rows,");
     Console.Error.WriteLine("                    which a capture cannot carry - see PLANNING.md §16)");
@@ -93,6 +94,11 @@ if (enabled.Contains(DimensionOverrideConsistencyCheck.RuleId))
 if (enabled.Contains(PileChainBearingConsistencyCheck.RuleId))
 {
     issues.AddRange(PileChainBearingConsistencyCheck.Run(model, config));
+}
+
+if (enabled.Contains(PileDimensionConsistencyCheck.RuleId))
+{
+    issues.AddRange(PileDimensionConsistencyCheck.Run(model, config));
 }
 
 if (enabled.Contains(SpotElevationConsistencyCheck.RuleId))

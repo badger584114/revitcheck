@@ -37,13 +37,19 @@ public class DimensionResolutionTests
                 RevitCheckTestBuilders.TagRef(202, RevitCheckTestBuilders.Pt(0, 1000)),
             });
 
+    /// <summary>
+    /// Named as the dimension check, not the bearing one. Both reconcile a
+    /// triaged pile dimension, but only this one compares the dimension's
+    /// own stated distance against the model - the bearing check uses it as
+    /// chain topology and never reads its value.
+    /// </summary>
     [Fact]
-    public void A_pile_tag_to_tag_dimension_is_reachable_by_the_bearing_check()
+    public void A_pile_tag_to_tag_dimension_is_reachable_by_the_dimension_check()
     {
         var path = DimensionResolution.For(PileTagToTag(1), RevitCheckTestBuilders.View(10));
 
         Assert.True(path.Reachable);
-        Assert.Equal(PileChainBearingConsistencyCheck.RuleId, path.RuleId);
+        Assert.Equal(PileDimensionConsistencyCheck.RuleId, path.RuleId);
     }
 
     /// <summary>

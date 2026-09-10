@@ -318,6 +318,25 @@ public sealed record RuleConfig
     /// </remarks>
     public int PileChainMinimumPiles { get; init; } = 3;
 
+    /// <summary>
+    /// How far a pile-to-pile dimension's stated distance may sit from the
+    /// model's own, and from another dimension of the same pair, before
+    /// <see cref="PileDimensionConsistencyCheck"/> reports it.
+    /// </summary>
+    /// <remarks>
+    /// <b>A placeholder, not calibrated against a known-bad case</b> - the
+    /// same status most figures here carry, and it is stated rather than
+    /// implied. It has to absorb two real things at once: a tag sits near
+    /// its pile rather than exactly on it, and a drafter rounds a printed
+    /// figure. 10mm matches <see cref="PileSetoutToleranceMm"/>, which is
+    /// the closest thing to a calibrated neighbour this project has (real
+    /// schedule-vs-model agreement on model 100304 was sub-millimetre), but
+    /// the first real run should be read as calibration data rather than as
+    /// verdicts - exactly how the pile collinearity tolerance had to be
+    /// retuned once real scatter was measured (PLANNING.md §20).
+    /// </remarks>
+    public double PileDimensionToleranceMm { get; init; } = 10.0;
+
     // --- revitcheck.spot_elevation_consistency ---
     //
     // Compares a Spot Elevation's own drafted value (DimensionInfo.Origin.Z -
