@@ -93,6 +93,15 @@ public class RealCaptureParityTests
     [Fact]
     public void EveryIssueIdMatchesThePythonEngineExactly()
     {
+        // Re-verified 2026-09-10 after a second real, intentional change:
+        // a view rollup none of the investigation checks can reach now says
+        // so in its own description ("No automated check can reach any of
+        // them..."), because otherwise a reviewer runs every button in turn
+        // and gets nowhere - see DimensionResolution. Description feeds the
+        // identity hash, so 56 of the 928 findings on this capture are
+        // renamed; the total is unchanged, and so is every finding on a
+        // view some tool CAN reach, which is why the clause was deliberately
+        // kept out of the common case. Nothing was added or dropped.
         // The strongest form of this check: not just matching aggregate
         // counts (which could coincidentally match even with some issues
         // differing) but every individual SHA-256 identity hash, against a

@@ -165,6 +165,25 @@ public static class DimensionProvenanceCheck
     /// of what the dimension measures.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// Stamps a triage finding with which check can settle it, or why none
+    /// can - see <see cref="DimensionResolution"/>. Carried as data so
+    /// reconciliation can route an unreachable dimension to manual review
+    /// instead of leaving it open for a tool that is not coming.
+    /// </summary>
+    private static Dictionary<string, object?> WithResolutionPath(
+        Dictionary<string, object?> fix, DimensionInfo dim, ViewInfo? view)
+    {
+        var path = DimensionResolution.For(dim, view);
+        fix[DimensionResolution.ResolvableByKey] = path.RuleId;
+        if (path.Reason is not null)
+        {
+            fix[DimensionResolution.UnreachableReasonKey] = path.Reason;
+        }
+
+        return fix;
+    }
+
     private static bool OverriddenWithoutStatedLimit(DimensionInfo dim)
     {
         var overriddenSegments = dim.Segments.Where(s => s.IsOverridden).ToList();
@@ -205,12 +224,14 @@ public static class DimensionProvenanceCheck
                     UniqueId = uniqueId,
                     Description = detail,
                     Severity = DimensionDescriptions.DraftedSeverity(view, config),
-                    SuggestedFix = new Dictionary<string, object?>
-                    {
-                        ["provenance"] = "drafted",
-                        ["references"] = dim.References.Count,
-                        ["action"] = "re-dimension to model geometry, or verify against the model",
-                    },
+                    SuggestedFix = WithResolutionPath(
+                        new Dictionary<string, object?>
+                        {
+                            ["provenance"] = "drafted",
+                            ["references"] = dim.References.Count,
+                            ["action"] = "re-dimension to model geometry, or verify against the model",
+                        },
+                        dim, view),
                 };
             }
 
@@ -232,12 +253,14 @@ public static class DimensionProvenanceCheck
                     Description =
                         $"{kind} in {DimensionDescriptions.DescribeView(view)} measures model geometry at one end and detail linework at the other, so part of it tracks the model and part of it does not.",
                     Severity = config.MixedProvenanceSeverity,
-                    SuggestedFix = new Dictionary<string, object?>
-                    {
-                        ["provenance"] = "mixed",
-                        ["drafted_references"] = dim.References.Count(r => DimensionClassification.ClassifyReference(r) == Provenance.Drafted),
-                        ["references"] = dim.References.Count,
-                    },
+                    SuggestedFix = WithResolutionPath(
+                        new Dictionary<string, object?>
+                        {
+                            ["provenance"] = "mixed",
+                            ["drafted_references"] = dim.References.Count(r => DimensionClassification.ClassifyReference(r) == Provenance.Drafted),
+                            ["references"] = dim.References.Count,
+                        },
+                        dim, view),
                 };
 
             case Provenance.Unknown:
@@ -253,7 +276,8 @@ public static class DimensionProvenanceCheck
                     Description =
                         $"{kind} in {DimensionDescriptions.DescribeView(view)} has references that could not be resolved, so whether it tracks the model is unknown — it was not checked.",
                     Severity = "low",
-                    SuggestedFix = new Dictionary<string, object?> { ["provenance"] = "unknown" },
+                    SuggestedFix = WithResolutionPath(
+                        new Dictionary<string, object?> { ["provenance"] = "unknown" }, dim, view),
                 };
 
             default:
@@ -299,6 +323,20 @@ public static class DimensionProvenanceCheck
                 "model itself.";
         }
 
+        // Said only where it changes what the reviewer does. A rollup some
+        // tool can reach already leads them to the right button by its own
+        // type breakdown in SuggestedFix; one nothing can reach needs
+        // saying out loud, because otherwise they will run every button in
+        // turn and get nowhere. Kept out of the common case deliberately -
+        // Description feeds the IssueId hash, so churning it renames every
+        // finding, and the dialogs were just cut back for being too wordy.
+        if (DimensionResolution.ReachableRules(drafted, view).Count == 0)
+        {
+            summary +=
+                " No automated check can reach any of them, so this view is a reviewer's by construction " +
+                "rather than work waiting on a tool.";
+        }
+
         return new Issue
         {
             RuleId = RuleId,
@@ -323,6 +361,15 @@ public static class DimensionProvenanceCheck
                 // only ever being able to reconcile the non-rolled-up case.
                 // Not consumed by this check itself - see PLANNING.md §14.
                 ["drafted_dimension_ids"] = drafted.Select(d => d.ElementId).ToList(),
+                // Which of those a tool can actually settle, and which are a
+                // reviewer's by construction - see DimensionResolution. A
+                // rollup covering only unreachable dimensions can never be
+                // cleared by running anything, and now says so.
+                ["reachable_dimension_ids"] = drafted
+                    .Where(d => DimensionResolution.For(d, view).Reachable)
+                    .Select(d => d.ElementId)
+                    .ToList(),
+                ["dimension_types"] = DimensionResolution.Describe(drafted, view),
                 ["scope"] = "view",
                 ["action"] = "verify this view's setout against the model",
             },

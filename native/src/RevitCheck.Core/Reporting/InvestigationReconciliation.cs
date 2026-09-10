@@ -1,3 +1,4 @@
+using RevitCheck.Core.Checks;
 using System.Text.Json;
 using RevitCheck.Core.Issues;
 
@@ -276,6 +277,18 @@ public static class InvestigationReconciliation
                 continue;
             }
 
+            // Nothing can ever investigate this one - it is a reviewer's
+            // by construction, not work outstanding. Counted as examined
+            // exactly as a reviewer's own "Needs Manual Review" verdict
+            // already is, because that is the same outcome reached without
+            // making them click it. See DimensionResolution.
+            if (UnreachableReason(issue) is { } reason)
+            {
+                resolvedDimensionCount++;
+                needsManualReview.Add(AsManualReview(issue, reason));
+                continue;
+            }
+
             // Nothing has investigated this one yet - stays open and
             // visible, never silently dropped.
             openDimensionCount++;
@@ -314,13 +327,108 @@ public static class InvestigationReconciliation
         _ => null,
     };
 
+    /// <summary>
+    /// Why no check can settle this triaged dimension, or null when one
+    /// can - read off the marker <c>DimensionProvenanceCheck</c> stamps
+    /// (<see cref="DimensionResolution"/>).
+    /// </summary>
+    /// <remarks>
+    /// A triage issue predating the marker carries neither key and is
+    /// treated exactly as before: outstanding, not unreachable. Failing
+    /// towards "still open" is the safe direction here - the opposite would
+    /// quietly move real work into a bucket nobody is expected to act on.
+    /// </remarks>
+    private static string? UnreachableReason(Issue issue)
+    {
+        if (issue.SuggestedFix is not { } fix ||
+            !fix.TryGetValue(DimensionResolution.UnreachableReasonKey, out var reason))
+        {
+            return null;
+        }
+
+        // Present and explicitly resolvable wins - a malformed pair must
+        // not strand a dimension a tool can actually reach.
+        if (fix.TryGetValue(DimensionResolution.ResolvableByKey, out var rule) &&
+            rule?.ToString() is { Length: > 0 })
+        {
+            return null;
+        }
+
+        return reason?.ToString() is { Length: > 0 } text ? text : null;
+    }
+
+    /// <summary>
+    /// The same triage finding, restated as what it actually is: examined,
+    /// and settleable only by a person. Never auto-exports to BCF, like
+    /// every other manual-review item.
+    /// </summary>
+    private static Issue AsManualReview(Issue issue, string reason) => new()
+    {
+        RuleId = issue.RuleId,
+        Category = ManualReviewCategory,
+        Severity = issue.Severity,
+        ElementId = issue.ElementId,
+        UniqueId = issue.UniqueId,
+        ViewId = issue.ViewId,
+        ViewName = issue.ViewName,
+        SheetNo = issue.SheetNo,
+        Description = issue.Description + $" No automated check can settle this: {reason}.",
+        SuggestedFix = issue.SuggestedFix,
+    };
+
     private static int DraftedDimensionCount(Issue rollupIssue) =>
         ElementIdList(rollupIssue.SuggestedFix, "drafted_dimension_ids").Count;
 
-    private static List<long> RemainingDraftedDimensions(Issue rollupIssue, ISet<long> investigatedSet) =>
-        ElementIdList(rollupIssue.SuggestedFix, "drafted_dimension_ids")
+    /// <summary>
+    /// The dimensions in this rollup that are still outstanding <i>and that
+    /// some check can actually settle</i>.
+    /// </summary>
+    /// <remarks>
+    /// <b>Reachability added 2026-09-10.</b> On real model 100302, 54 of the
+    /// 133 dimensions triage puts in front of a reviewer can be reached by
+    /// no check at all and never will be (<see cref="DimensionResolution"/>
+    /// carries the evidence). Counting those as outstanding meant a view
+    /// containing one could never clear no matter what was run - the same
+    /// non-terminating shape §21 fixed for a different reason. A rollup
+    /// predating the field lists no reachable ids, and is treated exactly as
+    /// before rather than silently emptied.
+    /// </remarks>
+    private static List<long> RemainingDraftedDimensions(Issue rollupIssue, ISet<long> investigatedSet)
+    {
+        var outstanding = ElementIdList(rollupIssue.SuggestedFix, "drafted_dimension_ids")
             .Where(id => !investigatedSet.Contains(id))
             .ToList();
+
+        if (!HasKey(rollupIssue.SuggestedFix, "reachable_dimension_ids"))
+        {
+            return outstanding;
+        }
+
+        var reachable = ElementIdList(rollupIssue.SuggestedFix, "reachable_dimension_ids");
+        return outstanding.Where(reachable.Contains).ToList();
+    }
+
+    /// <summary>The dimensions in this rollup no check can settle - a reviewer's, by construction.</summary>
+    private static List<long> UnreachableDraftedDimensions(Issue rollupIssue)
+    {
+        // Key presence, not emptiness: a rollup whose dimensions are ALL
+        // unreachable carries an empty list, and so does one written before
+        // the field existed. Reading emptiness as "unknown" would make the
+        // all-unreachable view - the exact case this exists for, 7 of 7 on
+        // the real 'Datum 0 K.S' - behave as though nothing had changed.
+        if (!HasKey(rollupIssue.SuggestedFix, "reachable_dimension_ids"))
+        {
+            return new List<long>();
+        }
+
+        var reachable = ElementIdList(rollupIssue.SuggestedFix, "reachable_dimension_ids");
+        return ElementIdList(rollupIssue.SuggestedFix, "drafted_dimension_ids")
+            .Where(id => !reachable.Contains(id))
+            .ToList();
+    }
+
+    private static bool HasKey(Dictionary<string, object?>? fix, string key) =>
+        fix is not null && fix.ContainsKey(key);
 
     /// <summary>
     /// The same rollup, restated to cover only the dimensions still
@@ -382,7 +490,17 @@ public static class InvestigationReconciliation
         // No ids recorded at all (a capture/issue predating the
         // 2026-08-26 SuggestedFix addition) - skip rather than guess
         // whether it's resolved; keep the rollup as-is.
-        return ids.Count > 0 && ids.All(investigatedSet.Contains);
+        if (ids.Count == 0)
+        {
+            return false;
+        }
+
+        // A dimension no check can reach never becomes "investigated" by
+        // running anything, so requiring it here is requiring the
+        // impossible - it is reported as needing a person instead, and the
+        // rollup clears once everything reachable has been examined.
+        var unreachable = new HashSet<long>(UnreachableDraftedDimensions(rollupIssue));
+        return ids.All(id => investigatedSet.Contains(id) || unreachable.Contains(id));
     }
 
     /// <summary>

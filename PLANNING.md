@@ -1313,3 +1313,33 @@ Two Core tests pin the claim the whole workflow rests on and which had never act
 **What this does not fix.** `revitcheck.pile_model_schedule_consistency` still cannot be replayed: it needs schedule *rows*, and reading schedule bodies requires a transaction Capture Model's ReadOnly mode cannot perform (§16), so captures store headers only. That is a documented constraint rather than an oversight, and it means the check that just passed the negative control remains the one check with no off-machine path.
 
 **The lesson, and it is about coupling rather than checks.** Nothing here was a wrong answer; the cheap fact was simply never separable from the expensive one, and no test could see it because the Core suite supplies models that already contain positions. The cost of that coupling was not a bug but an entire class of verification being impossible for months — the capture workflow was half-working in a way its own tests could not express, and only a negative control that needed diffing two captures made it visible.
+
+## 26. Closing off dimension checking: the other side turned out to be classification, not a check (2026-09-10)
+
+**Per the user: build the other side of dimension checking so it can be closed off before moving to drafting.** The natural reading was "a verification check for ordinary linear dimensions", the last dimension type with no tool. Real data says that check cannot be built, and that the closure is a different thing entirely.
+
+**What triage actually puts in front of a reviewer on model 100302 — 133 dimensions:**
+
+| Shape | Count | What can settle it |
+| --- | --- | --- |
+| pile tag-to-tag | 59 | Pile Chain Bearing |
+| spot elevation/coordinate | 20 | Spot Elevation (elevations only) |
+| detail linework | 25 | **nothing** |
+| other/mixed | 29 | **nothing** |
+
+**54 of 133 (41%) can be reached by no check at all, and never will be.** Two independent reasons, both already established:
+
+- **Witness points are not obtainable.** §14's diagnostic went at exactly this question seven times on real drawings. `Reference.GlobalPoint` was null for all 17 references tested, across every reference type. The `Location` fallback returned `(0,0,0)` for real model geometry — the worst failure mode, since it looks like data. `Dimension.Curve` threw `"input curve is not bound"` on 41 of 46. The one reliable anchor, `DimensionSegment.Origin`, is where the dimension's *text* sits: measured **527m** from its own witness lines on a real dimension, because drafters drag text. The projection approach built on it never got a real test because no dimension in the sample satisfied its premise.
+- **A drafting view has no model behind it.** 150 of the 187 detail-linework dimensions in this model live in drafting views — bar shape diagrams, standard details. There is nothing to verify them against, by construction rather than by limitation.
+
+**So the deliverable is a statement of reach, not a new geometry check.** `DimensionResolution` says, for any triaged dimension, which check can settle it and — where none can — why not, classifying on **reference shape** (§18's axis) with the one view-level override that a drafting view has no model. Building a linear-dimension check blind would repeat the mistake this project names more than any other, against seven runs of real evidence.
+
+**What that closes:**
+
+- **A dimension nothing can reach now reports as needing a person**, rather than sitting in `StillOpenTriage` indistinguishable from work merely not done yet. It counts as examined for exactly the reason a reviewer's own "Needs Manual Review" click already does — it is the same outcome, reached without making them click it 54 times. A triage issue predating the marker stays open, failing towards "still outstanding", since the opposite quietly moves real work into a bucket nobody acts on.
+- **A rollup clears once everything reachable has been examined.** On the real capture, **5 of 11 view rollups contain nothing any tool can reach** — `Datum 0 K.S` (7 of 7), `DRG-2871008 - SECTION 1` (6 of 6), and three more. Those could never have cleared no matter what was run. Distinguishing "all unreachable" from "written before the field existed" needed key presence rather than list emptiness: both give an empty list, and reading emptiness as "unknown" would have left the exact case this exists for behaving as though nothing had changed.
+- **A rollup states its own type breakdown** (`27 pile tag-to-tag, 2 spot elevation`), which is §18's asked-for "so a reviewer knows which button to run without already knowing the answer". Said in the description **only where nothing can reach it**, because `Description` feeds the `IssueId` hash and churning it renames findings — 56 of 928 on the committed capture, total unchanged, every reachable view's findings untouched. The parity fixture was regenerated and the reasoning recorded in its own docstring, the same way the 2026-09-02 intentional change was.
+
+406 Core tests passing (398 + 8, built from this model's real counts); `dotnet build` clean including the net48 Addin. The routing test was confirmed to fail with the fix disabled.
+
+**The honest summary.** Dimension checking is now closed in the sense that matters: every triaged dimension ends somewhere — resolved by a tool, confirmed a problem, or handed to a reviewer with a stated reason no tool can reach it. It is **not** closed in the sense of everything being automatically verifiable, and that is a property of the Revit API and of drafting practice rather than of this build. **41% of what triage raises is a human's job, and the tool now says which 41% instead of implying a button exists for it.**

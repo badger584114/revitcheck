@@ -100,7 +100,7 @@ native/
     UI/                         # code-behind-only WPF, no XAML
   tools/RevitCheck.CheckRunner  # run checks against a capture, off-Revit
   tools/RevitCheck.MappingBuilder
-  tests/                        # 398 Core + 7 MappingBuilder tests, ~1s, no Revit
+  tests/                        # 406 Core + 7 MappingBuilder tests, ~1s, no Revit
   diagnostics/                  # throwaway pyRevit probes for answering real
                                 #   unknowns before writing check logic
 config/                         # firm_glossary.json, project_glossary.json,
@@ -270,6 +270,19 @@ Notes worth not rediscovering:
 - **Drafting views get different wording and severity.** A section could
   have been live and someone chose otherwise; a drafting view never had a
   model behind it.
+- **Not every triaged dimension is reachable, and the tool says which.**
+  `DimensionResolution` maps a triaged dimension to the check that can
+  settle it, or states why none can. On real model 100302 **54 of 133
+  (41%) can be reached by nothing** — detail-linework and mixed
+  dimensions, because §14's diagnostic established seven times over that a
+  linear dimension's witness points are not obtainable (`GlobalPoint` null,
+  `Location` returning the origin for real geometry, the segment origin
+  being where the *text* sits, 527m from its witness lines on a real case),
+  and drafting views because they have no model behind them at all. Those
+  route to manual review rather than sitting open for a tool that is not
+  coming. **Don't propose building a general linear-dimension-vs-model
+  check without new API evidence** — that is the thing seven real runs
+  already said no to.
 - **Triage is not a verdict.** The provenance check says the file cannot
   answer whether a dimension is right, not that it is wrong. Per the
   user's standing position: *assume nothing is trustworthy or you will be
@@ -458,16 +471,24 @@ paths in three different ways. That risk is partly retired, not measured
 — every fix from that day was calibrated against the second model, which
 is exactly the mistake the first round made.
 
-**4. The next dimension type.** The organizing axis is **dimension type
-plus how its provenance resolves** — not element type, not view type
-(§18). Named and unbuilt:
-- ordinary linear dimensions dimensioning to `DetailLine`s — 3 real ones
-  in the same abutment view Spot Elevation was validated against; needs a
-  measured distance between two witness points, not one point's Z against
-  one face.
-- a per-view dimension-type breakdown in the checklist ("3 linear, 3
-  spot") so a reviewer knows which button to run without already knowing
-  the answer.
+**4. Dimension checking is closed off (§26) — what remains is a reviewer's.**
+`DimensionResolution` maps every triaged dimension to the check that can
+settle it or states why none can. On model 100302, 59 are pile tag-to-tag,
+20 are spots, and **54 of 133 are reachable by nothing** — those now route
+to manual review instead of sitting open. Five of eleven view rollups
+contained nothing any tool could reach and could never have cleared.
+
+**The linear-dimension-vs-model check is not on this list, deliberately.**
+§14's diagnostic ran at it seven times: `Reference.GlobalPoint` null for
+all 17 references, `Location` returning `(0,0,0)` for real model geometry,
+`Dimension.Curve` throwing on 41 of 46, and the one reliable anchor being
+where the *text* sits — 527m from its witness lines on a real dimension.
+Reopen it only on new API evidence, not on the feeling that a gap ought to
+be fillable.
+
+Still worth doing when the checklist is next touched: surface the rollup's
+`dimension_types` breakdown as its own column, so the "which button" answer
+is visible without opening a finding.
 
 **5. The drafting checks — the untouched half of the brief.** Glossaries,
 `config/en_gb_variants.json` (563 curated pairs) and the check
