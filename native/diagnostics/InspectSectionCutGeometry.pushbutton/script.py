@@ -75,6 +75,7 @@ from pyrevit import revit, script
 from Autodesk.Revit.DB import (
     BoundingBoxIntersectsFilter,
     Dimension,
+    Line,
     FilteredElementCollector,
     GeometryInstance,
     Options,
@@ -176,6 +177,109 @@ def nearby_elements(anchor_xyz):
         return []
 
 
+def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=3000.0):
+    """Where real model faces cross a line lying IN the cut plane.
+
+    **This is what the user actually described** — "get faces points on the
+    faces at the cut plane of the section" — and what the first two runs did
+    not do. `Face.Project` finds the nearest point *anywhere* on a face, so
+    it is free to wander in the view direction: the 2026-09-11 run's chosen
+    points sat 50-400mm out of the section plane, and the resulting distance
+    error was almost exactly how much the two ends differed. Flattening those
+    points back onto the plane afterwards barely helped (21.1mm -> 20.3mm
+    mean), because a point 400mm along the wrong part of a face does not
+    become right by being projected.
+
+    Intersecting with a line through the anchor, along the direction the
+    dimension measures, fixes both halves at once: the hit is on the section
+    by construction, and only faces the measurement actually crosses can
+    take part - which is a far better face filter than "nearest".
+    """
+    if axis_xyz is None:
+        return [], []
+
+    reach_ft = reach_mm / MM_PER_FOOT
+    try:
+        start = XYZ(
+            anchor_xyz.X - axis_xyz.X * reach_ft,
+            anchor_xyz.Y - axis_xyz.Y * reach_ft,
+            anchor_xyz.Z - axis_xyz.Z * reach_ft,
+        )
+        end = XYZ(
+            anchor_xyz.X + axis_xyz.X * reach_ft,
+            anchor_xyz.Y + axis_xyz.Y * reach_ft,
+            anchor_xyz.Z + axis_xyz.Z * reach_ft,
+        )
+        probe_line = Line.CreateBound(start, end)
+    except Exception as exc:  # noqa: BLE001
+        return [], [{"error": "probe line: {0}".format(exc)}]
+
+    hits = []
+    errors = []
+
+    for element in nearby_elements(anchor_xyz):
+        solids, error = solids_of(element)
+        if error:
+            errors.append({"element_id": eid(element.Id), "error": error})
+            continue
+
+        try:
+            category = element.Category.Name if element.Category else None
+        except Exception:  # noqa: BLE001
+            category = None
+
+        for solid in solids:
+            for face in solid.Faces:
+                try:
+                    results = clr_out_intersect(face, probe_line)
+                except Exception:  # noqa: BLE001
+                    continue
+
+                for hit in results:
+                    hits.append(
+                        {
+                            "element_id": eid(element.Id),
+                            "category": category,
+                            "point": point(hit),
+                            "distance_from_anchor_mm": distance_mm(anchor_xyz, hit),
+                        }
+                    )
+
+    hits.sort(key=lambda h: h["distance_from_anchor_mm"])
+    return hits[:FACE_CANDIDATES], errors
+
+
+def clr_out_intersect(face, curve):
+    """Face.Intersect(Curve, out IntersectionResultArray) across bindings.
+
+    pyRevit CPython returns the `out` parameter as a tuple; IronPython
+    hands it back directly. Written to work either way rather than
+    assuming, since which engine this lands on is a property of the
+    machine it gets copied to, not of this script.
+    """
+    outcome = face.Intersect(curve)
+    array = None
+    if isinstance(outcome, tuple):
+        if len(outcome) > 1:
+            array = outcome[1]
+    else:
+        array = outcome
+
+    points = []
+    if array is None:
+        return points
+
+    try:
+        for item in array:
+            points.append(item.XYZPoint)
+    except TypeError:
+        # Not iterable - a bare SetComparisonResult means no intersection
+        # data came back.
+        return points
+
+    return points
+
+
 def project_faces(anchor_xyz):
     """The nearest real model faces to a witness line's endpoint.
 
@@ -270,22 +374,24 @@ def witness_anchor(reference_element):
         pass
 
     # A filled region has no Location at all - its geometry is its
-    # boundary loops. Averaging every boundary vertex is crude, and
-    # deliberately so: this is a probe establishing whether a usable
-    # anchor exists here at all, not the final rule for picking one.
+    # boundary loops. The centroid was tried first and failed 0 for 4 on
+    # the 2026-09-11 run (270mm, 578mm, 910mm and 1.27km out), for an
+    # obvious reason once seen: a dimension measures to a region's EDGE,
+    # not its middle. Every boundary vertex is returned instead, and the
+    # caller picks the one nearest the other end of the dimension - which
+    # is what "measures to the near edge" means, and is checkable rather
+    # than assumed.
     try:
-        loops = reference_element.GetBoundaries()
-        xs, ys, zs, n = 0.0, 0.0, 0.0, 0
-        for loop in loops:
+        vertices = []
+        for loop in reference_element.GetBoundaries():
             for edge in loop:
-                p0 = edge.GetEndPoint(0)
-                xs += p0.X
-                ys += p0.Y
-                zs += p0.Z
-                n += 1
-        if n:
-            return {"xyz": XYZ(xs / n, ys / n, zs / n), "from": "filled_region_centroid",
-                    "boundary_point_count": n}
+                vertices.append(edge.GetEndPoint(0))
+        if vertices:
+            return {
+                "xyz": vertices[0],
+                "from": "filled_region_boundary",
+                "candidates": vertices,
+            }
     except Exception:  # noqa: BLE001
         pass
 
@@ -389,6 +495,10 @@ for dimension in dimensions:
             described["anchor_point"] = point(anchor["xyz"])
             described["curve_start"] = anchor.get("curve_start")
             described["curve_end"] = anchor.get("curve_end")
+            # Kept so a filled region's anchor, which can only be resolved
+            # once both ends are known, is corrected here too rather than
+            # leaving the reference entry disagreeing with the probe.
+            anchor["described"] = described
             witnesses.append(anchor)
         else:
             described["anchor_from"] = None
@@ -399,17 +509,55 @@ for dimension in dimensions:
     # Question 3/4: real faces near each witness line, and what distance
     # they imply between the two of them.
     if len(witnesses) == 2:
+        # A filled region has no single anchor - resolve it against the
+        # other end, since a dimension measures to the near edge. Done
+        # here rather than in witness_anchor because it needs both ends.
+        for index, witness in enumerate(witnesses):
+            candidates = witness.get("candidates")
+            if not candidates:
+                continue
+            other = witnesses[1 - index]["xyz"]
+            nearest = min(candidates, key=lambda c: c.DistanceTo(other))
+            witness["xyz"] = nearest
+            witness["candidate_count"] = len(candidates)
+            if witness.get("described") is not None:
+                witness["described"]["anchor_point"] = point(nearest)
+                witness["described"]["boundary_candidate_count"] = len(candidates)
+
+        # The direction the dimension measures, which lies in the cut plane
+        # because both anchors do. Used to aim the cut-line probe.
+        a0 = witnesses[0]["xyz"]
+        a1 = witnesses[1]["xyz"]
+        span = a1 - a0
+        axis = span.Normalize() if span.GetLength() > 1e-9 else None
+
         probes = []
         for witness in witnesses:
             faces, errors = project_faces(witness["xyz"])
+            hits, hit_errors = cut_line_hits(witness["xyz"], axis)
             probes.append({
                 "anchor": point(witness["xyz"]),
                 "anchor_from": witness["from"],
                 "faces": faces,
-                "errors": errors,
+                "cut_line_hits": hits,
+                "errors": errors + hit_errors,
             })
 
         entry["witness_probes"] = probes
+
+        # The cut-line answer, reported ALONGSIDE the nearest-face one
+        # rather than replacing it - the point of this run is to compare
+        # them on the same dimensions, not to swap one guess for another.
+        if probes[0]["cut_line_hits"] and probes[1]["cut_line_hits"]:
+            h0 = probes[0]["cut_line_hits"][0]["point"]
+            h1 = probes[1]["cut_line_hits"][0]["point"]
+            cut_distance = (
+                (h0["x"] - h1["x"]) ** 2 + (h0["y"] - h1["y"]) ** 2 + (h0["z"] - h1["z"]) ** 2
+            ) ** 0.5
+            entry["model_distance_along_cut_line_mm"] = cut_distance
+            measured = entry["segments"][0]["measured_mm"] if entry["segments"] else None
+            if measured is not None:
+                entry["delta_cut_line_vs_measured_mm"] = abs(cut_distance - measured)
 
         # The drafted separation, straight from the two anchors. If this
         # already matches the stated value the anchors are the right ones,
@@ -467,7 +615,22 @@ output.print_md(
 )
 output.print_md("")
 output.print_md(
-    "**Read `delta_vs_measured_mm` first** — that is the whole question. Then "
+    "- {0} produced a cut-line distance".format(
+        sum(1 for r in results if "model_distance_along_cut_line_mm" in r)
+    )
+)
+output.print_md("")
+output.print_md(
+    "**Compare `delta_cut_line_vs_measured_mm` against `delta_vs_measured_mm`** "
+    "— the first takes points where model faces cross a line lying IN the cut "
+    "plane, the second takes the nearest point anywhere on a face. On the "
+    "2026-09-11 run the second averaged 21mm error because its points sat "
+    "50-400mm out of the section. If the first is materially better, that is "
+    "the check."
+)
+output.print_md("")
+output.print_md(
+    "**Read `anchor_separation_mm` first** — that is the whole question. Then "
     "read the runners-up in `witness_probes[].faces`: if the second face is "
     "about as close as the first, the pick is a coin-flip and a check built "
     "on it would be too."

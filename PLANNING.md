@@ -1415,3 +1415,31 @@ This settles what §26 had only inferred. That section classified drafting-view 
 **What does not change:** triage still raises them. A project-specific setout drawn as a standard detail is a real drift risk, and CLAUDE.md's wording for drafting views already says so. What is settled is that no automated check will settle one — so they route to manual review with that reason, which is what §26 built.
 
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+**Second real run of the section-cut probe: the anchors work, the face pick does not, and two alternatives were falsified offline (2026-09-11).** Two more sections — `DRG-2871116 - ELEVATION - BARRIER PPT234105` (100302) and `DRG - 2873175 - SECTION 3` (100304), 15 dimensions.
+
+**Question 1 is answered, positively.** Anchors resolved on 10 of 10 and 4 of 5 dimensions, split `location_point` 21, `location_curve` 5, `filled_region` 5. Reading `anchor_separation_mm` against each dimension's own measured value sorts them cleanly by anchor kind:
+
+| Anchor sources | Result |
+| --- | --- |
+| `point`+`point`, `curve`+`curve` | **7 of 9 within 2.65mm** — five within 0.22mm, three exact to 0.01mm |
+| `filled_region_centroid` | **0 of 4** — out by 270mm, 578mm, 910mm and 1.27km |
+
+So resolving the referenced element and reading its own geometry is sound, and the centroid was simply the wrong point on a region: **a dimension measures to a region's edge, not its middle.** Also seen once: a dimension whose two references resolve to the same element (separation 0.00 against a measured 4526mm) — measuring between two features *of* one element, a shape this design does not handle.
+
+**Question 4 is where it fails.** For the seven dimensions with trustworthy anchors, the model distance from nearest-face projection averages **21mm error** — best 0.01mm, worst 93mm. Not usable: §20's own rule is to calibrate against the noise rather than what you want to catch, and a 21mm noise floor cannot see the 50mm defect the negative control plants.
+
+**The cause is visible in the data and it is my implementation, not the idea.** The chosen points sit **50–400mm out of the section plane**, because `Face.Project` finds the nearest point *anywhere* on a face and is free to wander in the view direction. The error tracks almost exactly how much the two ends differ: where both ends wander by a similar amount (-78.5 and -75.3) the delta is 0.01mm; where they differ by 153mm the delta is 93mm. **The user's original description said "points on the faces at the cut plane of the section" — the constraint I dropped is the whole problem.**
+
+**Two alternatives were tested against the existing dump and both rejected**, which is the point of having the numbers rather than another run:
+
+- **Pick the face whose normal is parallel to the measurement direction** — worse, 52.6mm mean against 21.1mm.
+- **Flatten the chosen points back onto the cut plane** — barely moves it, 20.3mm against 21.1mm. A point 400mm along the wrong part of a face does not become right by being projected.
+
+**Built for the next run, and it is the thing originally described**: `cut_line_hits` intersects candidate faces with a line through the anchor **lying in the cut plane**, along the direction the dimension measures. That fixes both halves at once — the hit is on the section by construction, and only faces the measurement actually crosses can take part, which is a far better filter than "nearest". Reported *alongside* the nearest-face answer rather than replacing it, so the two are compared on the same dimensions. `Face.Intersect(Curve, out IntersectionResultArray)` was verified against the real `RevitAPI.dll`, and the `out` parameter is read in a way that works under both CPython and IronPython bindings rather than assuming which engine the probe lands on.
+
+Filled-region anchors now return **every boundary vertex**, resolved against the other end of the dimension — "measures to the near edge", which is checkable rather than assumed, and replaces the centroid that failed four times out of four.
+
+414 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+**Read `delta_cut_line_vs_measured_mm` against `delta_vs_measured_mm` on the next run.** If the cut-line number is materially better, that is the check. If it is not, the idea is out of road and the honest conclusion — per the user, that this makes much of dimension triage redundant — has to be faced rather than iterated around.
