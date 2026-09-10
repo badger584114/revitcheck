@@ -1,0 +1,12 @@
+title: Inspect Section Cut Geometry (diagnostic)
+tooltip: >
+  ONE-OFF diagnostic, not part of the frozen RevitCheck extension. For a
+  SECTION view, dumps every dimension that measures between detail lines:
+  each referenced detail line's own curve, the view's cut plane, the real
+  model faces nearest each witness line, and the point each face gives when
+  projected from that line. Then compares the resulting real distance
+  against what the dimension states. Answers whether a drafted section
+  dimension can be verified against the model by taking points off model
+  faces at the cut plane - the approach PLANNING.md §14's witness-point
+  attempts could not reach. Open a real section with drafted dimensions,
+  select some or leave nothing selected to sweep the view, then run this.

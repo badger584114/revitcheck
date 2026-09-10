@@ -277,6 +277,12 @@ Notes worth not rediscovering:
   while reading only their chain topology, never their stated values (§27).
   Reconciling a triage flag is a claim that the specific thing triage
   raised has been checked.
+- **A reference's own element carries geometry the `Reference` does not.**
+  `Reference.GlobalPoint` is null and `Location` returns `(0,0,0)` for real
+  model geometry — but resolving the element and reading its own
+  `Location.Point`/`Location.Curve` works, and is how tags, piles and now
+  detail lines are anchored. §14's seven negative runs were about the
+  former; don't read them as ruling out the latter (§27).
 - **Not every triaged dimension is reachable, and the tool says which.**
   `DimensionResolution` maps a triaged dimension to the check that can
   settle it, or states why none can. On real model 100302 **54 of 133
@@ -485,13 +491,18 @@ settle it or states why none can. On model 100302, 59 are pile tag-to-tag,
 to manual review instead of sitting open. Five of eleven view rollups
 contained nothing any tool could reach and could never have cleared.
 
-**The linear-dimension-vs-model check is not on this list, deliberately.**
-§14's diagnostic ran at it seven times: `Reference.GlobalPoint` null for
-all 17 references, `Location` returning `(0,0,0)` for real model geometry,
-`Dimension.Curve` throwing on 41 of 46, and the one reliable anchor being
-where the *text* sits — 527m from its witness lines on a real dimension.
-Reopen it only on new API evidence, not on the feeling that a gap ought to
-be fillable.
+**The linear-dimension-vs-model check is back on, via a different anchor
+(§27).** §14's seven failures were all about recovering the *dimension's*
+witness points. The referenced **detail line's own curve** is readable
+(`Location.Curve`), which is the anchor those attempts lacked — they
+projected from the value text, 527m away on a real case. The plan, per the
+user: take the section's cut plane, find model geometry near each witness
+line, project onto its faces, compare the distance to the dimension.
+`ReferenceInfo.CurveStart`/`CurveEnd` is built;
+**`native/diagnostics/InspectSectionCutGeometry.pushbutton` must be run on
+a real section before the check is written** — read `delta_vs_measured_mm`
+first, then the runner-up faces, since a near-tie means the pick is a
+coin-flip.
 
 Still worth doing when the checklist is next touched: surface the rollup's
 `dimension_types` breakdown as its own column, so the "which button" answer

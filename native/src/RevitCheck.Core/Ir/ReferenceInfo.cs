@@ -46,4 +46,42 @@ public sealed class ReferenceInfo
     /// tag's own point, not arbitrary model geometry's.
     /// </summary>
     public Point3D? LocalPoint { get; init; }
+
+    /// <summary>
+    /// The resolved element's own curve endpoints, in local project
+    /// coordinates (mm), when it has one - a detail line, a model line, a
+    /// wall. Null for anything with no simple <c>LocationCurve</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added 2026-09-10, and it reopens a question PLANNING.md §14 had
+    /// closed.</b> That diagnostic concluded a linear dimension's witness
+    /// points were unrecoverable, having tried <c>Reference.GlobalPoint</c>
+    /// (null on all 17 real references) and <c>Location</c> (returning
+    /// <c>(0,0,0)</c> for real model geometry). But the thing a drafted
+    /// dimension actually references is usually a <c>DetailLine</c>, and a
+    /// detail line's own <c>GeometryCurve</c> is directly readable - the
+    /// same "resolve the element, read its own geometry" move that already
+    /// works for a tag's <see cref="LocalPoint"/> and for a pile.
+    /// </para>
+    /// <para>
+    /// So a dimension between two detail lines does have recoverable
+    /// witness geometry after all: not the dimension's witness points, but
+    /// the lines it measures between, which is what a person reading the
+    /// drawing sees anyway. That is the anchor the §14 approach lacked -
+    /// its projection attempts were anchored on the dimension's own text
+    /// position, which real drafting practice drags arbitrarily far (527m,
+    /// on a real case).
+    /// </para>
+    /// <para>
+    /// Endpoints rather than the whole curve: two points is what a distance
+    /// comparison needs, it round-trips through the capture as plain data,
+    /// and an arc's endpoints are still the right anchor for finding what
+    /// model geometry sits near it.
+    /// </para>
+    /// </remarks>
+    public Point3D? CurveStart { get; init; }
+
+    /// <summary>The other end of <see cref="CurveStart"/>'s curve - see its remarks.</summary>
+    public Point3D? CurveEnd { get; init; }
 }

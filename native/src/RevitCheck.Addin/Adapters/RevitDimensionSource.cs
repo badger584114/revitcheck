@@ -563,6 +563,8 @@ public static class RevitDimensionSource
         long? builtinCategory = null;
         bool? viewSpecific = null;
         Core.Ir.Point3D? localPoint = null;
+        Core.Ir.Point3D? curveStart = null;
+        Core.Ir.Point3D? curveEnd = null;
 
         try
         {
@@ -609,6 +611,29 @@ public static class RevitDimensionSource
                 {
                     localPoint = PointOf(locationPoint.Point);
                 }
+                else if (element.Location is LocationCurve locationCurve)
+                {
+                    // A detail line - the usual referent of a drafted
+                    // dimension - carries its own real curve. See
+                    // ReferenceInfo.CurveStart: this is the witness
+                    // geometry §14 concluded was unrecoverable, reached by
+                    // resolving the element instead of asking the
+                    // Reference for a point it never had.
+                    try
+                    {
+                        var curve = locationCurve.Curve;
+                        if (curve is not null && curve.IsBound)
+                        {
+                            curveStart = PointOf(curve.GetEndPoint(0));
+                            curveEnd = PointOf(curve.GetEndPoint(1));
+                        }
+                    }
+                    catch
+                    {
+                        // Costs an anchor, not a finding - left null, the
+                        // same soft-fail the point read above uses.
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -628,6 +653,8 @@ public static class RevitDimensionSource
             Linked = linked,
             LinkInstanceId = linkInstanceId,
             LocalPoint = localPoint,
+            CurveStart = curveStart,
+            CurveEnd = curveEnd,
         };
     }
 
