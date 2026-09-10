@@ -1443,3 +1443,19 @@ Filled-region anchors now return **every boundary vertex**, resolved against the
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
 
 **Read `delta_cut_line_vs_measured_mm` against `delta_vs_measured_mm` on the next run.** If the cut-line number is materially better, that is the check. If it is not, the idea is out of road and the honest conclusion — per the user, that this makes much of dimension triage redundant — has to be faced rather than iterated around.
+
+**Third run: the cut-line probe produced nothing, and the reason was my own silent failure (2026-09-11).** Views `DRG-2871072 - ABUTMENT B CONCRETE ELEVATION` (100302, a different view from the previous run) and `DRG - 2873175 - SECTION 3` (100304, the same one), 23 dimensions.
+
+**Zero cut-line hits, zero errors recorded, across 36 probes — while the same run found 170 nearest-face candidates.** So the geometry walk, the element search and the solid/face enumeration were all working; the intersection simply never happened and said nothing about it.
+
+`Face.Intersect` has **two overloads**, and a one-argument call resolves to the one returning a bare `SetComparisonResult` rather than the one with the `out IntersectionResultArray`. That result is not iterable, so every face fell into a `TypeError` branch that returned empty, inside a `try/except: continue` that discarded the evidence. **This is the confident empty answer — this project's most-repeated failure — committed inside the probe built to stop guessing.** Fixed with an explicit `clr.Reference[IntersectionResultArray]()`, a fallback for tuple-style bindings, and an outcome tally reported whether or not anything hits: "0 hits from 84 faces, all Disjoint" is a real answer, "0 hits, nothing attempted" is a bug, and the last run could not tell them apart.
+
+**A second real finding, and it is not a bug: 5 of 23 dimensions reference the same element at both ends** — all five the same filled region — measuring between two features of one object. The near-edge rule collapses both anchors onto one vertex and reports a separation of 0.00 against a real measured 2500mm. **A fabricated answer is worse than none**, so these are now recorded as an unhandled shape with their boundary vertices dumped. Deliberately not guessed at: picking the pair of vertices whose separation matches the stated value would be fitting to the answer, which is exactly what `SpotElevationConsistencyCheck` refuses to do when it declines to pick "whichever face agrees".
+
+**The near-edge rule for two-element filled regions did work** where it applied — dimension 6186271, `fr_boundary`+`point`, anchors 280.04 against a measured 275.38.
+
+**The comparison this run existed for still has not happened.** Nearest-face on this view set averages 219mm error, far worse than the previous view's 21mm, which says more about how far these anchors sit from model geometry than about the method. Nothing can be concluded about the cut-line approach: it has not run once.
+
+414 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+**Next run: check the printed line "N face(s) were actually intersected with a cut line" before reading anything else.** If that is zero again the fault is still in the probe, not in the idea, and no distance in the file means anything.

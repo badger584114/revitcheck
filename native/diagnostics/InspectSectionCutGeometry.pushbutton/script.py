@@ -70,11 +70,14 @@ rather than from whether the idea sounded right.
 import json
 import os
 
+import clr
+
 from pyrevit import revit, script
 
 from Autodesk.Revit.DB import (
     BoundingBoxIntersectsFilter,
     Dimension,
+    IntersectionResultArray,
     Line,
     FilteredElementCollector,
     GeometryInstance,
@@ -216,6 +219,8 @@ def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=3000.0):
 
     hits = []
     errors = []
+    tally = {}
+    faces_tried = 0
 
     for element in nearby_elements(anchor_xyz):
         solids, error = solids_of(element)
@@ -230,10 +235,8 @@ def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=3000.0):
 
         for solid in solids:
             for face in solid.Faces:
-                try:
-                    results = clr_out_intersect(face, probe_line)
-                except Exception:  # noqa: BLE001
-                    continue
+                faces_tried += 1
+                results = clr_out_intersect(face, probe_line, tally)
 
                 for hit in results:
                     hits.append(
@@ -246,36 +249,62 @@ def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=3000.0):
                     )
 
     hits.sort(key=lambda h: h["distance_from_anchor_mm"])
+    # Always reported, hit or miss: "0 hits from 84 faces, all Disjoint" is
+    # a real answer and "0 hits, nothing attempted" is a bug, and the last
+    # run could not tell them apart.
+    errors.append({"faces_tried": faces_tried, "outcomes": tally})
     return hits[:FACE_CANDIDATES], errors
 
 
-def clr_out_intersect(face, curve):
-    """Face.Intersect(Curve, out IntersectionResultArray) across bindings.
+def clr_out_intersect(face, curve, tally):
+    """Face.Intersect(Curve, out IntersectionResultArray) - the real overload.
 
-    pyRevit CPython returns the `out` parameter as a tuple; IronPython
-    hands it back directly. Written to work either way rather than
-    assuming, since which engine this lands on is a property of the
-    machine it gets copied to, not of this script.
+    **Fixed 2026-09-11, after a whole run produced zero hits and zero
+    errors.** The previous version called ``face.Intersect(curve)`` and
+    hoped the binding would hand the ``out`` parameter back as a tuple.
+    ``Face.Intersect`` has *two* overloads, and a one-argument call
+    resolves to the one that returns a bare ``SetComparisonResult`` - not
+    iterable, so every face fell into a ``TypeError`` branch that returned
+    empty. 170 nearest-face candidates were found on the same run, so the
+    geometry walk was never the problem; the intersection simply never
+    happened, and said nothing about it.
+
+    That is this project's own most-repeated failure - a confident empty
+    answer - committed inside the probe built to avoid guessing. Hence
+    ``tally``: every outcome is counted, so a zero can never again be
+    indistinguishable from "not attempted".
     """
-    outcome = face.Intersect(curve)
     array = None
-    if isinstance(outcome, tuple):
-        if len(outcome) > 1:
-            array = outcome[1]
-    else:
-        array = outcome
+    try:
+        holder = clr.Reference[IntersectionResultArray]()
+        outcome = face.Intersect(curve, holder)
+        array = holder.Value
+        tally[str(outcome)] = tally.get(str(outcome), 0) + 1
+    except Exception as exc:  # noqa: BLE001
+        # Older/IronPython bindings return the out parameter as a tuple.
+        try:
+            outcome = face.Intersect(curve)
+            if isinstance(outcome, tuple) and len(outcome) > 1:
+                array = outcome[1]
+                tally[str(outcome[0])] = tally.get(str(outcome[0]), 0) + 1
+            else:
+                tally["no_out_parameter"] = tally.get("no_out_parameter", 0) + 1
+        except Exception as inner:  # noqa: BLE001
+            key = "error: {0}".format(inner)[:120]
+            tally[key] = tally.get(key, 0) + 1
+            return []
 
     points = []
     if array is None:
+        tally["null_array"] = tally.get("null_array", 0) + 1
         return points
 
     try:
         for item in array:
             points.append(item.XYZPoint)
-    except TypeError:
-        # Not iterable - a bare SetComparisonResult means no intersection
-        # data came back.
-        return points
+    except Exception as exc:  # noqa: BLE001
+        key = "unreadable array: {0}".format(exc)[:120]
+        tally[key] = tally.get(key, 0) + 1
 
     return points
 
@@ -508,6 +537,34 @@ for dimension in dimensions:
 
     # Question 3/4: real faces near each witness line, and what distance
     # they imply between the two of them.
+    reference_ids = [r.get("element_id") for r in entry["references"] if r.get("element_id") is not None]
+    same_element = len(reference_ids) >= 2 and len(set(reference_ids)) == 1
+
+    if same_element:
+        # 5 of 23 dimensions on the 2026-09-11 run measure between two
+        # features of ONE element (all of them the same filled region).
+        # Both anchors then resolve to the same point and the separation
+        # comes out 0.00 against a real measured 2500mm - a fabricated
+        # answer, which is worse than none.
+        #
+        # There is no non-circular way to pick the right pair yet: choosing
+        # the two boundary vertices whose separation matches the stated
+        # value would be fitting to the answer, which is exactly what
+        # SpotElevationConsistencyCheck refuses to do when it declines to
+        # pick "whichever face agrees". Recorded as an unhandled shape
+        # instead, with the vertices dumped so a rule can be found from
+        # data rather than invented.
+        entry["same_element_both_ends"] = reference_ids[0]
+        entry["unhandled_shape"] = (
+            "both references resolve to one element - measures between two features of it, "
+            "and nothing here can say which two"
+        )
+        entry["boundary_candidates"] = [
+            point(c) for w in witnesses for c in (w.get("candidates") or [])
+        ][:40]
+        results.append(entry)
+        continue
+
     if len(witnesses) == 2:
         # A filled region has no single anchor - resolve it against the
         # other end, since a dimension measures to the near edge. Done
@@ -619,6 +676,18 @@ output.print_md(
         sum(1 for r in results if "model_distance_along_cut_line_mm" in r)
     )
 )
+output.print_md(
+    "- {0} measure between two features of ONE element (unhandled shape)".format(
+        sum(1 for r in results if r.get("same_element_both_ends"))
+    )
+)
+
+faces_tried = 0
+for r in results:
+    for probe in r.get("witness_probes") or []:
+        for e in probe.get("errors") or []:
+            faces_tried += e.get("faces_tried", 0) if isinstance(e, dict) else 0
+output.print_md("- {0} face(s) were actually intersected with a cut line".format(faces_tried))
 output.print_md("")
 output.print_md(
     "**Compare `delta_cut_line_vs_measured_mm` against `delta_vs_measured_mm`** "
