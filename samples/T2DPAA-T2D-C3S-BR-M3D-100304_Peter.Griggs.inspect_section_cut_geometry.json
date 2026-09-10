@@ -73,6 +73,7 @@
             "z": 22976.273680105434
           },
           "anchor_from": "location_point",
+          "cut_line_hits": [],
           "errors": [],
           "faces": [
             {
@@ -164,6 +165,7 @@
             "z": 22985.957783796064
           },
           "anchor_from": "location_point",
+          "cut_line_hits": [],
           "errors": [],
           "faces": [
             {
@@ -298,6 +300,7 @@
             "z": 22976.273680105434
           },
           "anchor_from": "location_point",
+          "cut_line_hits": [],
           "errors": [],
           "faces": [
             {
@@ -389,6 +392,7 @@
             "z": 22985.957783796064
           },
           "anchor_from": "location_point",
+          "cut_line_hits": [],
           "errors": [],
           "faces": [
             {
@@ -586,6 +590,7 @@
             "z": 22467.75977703532
           },
           "anchor_from": "location_curve",
+          "cut_line_hits": [],
           "errors": [],
           "faces": [
             {
@@ -677,6 +682,7 @@
             "z": 22976.273680105434
           },
           "anchor_from": "location_point",
+          "cut_line_hits": [],
           "errors": [],
           "faces": [
             {
@@ -764,17 +770,18 @@
       ]
     },
     {
-      "anchor_separation_mm": 1270285.2423551446,
+      "anchor_separation_mm": 1270134.3528717982,
       "dimension_id": 8070716,
       "reference_count": 2,
       "references": [
         {
-          "anchor_from": "filled_region_centroid",
+          "anchor_from": "filled_region_boundary",
           "anchor_point": {
-            "x": 193016.8145406052,
-            "y": 1255348.9777249156,
-            "z": 21634.471911195076
+            "x": 192658.96891262286,
+            "y": 1255253.8756768582,
+            "z": 21482.635797614814
           },
+          "boundary_candidate_count": 4,
           "class_name": "FilledRegion",
           "curve_end": null,
           "curve_start": null,
@@ -804,11 +811,12 @@
       "witness_probes": [
         {
           "anchor": {
-            "x": 193016.8145406052,
-            "y": 1255348.9777249156,
-            "z": 21634.471911195076
+            "x": 192658.96891262286,
+            "y": 1255253.8756768582,
+            "z": 21482.635797614814
           },
-          "anchor_from": "filled_region_centroid",
+          "anchor_from": "filled_region_boundary",
+          "cut_line_hits": [],
           "errors": [],
           "faces": []
         },
@@ -819,6 +827,7 @@
             "z": 0.0
           },
           "anchor_from": "location_point",
+          "cut_line_hits": [],
           "errors": [],
           "faces": []
         }
