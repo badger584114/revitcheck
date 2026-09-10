@@ -1,0 +1,829 @@
+{
+  "cut_plane": {
+    "crop_box_active": true,
+    "origin": {
+      "x": 199260.8681473783,
+      "y": 1234679.4602103964,
+      "z": 23087.557481566342
+    },
+    "right_direction": {
+      "x": -294.5745941586859,
+      "y": -78.28696236440335,
+      "z": -0.0
+    },
+    "up_direction": {
+      "x": -0.0,
+      "y": -0.0,
+      "z": 304.8
+    },
+    "view_direction": {
+      "x": -78.28696236440335,
+      "y": 294.5745941586859,
+      "z": 0.0
+    },
+    "view_id": 8068108,
+    "view_name": "DRG - 2873175 - SECTION 3"
+  },
+  "dimensions": [
+    {
+      "anchor_separation_mm": 368.4047780339302,
+      "delta_vs_measured_mm": 7.140253576056523,
+      "dimension_id": 8069960,
+      "model_distance_between_nearest_faces_mm": 361.1372214532188,
+      "reference_count": 2,
+      "references": [
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 199121.10236887052,
+            "y": 1234642.3156688819,
+            "z": 22976.273680105434
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8069956,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 199477.02490084077,
+            "y": 1234736.9066296013,
+            "z": 22985.957783796064
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8069954,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 368.2774750292753,
+          "override": null
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 199121.10236887052,
+            "y": 1234642.3156688819,
+            "z": 22976.273680105434
+          },
+          "anchor_from": "location_point",
+          "errors": [],
+          "faces": [
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 4.060895662032406,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -97.79499454047135,
+                "y": 288.6781947007283,
+                "z": -2.0196403535330045
+              },
+              "projected_point": {
+                "x": 199119.79943163597,
+                "y": 1234646.1617713377,
+                "z": 22976.246772137096
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.1494842180122795,
+              "element_id": 5669115,
+              "face_normal": {
+                "x": -22.07907013790835,
+                "y": -3.0996184359197465,
+                "z": 303.983465055909
+              },
+              "projected_point": {
+                "x": 199120.72935107778,
+                "y": 1234642.263301965,
+                "z": 22981.40936926502
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.223259821940513,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -21.51073393117886,
+                "y": -5.160345014421543,
+                "z": 303.9962157084759
+              },
+              "projected_point": {
+                "x": 199120.73374632365,
+                "y": 1234642.2272377047,
+                "z": 22981.48316573382
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.252050183780507,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -22.206711850628903,
+                "y": -3.104166667539613,
+                "z": 303.9741207703105
+              },
+              "projected_point": {
+                "x": 199120.71972200353,
+                "y": 1234642.2621805645,
+                "z": 22981.511499452074
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 6.717438613553373,
+              "element_id": 5903511,
+              "face_normal": {
+                "x": -23.63931869906113,
+                "y": -3.9882920416265244,
+                "z": 303.85574889745783
+              },
+              "projected_point": {
+                "x": 199120.58138569392,
+                "y": 1234642.2277715495,
+                "z": 22982.97030851946
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 199477.02490084077,
+            "y": 1234736.9066296013,
+            "z": 22985.957783796064
+          },
+          "anchor_from": "location_point",
+          "errors": [],
+          "faces": [
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 10.681090221239936,
+              "element_id": 8039254,
+              "face_normal": {
+                "x": 205.2018853408363,
+                "y": 54.4958617754621,
+                "z": 218.69025424539615
+              },
+              "projected_point": {
+                "x": 199469.83402206487,
+                "y": 1234734.9969340097,
+                "z": 22978.29423282459
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 86.45404945312254,
+              "element_id": 5669115,
+              "face_normal": {
+                "x": 288.34412869781374,
+                "y": 97.94068478787841,
+                "z": 12.974039801854717
+              },
+              "projected_point": {
+                "x": 199395.23842589997,
+                "y": 1234709.1265482162,
+                "z": 22982.277802566943
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 86.75644553792311,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": 288.3930378399042,
+                "y": 97.78953164032701,
+                "z": 13.027019115556364
+              },
+              "projected_point": {
+                "x": 199394.93843469615,
+                "y": 1234709.0724033022,
+                "z": 22982.249851137203
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 88.51970821870431,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": 294.41013924951056,
+                "y": 77.80224630426183,
+                "z": 13.134701256397056
+              },
+              "projected_point": {
+                "x": 199391.52260548974,
+                "y": 1234714.3113797929,
+                "z": 22982.143217120356
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 92.79099170607473,
+              "element_id": 5903511,
+              "face_normal": {
+                "x": 294.3625502853255,
+                "y": 77.66866099812812,
+                "z": 14.87642726857068
+              },
+              "projected_point": {
+                "x": 199387.41140687055,
+                "y": 1234713.2617737008,
+                "z": 22981.42891752542
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anchor_separation_mm": 368.4047780339302,
+      "delta_vs_measured_mm": 351.4531177625896,
+      "dimension_id": 8069967,
+      "model_distance_between_nearest_faces_mm": 361.1372214532188,
+      "reference_count": 2,
+      "references": [
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 199121.10236887052,
+            "y": 1234642.3156688819,
+            "z": 22976.273680105434
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8069956,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 199477.02490084077,
+            "y": 1234736.9066296013,
+            "z": 22985.957783796064
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8069954,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 9.684103690629161,
+          "override": null
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 199121.10236887052,
+            "y": 1234642.3156688819,
+            "z": 22976.273680105434
+          },
+          "anchor_from": "location_point",
+          "errors": [],
+          "faces": [
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 4.060895662032406,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -97.79499454047135,
+                "y": 288.6781947007283,
+                "z": -2.0196403535330045
+              },
+              "projected_point": {
+                "x": 199119.79943163597,
+                "y": 1234646.1617713377,
+                "z": 22976.246772137096
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.1494842180122795,
+              "element_id": 5669115,
+              "face_normal": {
+                "x": -22.07907013790835,
+                "y": -3.0996184359197465,
+                "z": 303.983465055909
+              },
+              "projected_point": {
+                "x": 199120.72935107778,
+                "y": 1234642.263301965,
+                "z": 22981.40936926502
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.223259821940513,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -21.51073393117886,
+                "y": -5.160345014421543,
+                "z": 303.9962157084759
+              },
+              "projected_point": {
+                "x": 199120.73374632365,
+                "y": 1234642.2272377047,
+                "z": 22981.48316573382
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.252050183780507,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -22.206711850628903,
+                "y": -3.104166667539613,
+                "z": 303.9741207703105
+              },
+              "projected_point": {
+                "x": 199120.71972200353,
+                "y": 1234642.2621805645,
+                "z": 22981.511499452074
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 6.717438613553373,
+              "element_id": 5903511,
+              "face_normal": {
+                "x": -23.63931869906113,
+                "y": -3.9882920416265244,
+                "z": 303.85574889745783
+              },
+              "projected_point": {
+                "x": 199120.58138569392,
+                "y": 1234642.2277715495,
+                "z": 22982.97030851946
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 199477.02490084077,
+            "y": 1234736.9066296013,
+            "z": 22985.957783796064
+          },
+          "anchor_from": "location_point",
+          "errors": [],
+          "faces": [
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 10.681090221239936,
+              "element_id": 8039254,
+              "face_normal": {
+                "x": 205.2018853408363,
+                "y": 54.4958617754621,
+                "z": 218.69025424539615
+              },
+              "projected_point": {
+                "x": 199469.83402206487,
+                "y": 1234734.9969340097,
+                "z": 22978.29423282459
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 86.45404945312254,
+              "element_id": 5669115,
+              "face_normal": {
+                "x": 288.34412869781374,
+                "y": 97.94068478787841,
+                "z": 12.974039801854717
+              },
+              "projected_point": {
+                "x": 199395.23842589997,
+                "y": 1234709.1265482162,
+                "z": 22982.277802566943
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 86.75644553792311,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": 288.3930378399042,
+                "y": 97.78953164032701,
+                "z": 13.027019115556364
+              },
+              "projected_point": {
+                "x": 199394.93843469615,
+                "y": 1234709.0724033022,
+                "z": 22982.249851137203
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 88.51970821870431,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": 294.41013924951056,
+                "y": 77.80224630426183,
+                "z": 13.134701256397056
+              },
+              "projected_point": {
+                "x": 199391.52260548974,
+                "y": 1234714.3113797929,
+                "z": 22982.143217120356
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 92.79099170607473,
+              "element_id": 5903511,
+              "face_normal": {
+                "x": 294.3625502853255,
+                "y": 77.66866099812812,
+                "z": 14.87642726857068
+              },
+              "projected_point": {
+                "x": 199387.41140687055,
+                "y": 1234713.2617737008,
+                "z": 22981.42891752542
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dimension_id": 8070490,
+      "reference_count": 3,
+      "references": [
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 198917.3834164656,
+            "y": 1234588.174754234,
+            "z": 21787.759432935505
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8070486,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 198917.2280959512,
+            "y": 1234588.1334758224,
+            "z": 21879.415677436147
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8190123,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 199121.10236887052,
+            "y": 1234642.3156688819,
+            "z": 22976.273680105434
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8069956,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 91.65624450064115,
+          "override": "VARIES"
+        },
+        {
+          "measured_mm": 1096.8580026692864,
+          "override": "1200\u200d"
+        }
+      ]
+    },
+    {
+      "anchor_separation_mm": 550.4716521524764,
+      "delta_vs_measured_mm": 323.7703168572949,
+      "dimension_id": 8070569,
+      "model_distance_between_nearest_faces_mm": 534.5608531910573,
+      "reference_count": 2,
+      "references": [
+        {
+          "anchor_from": "location_curve",
+          "anchor_point": {
+            "x": 198917.3834164656,
+            "y": 1234588.1747542338,
+            "z": 22467.75977703532
+          },
+          "class_name": "DetailLine",
+          "curve_end": {
+            "x": 198917.3834164656,
+            "y": 1234588.1747542338,
+            "z": 23147.75943293551
+          },
+          "curve_start": {
+            "x": 198917.3834164656,
+            "y": 1234588.1747542338,
+            "z": 21787.76012113513
+          },
+          "element_id": 8070519,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 199121.10236887052,
+            "y": 1234642.3156688819,
+            "z": 22976.273680105434
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8069956,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 210.79053633376233,
+          "override": null
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 198917.3834164656,
+            "y": 1234588.1747542338,
+            "z": 22467.75977703532
+          },
+          "anchor_from": "location_curve",
+          "errors": [],
+          "faces": [
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 82.5318843226713,
+              "element_id": 5903511,
+              "face_normal": {
+                "x": -292.5019918266251,
+                "y": -76.716496095333,
+                "z": 38.212615774266595
+              },
+              "projected_point": {
+                "x": 198996.58532116903,
+                "y": 1234608.9475789757,
+                "z": 22457.412798082743
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 84.96995242406632,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -292.27655129619023,
+                "y": -76.75929943760791,
+                "z": 39.81792953247509
+              },
+              "projected_point": {
+                "x": 198998.86217190625,
+                "y": 1234609.5731598155,
+                "z": 22456.659620939517
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 85.33229830967505,
+              "element_id": 5669115,
+              "face_normal": {
+                "x": -292.1918568340309,
+                "y": -77.01703963784541,
+                "z": 39.94163748901393
+              },
+              "projected_point": {
+                "x": 198999.18591873272,
+                "y": 1234609.7365685427,
+                "z": 22456.57765195268
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 119.45308123658738,
+              "element_id": 8039254,
+              "face_normal": {
+                "x": -290.27496633874586,
+                "y": -76.43388901527966,
+                "z": 52.927729282861286
+              },
+              "projected_point": {
+                "x": 199031.14404354896,
+                "y": 1234618.129687153,
+                "z": 22447.017059365724
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 204.7914481098343,
+              "element_id": 5984642,
+              "face_normal": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 304.8
+              },
+              "projected_point": {
+                "x": 198917.3834164656,
+                "y": 1234588.1747542338,
+                "z": 22262.968328925486
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 199121.10236887052,
+            "y": 1234642.3156688819,
+            "z": 22976.273680105434
+          },
+          "anchor_from": "location_point",
+          "errors": [],
+          "faces": [
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 4.060895662032406,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -97.79499454047135,
+                "y": 288.6781947007283,
+                "z": -2.0196403535330045
+              },
+              "projected_point": {
+                "x": 199119.79943163597,
+                "y": 1234646.1617713377,
+                "z": 22976.246772137096
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.1494842180122795,
+              "element_id": 5669115,
+              "face_normal": {
+                "x": -22.07907013790835,
+                "y": -3.0996184359197465,
+                "z": 303.983465055909
+              },
+              "projected_point": {
+                "x": 199120.72935107778,
+                "y": 1234642.263301965,
+                "z": 22981.40936926502
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.223259821940513,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -21.51073393117886,
+                "y": -5.160345014421543,
+                "z": 303.9962157084759
+              },
+              "projected_point": {
+                "x": 199120.73374632365,
+                "y": 1234642.2272377047,
+                "z": 22981.48316573382
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 5.252050183780507,
+              "element_id": 5227784,
+              "face_normal": {
+                "x": -22.206711850628903,
+                "y": -3.104166667539613,
+                "z": 303.9741207703105
+              },
+              "projected_point": {
+                "x": 199120.71972200353,
+                "y": 1234642.2621805645,
+                "z": 22981.511499452074
+              }
+            },
+            {
+              "category": "Roofs",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 6.717438613553373,
+              "element_id": 5903511,
+              "face_normal": {
+                "x": -23.63931869906113,
+                "y": -3.9882920416265244,
+                "z": 303.85574889745783
+              },
+              "projected_point": {
+                "x": 199120.58138569392,
+                "y": 1234642.2277715495,
+                "z": 22982.97030851946
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anchor_separation_mm": 1270285.2423551446,
+      "dimension_id": 8070716,
+      "reference_count": 2,
+      "references": [
+        {
+          "anchor_from": "filled_region_centroid",
+          "anchor_point": {
+            "x": 193016.8145406052,
+            "y": 1255348.9777249156,
+            "z": 21634.471911195076
+          },
+          "class_name": "FilledRegion",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8070011,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "class_name": "FamilyInstance",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 8039254,
+          "view_specific": false
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 579.8199489900762,
+          "override": null
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 193016.8145406052,
+            "y": 1255348.9777249156,
+            "z": 21634.471911195076
+          },
+          "anchor_from": "filled_region_centroid",
+          "errors": [],
+          "faces": []
+        },
+        {
+          "anchor": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "anchor_from": "location_point",
+          "errors": [],
+          "faces": []
+        }
+      ]
+    }
+  ],
+  "source": "every dimension in the active view"
+}
