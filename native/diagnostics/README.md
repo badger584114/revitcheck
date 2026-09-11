@@ -182,3 +182,44 @@ Same handling as the other diagnostics' output: real client coordinates,
 parameter values, and schedule data — treat it like a capture (PLANNING.md
 §2), send it back for review, then delete it and the scratch extension
 copy — don't commit it.
+
+## `InspectSectionCutGeometry.pushbutton`
+
+The probe behind `revitcheck.drawn_dimension_consistency` (PLANNING.md
+§27-§28). For the active section or elevation it dumps, per drafted
+dimension: what each reference resolves to and the anchor it offers
+(`anchor_from`), the distance between the two anchors, the model faces
+nearest each anchor with runners-up, and the model distance measured three
+ways - nearest face in 3D, nearest face **in the view plane**, and along a
+cut line lying in the view plane. It judges nothing.
+
+**How to run it:** same scratch-extension pattern as the others. Open a
+section or elevation carrying drafted dimensions; select some, or none to
+sweep the view. It writes `<document title>.inspect_section_cut_geometry.json`
+to the Desktop - **named per document, not per view, so a second view
+overwrites the first.** Rename each file straight after running it.
+
+**Read, in this order:**
+
+1. `anchor_separation_mm` against the dimension's own measured value. If
+   the two anchors are not already that far apart, nothing built on them
+   means anything. Point and curve anchors have matched to a median of
+   0.13mm; filled regions have never matched.
+2. `delta_in_plane_vs_measured_mm` - the number the built check rests on
+   (mean 1.44mm on six real elevation dimensions).
+3. `cut_plane.view_type`. On an Elevation the cut-line numbers are
+   meaningless by construction, since the plane sits outside the geometry;
+   on a Section `delta_cut_line_vs_measured_mm` should also mean something,
+   and that comparison has still never been made on real data.
+4. The runners-up in `witness_probes[].faces` - a second face nearly as
+   close as the first makes the pick a coin-flip.
+
+**Still worth running now the check exists**, because the check reports
+only dimensions *beyond* tolerance: this is the only source of
+per-dimension numbers for calibrating it. Its selection follows the
+check's (edge-on faces at sin 20°, nearest in the view plane) but is a
+separate implementation, so a disagreement between the two is a finding
+about one of them.
+
+Same handling as the other diagnostics' output. Earlier runs' JSON is in
+`samples/`.

@@ -112,7 +112,8 @@ public class RevitCheckApplication : IExternalApplication
         {
             ToolTip = "Open a view, run this, settle it, move on. Runs every dimension check that applies to " +
                       "the active view - drafted dimensions against the model geometry the view shows, spot " +
-                      "elevations, pile chain bearings - and reconciles them against that view's triage in one " +
+                      "elevations, pile dimensions against the real pile spacing, pile chain bearings - and " +
+                      "reconciles them against that view's triage in one " +
                       "pass. Says which dimension types the view actually contains, so you don't need to know " +
                       "which check applies before running it.",
         };

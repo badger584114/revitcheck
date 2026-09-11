@@ -224,6 +224,14 @@ uploaded the same day (`samples/T2DPAA-T2D-C3S-BR-M3D-100302.capture.json`,
 59 sheets/833 views/538 dimensions/0 extraction errors) - see PLANNING.md
 §14 for the counts and two override findings worth a second look.
 
+The positional checks are opt-in via `--rule` (see `--help`) and need a
+capture taken 2026-09-09 or later. **`revitcheck.drawn_dimension_consistency`
+is listed but cannot actually be replayed from a capture**: the
+witness-geometry search it depends on runs only inside the Check
+Dimensions button, never in Capture Model, so against any capture it
+reports that no search ran. Pile Model/Schedule cannot be replayed either
+(schedule rows - PLANNING.md §16).
+
 ## What's built
 
 ### Metadata reconciliation (Phases 0-6)
@@ -359,8 +367,11 @@ confirmed with the user 2026-08-24:
    assemblies if present; Revit supplies those itself. The manifest's
    `<Assembly>` path (`.\RevitCheck\RevitCheck.Addin.dll`) already points
    there.
-3. Launch Revit, confirm the "RevitCheck" tab/"Checks" panel appears with
-   both buttons showing their icons.
+3. Launch Revit and confirm the "RevitCheck" tab shows three panels -
+   Capture, Dimension Checking, Model Checks - with every button's icon.
+   (This step was written when there was one panel and two buttons;
+   CLAUDE.md's ribbon table is the current list.) A **Check Dimensions**
+   button is the quickest proof the deployed DLL is 2026-09-11 or later.
 
 ### First real runs found real bugs, all since fixed
 
@@ -1047,3 +1058,60 @@ real run in that path.
 **Renamed from "Abutment Elevation" the same day** - see PLANNING.md §18's final entries for the full reasoning: nothing about this check is actually abutment-specific, and the real organizing axis for this project's checking tools is dimension type plus how a dimension's provenance resolves, not element type or view type.
 
 **Two real, named-but-unbuilt follow-ups surfaced the same day**, from the same real abutment view this check was validated against: 3 ordinary linear dimensions dimensioning to `DetailLine`s that nothing currently investigates (a different verification mechanism - a measured distance between two witness points, not one point's Z against one face - and should be named generically, not by element type, from the start); and a per-view dimension-type breakdown in the checklist (e.g. "3 linear, 3 spot") so a reviewer knows which button to run.
+
+### Check Dimensions and the drafted-dimension check - built 2026-09-11, unrun (PLANNING.md §28)
+
+Both follow-ups above now exist. **`revitcheck.drawn_dimension_consistency`**
+checks a drafted linear dimension against the model geometry its view
+shows, and **Check Dimensions** (Dimension Checking panel, directly after
+Dimension Triage) runs the drafted-dimension, spot elevation, pile
+dimension and pile chain bearing checks against the active view in one
+pass (`Core/Checks/DimensionInvestigation.cs` decides which of them may
+count a dimension as investigated), opening its
+summary with the per-type breakdown ("27 pile tag-to-tag, 2 spot
+elevation, 5 unreachable").
+
+How the drafted-dimension check works - each step came from a real probe
+run:
+
+- **Anchor** on the referenced element's own geometry - `Location.Point`
+  for a detail component, the midpoint of `Location.Curve` for a detail
+  line (`ReferenceInfo.Anchor`). Never the dimension's own witness points,
+  which §14 showed are not obtainable.
+- **Candidates** come from the adapter: `RevitDimensionSource.WitnessPointsNear`
+  projects each anchor onto every face of the elements the view itself
+  shows, within `DrawnDimensionSearchRadiusMm` (1500mm, placeholder),
+  keeping up to `DrawnDimensionMaxCandidates` (24). The adapter judges
+  nothing.
+- **Selection** is in Core: only faces seen edge-on
+  (`DrawnDimensionEdgeOnToleranceSine`, sin 20°), nearest *in the view
+  plane*.
+- **Comparison** is in the view plane (`InPlaneGeometry`): the stated
+  value (a numeric override if there is one, else the measured value)
+  against the in-plane distance between the two chosen points. Beyond
+  `DrawnDimensionToleranceMm` (10mm, calibrated against seven real
+  dimensions) is a high-severity `geometry` finding naming both model
+  elements.
+- **Out of reach, reported as coverage**: filled-region anchors, both
+  references on one element, no edge-on face within the radius, a
+  non-numeric override, and a view with no recorded direction.
+
+Running it:
+
+- **Needs only the deployed build.** The witness search runs inside the
+  command, scoped to the active view - no capture is involved, and **no
+  capture can replay it** (Capture Model never runs the search).
+- **Standalone** (no checking session): prompts for a save location and
+  writes JSON/CSV/BCF - the only way to read the coverage notes in full.
+- **In a session** (after Dimension Triage): records into the checklist
+  and writes nothing; coverage notes show only as a count.
+- A dimension within tolerance produces no output at all, so for
+  per-dimension numbers run `diagnostics/InspectSectionCutGeometry.pushbutton`
+  on the same view.
+
+Known gaps at the time of writing - CLAUDE.md "Next" item 4 holds the
+current list: `DimensionResolution` still calls these dimensions
+"unreachable", and the standalone Pile Chain Bearing button still counts
+dimensions as investigated on chain topology alone, so pile views should
+be settled with Check Dimensions. The first real run is planned in
+`RUN_CHECKLIST.md`.

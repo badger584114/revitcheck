@@ -8,7 +8,6 @@ using RevitCheck.Addin.Adapters;
 using RevitCheck.Core.Checks;
 using RevitCheck.Core.Ir;
 using RevitCheck.Core.Issues;
-using RevitCheck.Core.Reporting;
 
 namespace RevitCheck.Addin.Commands;
 
@@ -43,11 +42,12 @@ namespace RevitCheck.Addin.Commands;
 /// search. Whole-document is neither possible nor wanted.
 /// </para>
 /// <para>
-/// All three checks' findings are dimension-ElementId-keyed except the
-/// chain-keyed ones from
-/// <see cref="PileChainBearingConsistencyCheck"/>, which are expanded
-/// per-dimension first (see <see cref="InvestigationReconciliation.ExpandByElementIdList"/>) -
-/// otherwise a flagged chain would reconcile its dimensions as clean.
+/// Which checks run, and which of them may count a dimension as
+/// investigated, lives in <see cref="DimensionInvestigation"/> in Core -
+/// moved there after this command, as first built, recorded Pile Chain
+/// Bearing's topology-only scope and never ran the pile dimension check
+/// (PLANNING.md §27's trap, reintroduced). A command cannot be tested;
+/// that decision now can.
 /// </para>
 /// </remarks>
 [Transaction(TransactionMode.ReadOnly)]
@@ -130,31 +130,18 @@ public class CheckDimensionsCommand : IExternalCommand
             ExtractionErrors = collected.ExtractionErrors,
         };
 
-        // Every check that can settle a dimension, run together. Each one
-        // reports its own coverage when nothing in the view is its shape,
-        // so running all three costs a note rather than a wrong answer.
-        var issues = new List<Issue>();
-        var investigated = new List<long>();
-
-        var drawn = DrawnDimensionConsistencyCheck.RunWithScope(model, config);
-        issues.AddRange(drawn.Issues);
-        investigated.AddRange(drawn.InvestigatedElementIds);
-
-        var spot = SpotElevationConsistencyCheck.RunWithScope(model, config);
-        issues.AddRange(spot.Issues);
-        investigated.AddRange(spot.InvestigatedElementIds);
-
         var viewInfo = collected.Views.FirstOrDefault(v => v.ElementId == activeView.Id.Value);
-        var bearing = PileChainBearingConsistencyCheck.RunWithScope(model, config);
-        // Chain-keyed findings carry a pile's ElementId, not a dimension's -
-        // expanded so the dimensions they cover actually reconcile.
-        issues.AddRange(InvestigationReconciliation
-            .ExpandByElementIdList(bearing.Issues, "dimension_element_ids")
-            .Select(i => PatchViewContext(i, activeView.Id.Value, activeView.Name, viewInfo?.SheetNo)));
-        investigated.AddRange(bearing.InvestigatedDimensionElementIds);
+
+        // Every check that can settle a dimension, run together - see
+        // DimensionInvestigation for which of them may count a dimension as
+        // investigated, and why Pile Chain Bearing is not one of them. Each
+        // reports its own coverage when nothing in the view is its shape, so
+        // running them all costs a note rather than a wrong answer.
+        var (issues, investigated) = DimensionInvestigation.Run(
+            model, config, activeView.Id.Value, activeView.Name, viewInfo?.SheetNo);
 
         var summary = BuildSummary(model, issues, activeView, viewInfo, doc, unresolvedCategories);
-        return Report(doc, activeView, viewInfo, issues, investigated.Distinct().ToList(), summary);
+        return Report(doc, activeView, viewInfo, issues, investigated, summary);
     }
 
     /// <summary>
@@ -260,24 +247,4 @@ public class CheckDimensionsCommand : IExternalCommand
             return new List<ElementMetadata>();
         }
     }
-
-    /// <summary>
-    /// A whole-model check has no view of its own, so its findings arrive
-    /// without view context - patched in from the view this command already
-    /// has in hand. Same step <see cref="PileChainBearingConsistencyCommand"/>
-    /// performs, and for the same reason.
-    /// </summary>
-    private static Issue PatchViewContext(Issue issue, long viewId, string viewName, string? sheetNo) => new()
-    {
-        RuleId = issue.RuleId,
-        Category = issue.Category,
-        Severity = issue.Severity,
-        ElementId = issue.ElementId,
-        UniqueId = issue.UniqueId,
-        ViewId = issue.ViewId ?? viewId,
-        ViewName = issue.ViewName ?? viewName,
-        SheetNo = issue.SheetNo ?? sheetNo,
-        Description = issue.Description,
-        SuggestedFix = issue.SuggestedFix,
-    };
 }
