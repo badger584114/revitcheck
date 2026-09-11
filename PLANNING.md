@@ -1494,3 +1494,30 @@ Implemented at `sin(20°)`, deliberately generous: a real civil profile's faces 
 **This is worth being blunt about.** "Reaching the geometry" was framed across four runs as the obstacle, and it was not: it was a document-wide sweep where a view-scoped one was called for, plus an unfiltered face set. Both were mine, both contradict rules already written down here, and the user identified both from the described symptoms without seeing the code.
 
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+## 28. The measurement belongs in the view plane, and that is the whole thing (2026-09-11)
+
+**Per the user, on being shown the cut-line probe finding nothing: "some of the elements will not be intersected as the views will be elevations not sections."** That is the answer, and it makes four runs of results legible at once.
+
+**An elevation's view plane sits outside the geometry.** Nothing straddles it, so a line lying in it crosses no solid and `Solid.IntersectWithCurve` was never going to return anything there — two of the three views probed so far (`DRG-2871116 - ELEVATION - BARRIER PPT234105`, `DRG-2871072 - ABUTMENT B CONCRETE ELEVATION`) are elevations, not sections.
+
+**And it exposes the real error, which was never about reaching the geometry at all: a drawing measures what it *sees*.** A section or elevation is a flat projection, so the quantity it dimensions is the separation in the view plane, not the true 3D distance between two points that sit at different depths. Every run so far compared points in 3D. For an elevation a depth difference is *guaranteed*, so measuring in 3D is guaranteed wrong — which is exactly why the earlier data showed the error tracking how far the two chosen points differed in depth.
+
+**Tested against the existing dumps, changing nothing but the measurement:**
+
+| Selection and measurement | Mean error |
+| --- | --- |
+| 3D nearest face, 3D distance (every run so far) | **21.09mm** |
+| In-plane nearest face, in-plane distance | **1.44mm** |
+
+Per dimension, on the six real elevation dimensions with trustworthy anchors: 93.06 → **0.22**, 21.35 → **0.01**, 18.05 → **0.01**, 5.21 → **0.00**, 2.77 → 2.65, 0.01 → 0.03. The one true *section* dimension in the set is 7.14 → 7.16, unchanged as expected — where geometry straddles the plane the two measures agree, and that is the case the cut-line intersection is still for.
+
+**A 1.44mm mean comfortably detects the 50mm defect the negative control plants.** For elevations, this check is now specified rather than speculative.
+
+Built into the probe: `in_plane()` and `in_plane_distance_mm()`, face candidates now **sorted and selected by in-plane distance** rather than 3D, `model_distance_in_plane_mm`/`delta_in_plane_vs_measured_mm` reported as the primary numbers, and `cut_plane.view_type` recorded so Elevation and Section are never conflated again.
+
+**What this run of corrections says about the process.** Four rounds were spent on reaching the geometry — a document-wide sweep where view-scoped was called for, an unreachable API overload, an unfiltered face set — and all three were real bugs worth fixing. But none of them was the reason the numbers were bad. The reason was comparing 3D distances for a 2D drawing, which no amount of better geometry access would have fixed, and which was visible in the very first dump as points sitting 50-400mm out of plane. **The user identified it from a property of the views, not from the code**, and it is the third time in this sequence that has happened.
+
+414 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+**Next run should confirm it on a real Section**, where both the in-plane number and the cut-line intersection have something to say, and on more elevation dimensions than six.

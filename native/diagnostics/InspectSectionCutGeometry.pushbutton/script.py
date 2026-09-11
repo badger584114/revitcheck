@@ -343,6 +343,35 @@ def solid_line_crossings(solid, curve, tally):
     return points
 
 
+def in_plane(xyz):
+    """A point with its along-the-view-direction component removed.
+
+    **The measurement a drawing actually makes**, and what four runs got
+    wrong by comparing points in 3D. A section or elevation is a flat
+    projection: what it dimensions is the separation *seen*, not the true
+    distance between two points that may sit at different depths.
+
+    Established 2026-09-11 from the user's own observation that the views
+    being probed were elevations rather than sections. On the six real
+    elevation dimensions with trustworthy anchors this takes the mean
+    error from 21.09mm to 1.44mm - individually 93.06 -> 0.22, 21.35 ->
+    0.01, 18.05 -> 0.01, 5.21 -> 0.00. For an elevation the geometry never
+    reaches the view plane at all, so depth difference is guaranteed and
+    measuring in 3D is guaranteed wrong.
+    """
+    direction = view.ViewDirection
+    depth = xyz.DotProduct(direction)
+    return XYZ(
+        xyz.X - depth * direction.X,
+        xyz.Y - depth * direction.Y,
+        xyz.Z - depth * direction.Z,
+    )
+
+
+def in_plane_distance_mm(a, b):
+    return distance_mm(in_plane(a), in_plane(b))
+
+
 def project_faces(anchor_xyz):
     """The nearest real model faces to a witness line's endpoint.
 
@@ -387,11 +416,15 @@ def project_faces(anchor_xyz):
                         "class_name": type(element).__name__,
                         "projected_point": point(projected),
                         "distance_from_witness_mm": distance_mm(anchor_xyz, projected),
+                        # What the drawing sees - the selection key, since
+                        # picking by 3D distance chooses faces at the wrong
+                        # depth (see in_plane).
+                        "in_plane_distance_from_witness_mm": in_plane_distance_mm(anchor_xyz, projected),
                         "face_normal": point(face.ComputeNormal(result.UVPoint)),
                     }
                 )
 
-    candidates.sort(key=lambda c: c["distance_from_witness_mm"])
+    candidates.sort(key=lambda c: c["in_plane_distance_from_witness_mm"])
     errors.append({"face_normals": face_tally})
     return candidates[:FACE_CANDIDATES], errors
 
@@ -506,6 +539,10 @@ if not isinstance(view, ViewSection):
 
 cut_plane = {
     "view_name": view.Name,
+    # Elevation or Section matters: an elevation's plane sits outside the
+    # geometry, so a cut line in it crosses nothing and only the in-plane
+    # projection can be compared. A section genuinely cuts, and both apply.
+    "view_type": str(view.ViewType),
     "view_id": eid(view.Id),
     "view_direction": point(view.ViewDirection),
     "right_direction": point(view.RightDirection),
@@ -694,6 +731,17 @@ for dimension in dimensions:
             if measured is not None:
                 entry["delta_vs_measured_mm"] = abs(model_distance - measured)
 
+            # THE number to read. A drawing measures what it sees, so the
+            # comparison belongs in the view plane - on real elevation
+            # dimensions this is the difference between 21mm of error and
+            # 1.4mm. See in_plane.
+            flat_a = XYZ(a["x"] / MM_PER_FOOT, a["y"] / MM_PER_FOOT, a["z"] / MM_PER_FOOT)
+            flat_b = XYZ(b["x"] / MM_PER_FOOT, b["y"] / MM_PER_FOOT, b["z"] / MM_PER_FOOT)
+            flat_distance = in_plane_distance_mm(flat_a, flat_b)
+            entry["model_distance_in_plane_mm"] = flat_distance
+            if measured is not None:
+                entry["delta_in_plane_vs_measured_mm"] = abs(flat_distance - measured)
+
     results.append(entry)
 
 path = os.path.join(
@@ -762,6 +810,16 @@ if normals:
             ", ".join("{0} {1}".format(v, k) for k, v in sorted(normals.items()))
         )
     )
+output.print_md("")
+output.print_md(
+    "**Read `delta_in_plane_vs_measured_mm` first** — a drawing measures what "
+    "it sees, so the comparison belongs in the view plane. On the six real "
+    "ELEVATION dimensions probed so far this takes the mean error from 21.09mm "
+    "to 1.44mm. `cut_plane.view_type` says whether this view is an Elevation "
+    "(its plane sits outside the geometry, so no cut line can cross anything) "
+    "or a Section (which genuinely cuts, and where the cut-line number should "
+    "also mean something)."
+)
 output.print_md("")
 output.print_md(
     "**Compare `delta_cut_line_vs_measured_mm` against `delta_vs_measured_mm`** "
