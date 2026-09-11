@@ -2,13 +2,13 @@
   "cut_plane": {
     "crop_box_active": true,
     "origin": {
-      "x": 444510.6122157648,
-      "y": 1715470.27216349,
-      "z": 18093.249785541713
+      "x": 426275.40134417417,
+      "y": 1732418.1387333071,
+      "z": 17353.715805000505
     },
     "right_direction": {
-      "x": 25.86440372071574,
-      "y": -303.7006299304824,
+      "x": 304.78473488601946,
+      "y": -3.050472169820502,
       "z": 0.0
     },
     "up_direction": {
@@ -17,1965 +17,811 @@
       "z": 304.8
     },
     "view_direction": {
-      "x": -303.7006299304824,
-      "y": -25.86440372071574,
+      "x": -3.050472169820502,
+      "y": -304.78473488601946,
       "z": 0.0
     },
-    "view_id": 5488353,
-    "view_name": "DRG-2871072 - ABUTMENT B CONCRETE ELEVATION"
+    "view_id": 6188316,
+    "view_name": "DRG-2871116 - ELEVATION - BARRIER PPT234105"
   },
   "dimensions": [
     {
-      "dimension_id": 5511823,
-      "reference_count": 1,
+      "anchor_separation_mm": 1366.5402007743203,
+      "delta_vs_measured_mm": 2.7712645379810965,
+      "dimension_id": 6375323,
+      "model_distance_between_nearest_faces_mm": 1366.666264537965,
+      "reference_count": 2,
       "references": [
         {
           "anchor_from": "location_curve",
           "anchor_point": {
-            "x": 444257.1589514197,
-            "y": 1726583.1291565918,
-            "z": 18929.15000000105
+            "x": 431170.2868629682,
+            "y": 1732369.1477231265,
+            "z": 19610.725187520566
           },
-          "class_name": "FamilyInstance",
+          "class_name": "DetailLine",
           "curve_end": {
-            "x": 443725.32886150805,
-            "y": 1732843.5528024512,
-            "z": 18866.00000000105
+            "x": 431170.2868629682,
+            "y": 1732369.1477231265,
+            "z": 18633.225187520566
           },
           "curve_start": {
-            "x": 444788.9890413314,
-            "y": 1720322.7055107327,
-            "z": 18992.30000000105
+            "x": 431170.2868629682,
+            "y": 1732369.1477231265,
+            "z": 20588.225187520566
           },
-          "element_id": 5506300,
+          "element_id": 6205236,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_curve",
+          "anchor_point": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 19695.710770458874
+          },
+          "class_name": "DetailLine",
+          "curve_end": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 18745.710770458874
+          },
+          "curve_start": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 20645.710770458874
+          },
+          "element_id": 6205360,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 1363.8949999999838,
+          "override": "\u200eL / 4"
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 431170.2868629682,
+            "y": 1732369.1477231265,
+            "z": 19610.725187520566
+          },
+          "anchor_from": "location_curve",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 4379,
+              "outcomes": {
+                "no_out_parameter": 4379,
+                "null_array": 4379
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 66.16846489566464,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": -3.185524183277689,
+                "y": -300.2360599384121,
+                "z": 52.45188984522848
+              },
+              "projected_point": {
+                "x": 431170.9784024862,
+                "y": 1732434.3254107656,
+                "z": 19599.338504344847
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 69.27050251997541,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
+              },
+              "projected_point": {
+                "x": 431171.1877513202,
+                "y": 1732437.3602583862,
+                "z": 19598.698510798316
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 112.3121320992567,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
+              },
+              "projected_point": {
+                "x": 431172.68964969215,
+                "y": 1732479.7397009756,
+                "z": 19591.29181241326
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.7710598975161,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 431176.2695656949,
+                "y": 1732968.8889436196,
+                "z": 19610.72518752056
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.8979207742469,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
+                "z": 0.0
+              },
+              "projected_point": {
+                "x": 431176.27083112736,
+                "y": 1732969.015798185,
+                "z": 19610.725187520566
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 19695.710770458874
+          },
+          "anchor_from": "location_curve",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 4413,
+              "outcomes": {
+                "no_out_parameter": 4413,
+                "null_array": 4413
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 79.73008440856862,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
+              },
+              "projected_point": {
+                "x": 432535.1504749,
+                "y": 1732434.01007898,
+                "z": 19681.868111385586
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 80.03236636906125,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": -3.178018133177607,
+                "y": -300.2002675371244,
+                "z": 52.65680935438601
+              },
+              "projected_point": {
+                "x": 432534.94801880454,
+                "y": 1732434.322309923,
+                "z": 19681.884494021622
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 111.280666462896,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
+              },
+              "projected_point": {
+                "x": 432536.49427556305,
+                "y": 1732465.0740208277,
+                "z": 19676.4558699139
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.8162527159507,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 432540.09670936415,
+                "y": 1732955.2841219192,
+                "z": 19695.710770458863
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.9431135971174,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
+                "z": 0.0
+              },
+              "projected_point": {
+                "x": 432540.0979747967,
+                "y": 1732955.4109764888,
+                "z": 19695.710770458874
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anchor_separation_mm": 1363.908340006571,
+      "delta_vs_measured_mm": 0.009472130923768418,
+      "dimension_id": 6375330,
+      "model_distance_between_nearest_faces_mm": 1363.9044721309076,
+      "reference_count": 2,
+      "references": [
+        {
+          "anchor_from": "location_curve",
+          "anchor_point": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 19695.710770458874
+          },
+          "class_name": "DetailLine",
+          "curve_end": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 18745.710770458874
+          },
+          "curve_start": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 20645.710770458874
+          },
+          "element_id": 6205360,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_curve",
+          "anchor_point": {
+            "x": 433897.940248712,
+            "y": 1732341.8476985851,
+            "z": 19701.743092940003
+          },
+          "class_name": "DetailLine",
+          "curve_end": {
+            "x": 433897.940248712,
+            "y": 1732341.8476985851,
+            "z": 18599.243092940003
+          },
+          "curve_start": {
+            "x": 433897.940248712,
+            "y": 1732341.8476985851,
+            "z": 20804.243092940003
+          },
+          "element_id": 6205363,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 1363.8949999999838,
+          "override": "\u200eL / 4"
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 432534.1135558401,
+            "y": 1732355.497710856,
+            "z": 19695.710770458874
+          },
+          "anchor_from": "location_curve",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 4413,
+              "outcomes": {
+                "no_out_parameter": 4413,
+                "null_array": 4413
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 79.73008440856862,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
+              },
+              "projected_point": {
+                "x": 432535.1504749,
+                "y": 1732434.01007898,
+                "z": 19681.868111385586
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 80.03236636906125,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": -3.178018133177607,
+                "y": -300.2002675371244,
+                "z": 52.65680935438601
+              },
+              "projected_point": {
+                "x": 432534.94801880454,
+                "y": 1732434.322309923,
+                "z": 19681.884494021622
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 111.280666462896,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
+              },
+              "projected_point": {
+                "x": 432536.49427556305,
+                "y": 1732465.0740208277,
+                "z": 19676.4558699139
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.8162527159507,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 432540.09670936415,
+                "y": 1732955.2841219192,
+                "z": 19695.710770458863
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.9431135971174,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
+                "z": 0.0
+              },
+              "projected_point": {
+                "x": 432540.0979747967,
+                "y": 1732955.4109764888,
+                "z": 19695.710770458874
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 433897.940248712,
+            "y": 1732341.8476985851,
+            "z": 19701.743092940003
+          },
+          "anchor_from": "location_curve",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 5199,
+              "outcomes": {
+                "no_out_parameter": 5199,
+                "null_array": 5199
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 76.48187863686402,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
+              },
+              "projected_point": {
+                "x": 433898.93492366164,
+                "y": 1732417.1614707315,
+                "z": 19688.46438416767
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 80.28959820879166,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": -3.182243023323375,
+                "y": -300.1711183999909,
+                "z": 52.82246688521048
+              },
+              "projected_point": {
+                "x": 433898.77850663115,
+                "y": 1732420.9179692224,
+                "z": 19687.82874043801
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.8614455349397,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 433903.9238530334,
+                "y": 1732941.679300219,
+                "z": 19701.743092939992
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.9883064202644,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
+                "z": 0.0
+              },
+              "projected_point": {
+                "x": 433903.92511846597,
+                "y": 1732941.806154793,
+                "z": 19701.743092940003
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 600.9426250493698,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": 3.0508861971889694,
+                "y": 304.78473074189895,
+                "z": 1.752415709288871e-12
+              },
+              "projected_point": {
+                "x": 433903.95536537893,
+                "y": 1732942.7602188182,
+                "z": 19701.743092940007
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "boundary_candidates": [],
+      "dimension_id": 6936438,
+      "reference_count": 2,
+      "references": [
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 432830.66373135016,
+            "y": 1732403.4762823558,
+            "z": 1.0477914136295439e-09
+          },
+          "class_name": "FamilyInstance",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6778054,
+          "view_specific": false
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 432830.66373135016,
+            "y": 1732403.4762823558,
+            "z": 1.0477914136295439e-09
+          },
+          "class_name": "FamilyInstance",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6778054,
           "view_specific": false
         }
       ],
+      "same_element_both_ends": 6778054,
       "segments": [
         {
-          "measured_mm": null,
-          "override": null
+          "measured_mm": 4526.077769465251,
+          "override": "DIM 'L'"
         }
-      ]
+      ],
+      "unhandled_shape": "both references resolve to one element - measures between two features of it, and nothing here can say which two"
     },
     {
-      "anchor_separation_mm": 280.0358019986518,
-      "delta_vs_measured_mm": 4.660008374995641,
-      "dimension_id": 6186271,
-      "model_distance_between_nearest_faces_mm": 280.03579594304534,
+      "anchor_separation_mm": 1.3568570752008557,
+      "delta_vs_measured_mm": 1198.6431429247968,
+      "dimension_id": 6979916,
+      "model_distance_between_nearest_faces_mm": 1.356857075203152,
       "reference_count": 2,
       "references": [
         {
           "anchor_from": "filled_region_boundary",
           "anchor_point": {
-            "x": 444603.43901458196,
-            "y": 1714380.2970154223,
-            "z": 17851.725389216313
+            "x": 435259.3270303204,
+            "y": 1732328.2221064407,
+            "z": 20733.726440731523
           },
-          "boundary_candidate_count": 24,
+          "boundary_candidate_count": 4,
           "class_name": "FilledRegion",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 5492529,
+          "element_id": 6376172,
           "view_specific": true
         },
         {
           "anchor_from": "location_point",
           "anchor_point": {
-            "x": 444626.8065688625,
-            "y": 1714105.9144689916,
-            "z": 17902.59999999895
+            "x": 435259.3270303206,
+            "y": 1732328.2221064607,
+            "z": 20732.36958365632
           },
           "class_name": "AnnotationSymbol",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 6186267,
+          "element_id": 6979919,
           "view_specific": true
         }
       ],
       "segments": [
         {
-          "measured_mm": 275.3757875680497,
-          "override": ""
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 444603.43901458196,
-            "y": 1714380.2970154223,
-            "z": 17851.725389216313
-          },
-          "anchor_from": "filled_region_boundary",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 137.88669627054867,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.7060928963563,
-                "y": -25.80017708524112,
-                "z": 1.5075474722736627e-12
-              },
-              "projected_point": {
-                "x": 444740.83084459085,
-                "y": 1714391.9686072248,
-                "z": 17851.725389216313
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 257.5585532386141,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 304.73041860713255,
-                "y": -6.512447736586843,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 444345.9392582032,
-                "y": 1714385.800088313,
-                "z": 17851.725389216313
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 516.2973630565191,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444088.81828484463,
-                "y": 1714338.7221236753,
-                "z": 17851.725389216313
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 571.5662091718825,
-              "element_id": 5507699,
-              "face_normal": {
-                "x": -238.4317509523078,
-                "y": 189.87717118657704,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445050.55034016597,
-                "y": 1714024.2360740067,
-                "z": 17851.725389216313
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 571.5662104782153,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -238.43175056443727,
-                "y": 189.87717167363203,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445050.55034046056,
-                "y": 1714024.2360722797,
-                "z": 17851.725389216313
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 444626.8065688625,
-            "y": 1714105.9144689916,
-            "z": 17902.59999999895
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 137.82846029918076,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.7060928963563,
-                "y": -25.80017708524112,
-                "z": 1.5075474722736627e-12
-              },
-              "projected_point": {
-                "x": 444764.1403719051,
-                "y": 1714117.581131338,
-                "z": 17902.59999999895
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 137.82846072374153,
-              "element_id": 5329368,
-              "face_normal": {
-                "x": -303.7060928963561,
-                "y": -25.80017708524421,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 444764.14037232817,
-                "y": 1714117.5811313738,
-                "z": 17902.59999999895
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 286.78331239609156,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 304.73041860713255,
-                "y": -6.512447736586843,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 444340.0887249124,
-                "y": 1714112.0419668057,
-                "z": 17902.59999999895
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 408.34151127741046,
-              "element_id": 5507699,
-              "face_normal": {
-                "x": -279.021352697087,
-                "y": 122.67894986136693,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445000.6123458934,
-                "y": 1713941.5610969828,
-                "z": 17902.59999999895
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 408.34151204654927,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -279.02135235205515,
-                "y": 122.67895064610825,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445000.61234613525,
-                "y": 1713941.561095622,
-                "z": 17902.59999999895
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 0.0,
-      "delta_vs_measured_mm": 2500.163800834171,
-      "dimension_id": 6186278,
-      "model_distance_between_nearest_faces_mm": 0.0,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "filled_region_boundary",
-          "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 5492529,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "filled_region_boundary",
-          "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 5492529,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 2500.163800834171,
+          "measured_mm": 1200.0,
           "override": null
         }
       ],
       "witness_probes": [
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 435259.3270303204,
+            "y": 1732328.2221064407,
+            "z": 20733.726440731523
           },
           "anchor_from": "filled_region_boundary",
           "cut_line_hits": [],
-          "errors": [],
-          "faces": [
+          "errors": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
-              "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
               }
             }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "anchor_from": "filled_region_boundary",
-          "cut_line_hits": [],
-          "errors": [],
+          ],
           "faces": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 403.72311788293564,
+              "element_id": 7517328,
               "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
+                "x": -49.69684410038038,
+                "y": -300.7212391675429,
+                "z": -1.5289977713660263e-13
               },
               "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
+                "x": 435325.1530304816,
+                "y": 1732726.5426979444,
+                "z": 20733.726440731523
               }
             },
             {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 427.0759623467515,
+              "element_id": 7517328,
               "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
+                "x": -111.01247591399643,
+                "y": -283.8648801656245,
+                "z": -3.5426061713943603e-13
               },
               "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
+                "x": 435414.874143127,
+                "y": 1732725.964451825,
+                "z": 20733.726440731523
               }
             },
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 489.5988772096235,
+              "element_id": 7517328,
               "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
+                "x": -69.53126135743958,
+                "y": -296.76327888410225,
+                "z": -2.1798710715177087e-13
               },
               "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
-              "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 140.54830139390037,
-      "delta_vs_measured_mm": 40.15694285752126,
-      "dimension_id": 6186311,
-      "model_distance_between_nearest_faces_mm": 140.15694285752235,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444374.3324087668,
-            "y": 1717070.4738800658,
-            "z": 17825.314153160838
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6186305,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444382.7130063657,
-            "y": 1716972.068643373,
-            "z": 17925.314153160838
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6186307,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 100.0000000000011,
-          "override": null
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 444374.3324087668,
-            "y": 1717070.4738800658,
-            "z": 17825.314153160838
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 28.97487238105836,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 304.73041860713255,
-                "y": -6.512447736586843,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 444403.3006666072,
-                "y": 1717069.854794298,
-                "z": 17825.314153160838
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 138.45766940195307,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.7060928963563,
-                "y": -25.80017708524112,
-                "z": 1.5075474722736627e-12
-              },
-              "projected_point": {
-                "x": 444512.2931627222,
-                "y": 1717082.1938026033,
-                "z": 17825.314153160838
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 138.45766982649036,
-              "element_id": 5329368,
-              "face_normal": {
-                "x": -303.7060928963561,
-                "y": -25.80017708524421,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 444512.2931631452,
-                "y": 1717082.193802639,
-                "z": 17825.314153160838
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 444.43130745152,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": -0.054588463782911545,
-                "y": -2.5543030965302234,
-                "z": 304.7892920622224
-              },
-              "projected_point": {
-                "x": 444374.252812893,
-                "y": 1717066.749430378,
-                "z": 18269.729847283004
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 504.5614969104629,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 443871.4094339133,
-                "y": 1717029.8440199993,
-                "z": 17825.314153160838
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 444382.7130063657,
-            "y": 1716972.068643373,
-            "z": 17925.314153160838
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 18.49363230407402,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 304.73041860713255,
-                "y": -6.512447736586843,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 444401.2024168433,
-                "y": 1716971.6735029076,
-                "z": 17925.314153160838
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 138.43678350924083,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.7060928963563,
-                "y": -25.80017708524112,
-                "z": 1.5075474722736627e-12
-              },
-              "projected_point": {
-                "x": 444520.65294938645,
-                "y": 1716983.7867979978,
-                "z": 17925.314153160838
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 138.43678393377817,
-              "element_id": 5329368,
-              "face_normal": {
-                "x": -303.7060928963561,
-                "y": -25.80017708524421,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 444520.6529498095,
-                "y": 1716983.7867980336,
-                "z": 17925.314153160838
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 343.61166006610813,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": -0.054588463782911545,
-                "y": -2.5543030965302234,
-                "z": 304.7892920622224
-              },
-              "projected_point": {
-                "x": 444382.6514668885,
-                "y": 1716969.1890884934,
-                "z": 18268.913741795597
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 504.9907886423289,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 443879.36213387,
-                "y": 1716931.4042145507,
-                "z": 17925.314153160838
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 820.0000000001735,
-      "delta_vs_measured_mm": 481.7405019069894,
-      "dimension_id": 6210125,
-      "model_distance_between_nearest_faces_mm": 1301.7405019071748,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444959.1477053592,
-            "y": 1710203.5545462323,
-            "z": 16351.023199307083
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210123,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 445028.73041878105,
-            "y": 1709386.5121691227,
-            "z": 16351.023199307081
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210076,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 820.0000000001854,
-          "override": null
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 444959.1477053592,
-            "y": 1710203.5545462323,
-            "z": 16351.023199307083
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 450.1859287770123,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 303.8513301329429,
-                "y": 24.02933990856513,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444510.36295054946,
-                "y": 1710168.0635006134,
-                "z": 16351.023199307083
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 534.5183548398945,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444426.3651550142,
-                "y": 1710160.5124074777,
-                "z": 16351.023199307083
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 984.5183548398875,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": -303.8101870118493,
-                "y": -24.544047502911667,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 443977.8264930872,
-                "y": 1710124.2761168731,
-                "z": 16351.023199307083
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1006.3241345516371,
-              "element_id": 5507770,
-              "face_normal": {
-                "x": -173.4308864139385,
-                "y": 250.64869366840028,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445531.745102587,
-                "y": 1709376.0157347745,
-                "z": 16351.023199307083
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 1006.3241365631312,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -173.43088612292988,
-                "y": 250.64869386975727,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445531.7451027708,
-                "y": 1709376.0157324555,
-                "z": 16351.023199307083
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 445028.73041878105,
-            "y": 1709386.5121691227,
-            "z": 16351.023199307081
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 409.15163705696233,
-              "element_id": 5507770,
-              "face_normal": {
-                "x": -278.4607564536672,
-                "y": 123.94614602823046,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445402.52528216405,
-                "y": 1709220.1316948629,
-                "z": 16351.023199307081
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 409.1516379415943,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -278.46075607181996,
-                "y": 123.9461468860987,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445402.5252824596,
-                "y": 1709220.1316933515,
-                "z": 16351.023199307081
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 455.13937703231954,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 303.8513301329429,
-                "y": 24.02933990856513,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444575.0076329965,
-                "y": 1709350.6306113913,
-                "z": 16351.023199307081
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 538.0826929691349,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444492.39510520233,
-                "y": 1709343.1830117188,
-                "z": 16351.023199307081
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 988.0826929691502,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": -303.8101870118493,
-                "y": -24.544047502911667,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 444043.8564432754,
-                "y": 1709306.9467211138,
-                "z": 16351.023199307081
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 1430.0349646075097,
-      "delta_vs_measured_mm": 115.66107316398848,
-      "dimension_id": 6210132,
-      "model_distance_between_nearest_faces_mm": 1545.6610731639882,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444949.60129650484,
-            "y": 1710315.6487747992,
-            "z": 16463.523199307085
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210122,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444950.44986618066,
-            "y": 1710305.684843371,
-            "z": 17893.523199307085
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210089,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 1429.9999999999998,
-          "override": null
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 444949.60129650484,
-            "y": 1710315.6487747992,
-            "z": 16463.523199307085
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 449.50633983874854,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 303.8513301329429,
-                "y": 24.02933990856513,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444501.4940154576,
-                "y": 1710280.2113055373,
-                "z": 16463.523199307085
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 534.0293450347388,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444417.3061679457,
-                "y": 1710272.6460136035,
-                "z": 16463.523199307085
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 984.0293450347316,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": -303.8101870118493,
-                "y": -24.544047502911667,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 443968.76750601875,
-                "y": 1710236.4097229987,
-                "z": 16463.523199307085
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1104.9926391194779,
-              "element_id": 5507770,
-              "face_normal": {
-                "x": -163.83460842300855,
-                "y": 257.02385313989726,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445543.5515469656,
-                "y": 1709383.8591888486,
-                "z": 16463.523199307085
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 1104.9926411902502,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -163.83460815789354,
-                "y": 257.02385330888933,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445543.5515471176,
-                "y": 1709383.8591864898,
-                "z": 16463.523199307085
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 444950.44986618066,
-            "y": 1710305.684843371,
-            "z": 17893.523199307085
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 137.02188544676636,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.7060928963563,
-                "y": -25.80017708524112,
-                "z": 1.5075474722736627e-12
-              },
-              "projected_point": {
-                "x": 445086.97998911486,
-                "y": 1710317.2832321804,
-                "z": 17893.523199307085
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 137.02188587146526,
-              "element_id": 5329368,
-              "face_normal": {
-                "x": -303.7060928963561,
-                "y": -25.80017708524421,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445086.979989538,
-                "y": 1710317.2832322163,
-                "z": 17893.523199307085
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 449.5667477442884,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 303.8513301329429,
-                "y": 24.02933990856513,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444502.28236524353,
-                "y": 1710270.2426117663,
-                "z": 17893.523199307085
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 534.0728125728306,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444418.1114112407,
-                "y": 1710262.678581948,
-                "z": 17893.523199307085
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 984.0728125728234,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": -303.8101870118493,
-                "y": -24.544047502911667,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 443969.5727493138,
-                "y": 1710226.4422913431,
-                "z": 17893.523199307085
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 817.9999999999493,
-      "delta_vs_measured_mm": 616.599369525807,
-      "dimension_id": 6210167,
-      "model_distance_between_nearest_faces_mm": 201.40063047412468,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444691.0009080585,
-            "y": 1713352.1425490058,
-            "z": 15518.649797731656
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210149,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444760.4139075453,
-            "y": 1712537.0929581819,
-            "z": 15518.649797731656
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210141,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 817.9999999999317,
-          "override": "\u200e820"
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 444691.0009080585,
-            "y": 1713352.1425490058,
-            "z": 15518.649797731656
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 411.47413154813546,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -253.03130195278322,
-                "y": -169.93587093983248,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445032.58829396905,
-                "y": 1713581.5527029224,
-                "z": 15518.649797731656
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 411.47413299677305,
-              "element_id": 5507699,
-              "face_normal": {
-                "x": -253.03130155748997,
-                "y": -169.93587152841684,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445032.588294638,
-                "y": 1713581.5527045247,
-                "z": 15518.649797731656
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 2061.0555069455822,
-              "element_id": 5589931,
-              "face_normal": {
-                "x": 202.0678048710039,
-                "y": 15.003886274748945,
-                "z": -227.69832153810077
-              },
-              "projected_point": {
-                "x": 443324.6197991156,
-                "y": 1713250.6863730473,
-                "z": 17058.34428437327
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 2261.055506945603,
-              "element_id": 5589931,
-              "face_normal": {
-                "x": -202.0678048710054,
-                "y": -15.003886274749075,
-                "z": 227.69832153809938
-              },
-              "projected_point": {
-                "x": 443192.0293759719,
-                "y": 1713240.841303313,
-                "z": 17207.752631839227
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 2347.227869594759,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": -203.19541607610535,
-                "y": -13.014700952924663,
-                "z": 226.81552073163857
-              },
-              "projected_point": {
-                "x": 443126.21762857115,
-                "y": 1713251.9179138641,
-                "z": 17265.328641294494
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 444760.4139075453,
-            "y": 1712537.0929581819,
-            "z": 15518.649797731656
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 1007.6787005709042,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -128.62387418045006,
-                "y": -276.331212480262,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445185.6486135708,
-                "y": 1713450.652922484,
-                "z": 15518.649797731656
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1007.6787027570296,
-              "element_id": 5507699,
-              "face_normal": {
-                "x": -128.62387401733855,
-                "y": -276.3312125561856,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445185.6486139541,
-                "y": 1713450.652924717,
-                "z": 15518.649797731656
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 2066.9519015217534,
-              "element_id": 5589931,
-              "face_normal": {
-                "x": 202.0678048710039,
-                "y": 15.003886274748945,
-                "z": -227.69832153810077
-              },
-              "projected_point": {
-                "x": 443390.1237713431,
-                "y": 1712435.3465301443,
-                "z": 17062.74913722144
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 2266.95190152176,
-              "element_id": 5589931,
-              "face_normal": {
-                "x": -202.0678048710054,
-                "y": -15.003886274749075,
-                "z": 227.69832153809938
-              },
-              "projected_point": {
-                "x": 443257.5333481994,
-                "y": 1712425.5014604104,
-                "z": 17212.157484687395
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 2355.931864171245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": -202.64645474942535,
-                "y": -10.01919417324622,
-                "z": 227.45784252385744
-              },
-              "projected_point": {
-                "x": 443194.0712569367,
-                "y": 1712459.6502455636,
-                "z": 17276.770463603054
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 1950.0000000000007,
-      "delta_vs_measured_mm": 407.027845979572,
-      "dimension_id": 6210174,
-      "model_distance_between_nearest_faces_mm": 2357.0278459795727,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444794.9082648692,
-            "y": 1712132.0591456268,
-            "z": 15925.149797731654
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210139,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444794.9082648692,
-            "y": 1712132.0591456268,
-            "z": 17875.149797731654
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6210160,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 1950.0000000000007,
-          "override": null
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 444794.9082648692,
-            "y": 1712132.0591456268,
-            "z": 15925.149797731654
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 1372.065125056104,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -95.77869119019267,
-                "y": -289.36047123595455,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445226.0585335883,
-                "y": 1713434.6228305108,
-                "z": 15925.149797731654
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1372.065127322213,
-              "element_id": 5507699,
-              "face_normal": {
-                "x": -95.77869109782864,
-                "y": -289.3604712665272,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445226.0585338846,
-                "y": 1713434.6228327998,
-                "z": 15925.149797731654
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1766.2096118190645,
-              "element_id": 5589931,
-              "face_normal": {
-                "x": 202.0678048710039,
-                "y": 15.003886274748945,
-                "z": -227.69832153810077
-              },
-              "projected_point": {
-                "x": 443623.99586591136,
-                "y": 1712045.11686166,
-                "z": 17244.582094633435
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1966.2096118190868,
-              "element_id": 5589931,
-              "face_normal": {
-                "x": -202.0678048710054,
-                "y": -15.003886274749075,
-                "z": 227.69832153809938
-              },
-              "projected_point": {
-                "x": 443491.40544276766,
-                "y": 1712035.271791926,
-                "z": 17393.990442099395
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 2833.359904743798,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -90.27180836547385,
-                "y": 291.12547228716886,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445634.056960248,
-                "y": 1709425.8149185006,
-                "z": 15925.149797731654
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 444794.9082648692,
-            "y": 1712132.0591456268,
-            "z": 17875.149797731654
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 137.40952191341793,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.7060928963563,
-                "y": -25.80017708524112,
-                "z": 1.5075474722736627e-12
-              },
-              "projected_point": {
-                "x": 444931.8246330683,
-                "y": 1712143.6903464096,
-                "z": 17875.149797731654
-              }
-            },
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 137.4095223380243,
-              "element_id": 5329368,
-              "face_normal": {
-                "x": -303.7060928963561,
-                "y": -25.80017708524421,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 444931.82463349134,
-                "y": 1712143.6903464454,
-                "z": 17875.149797731654
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 438.4940655253162,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 303.8513301329429,
-                "y": 24.02933990856513,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444357.778983159,
-                "y": 1712097.489844615,
-                "z": 17875.149797731654
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 526.1052753356807,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 444270.511473243,
-                "y": 1712089.6944708587,
-                "z": 17875.149797731654
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 976.1052753356737,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": -303.8101870118493,
-                "y": -24.544047502911667,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 443821.9728113161,
-                "y": 1712053.4581802539,
-                "z": 17875.149797731654
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "dimension_id": 6344824,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 444351.0266876438,
-            "y": 1717344.1303796503,
-            "z": 17872.89589822162
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6344817,
-          "view_specific": true
-        },
-        {
-          "anchor_from": null,
-          "anchor_point": null,
-          "class_name": "DetailArc",
-          "element_id": 6209759,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 642.8002360142085,
-          "override": "\u200e645"
-        }
-      ]
-    },
-    {
-      "dimension_id": 6344888,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": null,
-          "anchor_point": null,
-          "class_name": "DetailArc",
-          "element_id": 6209753,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 445587.0892655078,
-            "y": 1702830.2452893897,
-            "z": 16351.02319930706
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6344866,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 901.8626600281495,
-          "override": "\u200e900"
-        }
-      ]
-    },
-    {
-      "dimension_id": 6344923,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 445651.0301461655,
-            "y": 1702079.4494874154,
-            "z": 17876.700000000004
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6344875,
-          "view_specific": true
-        },
-        {
-          "anchor_from": null,
-          "anchor_point": null,
-          "class_name": "DetailArc",
-          "element_id": 6209712,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 221.59597347216916,
-          "override": "\u200e220"
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 2422.2168922612464,
-      "delta_vs_measured_mm": 1188.3568352057794,
-      "dimension_id": 6772254,
-      "model_distance_between_nearest_faces_mm": 2387.4830050543887,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "filled_region_boundary",
-          "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 5492529,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_curve",
-          "anchor_point": {
-            "x": 446179.12534464,
-            "y": 1703958.753283722,
-            "z": 19037.01650000105
-          },
-          "class_name": "FamilyInstance",
-          "curve_end": {
-            "x": 445674.0000075541,
-            "y": 1709904.8226476058,
-            "z": 19096.950000001052
-          },
-          "curve_start": {
-            "x": 446684.250681726,
-            "y": 1698012.6839198384,
-            "z": 18977.083000001046
-          },
-          "element_id": 5328892,
-          "view_specific": false
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 1199.1261698486094,
-          "override": "1200 TYP"
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "anchor_from": "filled_region_boundary",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
-              "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 446179.12534464,
-            "y": 1703958.753283722,
-            "z": 19037.01650000105
-          },
-          "anchor_from": "location_curve",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "Structural Framing",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 2.1657342585967854e-12,
-              "element_id": 5328892,
-              "face_normal": {
-                "x": 0.25910691045760814,
-                "y": -3.050070050181134,
-                "z": 304.78462877300416
-              },
-              "projected_point": {
-                "x": 446179.12534464,
-                "y": 1703958.753283722,
-                "z": 19037.01650000105
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 0.5000663477881272,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": 0.25694456997550963,
-                "y": -3.024616117182964,
-                "z": 304.7848842656598
-              },
-              "projected_point": {
-                "x": 446179.12576619297,
-                "y": 1703958.7483214233,
-                "z": 19037.516541549394
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 1.0979511386885539,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": 0.6539165418997095,
-                "y": 3.1044485988449653,
-                "z": -304.7834883848752
-              },
-              "projected_point": {
-                "x": 446179.1277001794,
-                "y": 1703958.7644665728,
-                "z": 19035.918608340533
+                "x": 435371.01478455786,
+                "y": 1732804.9116344547,
+                "z": 20733.726440731523
               }
             },
             {
               "category": "Floors",
               "class_name": "Floor",
-              "distance_from_witness_mm": 1.6410454981674687,
-              "element_id": 5315651,
+              "distance_from_witness_mm": 585.0335713195365,
+              "element_id": 7516667,
               "face_normal": {
-                "x": 0.6515659157006013,
-                "y": 3.13210898853673,
-                "z": -304.78321042200054
+                "x": 3.0504721698477315,
+                "y": 304.7847348860192,
+                "z": -0.0
               },
               "projected_point": {
-                "x": 446179.1288526758,
-                "y": 1703958.7701470207,
-                "z": 19035.375544898096
+                "x": 435265.18211112,
+                "y": 1732913.2263778779,
+                "z": 20733.726440731523
+              }
+            },
+            {
+              "category": "Conduits",
+              "class_name": "Conduit",
+              "distance_from_witness_mm": 1742.7008578464513,
+              "element_id": 7472450,
+              "face_normal": {
+                "x": -0.20050459839498344,
+                "y": 95.15117863453523,
+                "z": 289.56735486301767
+              },
+              "projected_point": {
+                "x": 435260.473419873,
+                "y": 1731784.1931017442,
+                "z": 19078.118574182594
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 435259.3270303206,
+            "y": 1732328.2221064607,
+            "z": 20732.36958365632
+          },
+          "anchor_from": "location_point",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 403.7231178632095,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -49.696844102618364,
+                "y": -300.721239167173,
+                "z": -1.5289977714394414e-13
+              },
+              "projected_point": {
+                "x": 435325.1530304816,
+                "y": 1732726.5426979444,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 427.0759623280621,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -111.01247591863448,
+                "y": -283.8648801638107,
+                "z": -3.5426061715468505e-13
+              },
+              "projected_point": {
+                "x": 435414.87414312694,
+                "y": 1732725.964451825,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 489.59887719039705,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -69.5312613600448,
+                "y": -296.7632788834918,
+                "z": -2.1798710716032293e-13
+              },
+              "projected_point": {
+                "x": 435371.0147845578,
+                "y": 1732804.911634455,
+                "z": 20732.36958365632
               }
             },
             {
               "category": "Floors",
               "class_name": "Floor",
-              "distance_from_witness_mm": 37.23410918375632,
-              "element_id": 5274793,
+              "distance_from_witness_mm": 585.033571299576,
+              "element_id": 7516667,
               "face_normal": {
-                "x": 0.14817183749370152,
-                "y": 9.182915329895271,
-                "z": -304.6616026202688
+                "x": 3.0504721698477315,
+                "y": 304.7847348860192,
+                "z": -0.0
               },
               "projected_point": {
-                "x": 446179.14344518585,
-                "y": 1703959.8750608615,
-                "z": 18999.799297323687
+                "x": 435265.18211112,
+                "y": 1732913.2263778779,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Conduits",
+              "class_name": "Conduit",
+              "distance_from_witness_mm": 1741.4118611236793,
+              "element_id": 7472450,
+              "face_normal": {
+                "x": -0.19972731763835494,
+                "y": 95.2198592174271,
+                "z": 289.54477809073325
+              },
+              "projected_point": {
+                "x": 435260.4681311078,
+                "y": 1731784.2031029968,
+                "z": 19078.115282824212
               }
             }
           ]
@@ -1983,228 +829,242 @@
       ]
     },
     {
-      "anchor_separation_mm": 0.0,
-      "delta_vs_measured_mm": 900.1815791671236,
-      "dimension_id": 6935619,
-      "model_distance_between_nearest_faces_mm": 0.0,
+      "anchor_separation_mm": 335.21661878554875,
+      "delta_vs_measured_mm": 93.06326002751013,
+      "dimension_id": 7162277,
+      "model_distance_between_nearest_faces_mm": 428.0632600275338,
       "reference_count": 2,
       "references": [
         {
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 434924.3438079229,
+            "y": 1732331.5748235765,
+            "z": 20720.320454642228
           },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
+          "class_name": "AnnotationSymbol",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 5492529,
+          "element_id": 7162264,
           "view_specific": true
         },
         {
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 435259.3270303206,
+            "y": 1732328.2221064607,
+            "z": 20732.36958365632
           },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
+          "class_name": "AnnotationSymbol",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 5492529,
+          "element_id": 6979919,
           "view_specific": true
         }
       ],
       "segments": [
         {
-          "measured_mm": 900.1815791671236,
+          "measured_mm": 335.00000000002365,
           "override": null
         }
       ],
       "witness_probes": [
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 434924.3438079229,
+            "y": 1732331.5748235765,
+            "z": 20720.320454642228
           },
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
+              }
+            }
+          ],
           "faces": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
+              "category": "Structural Framing",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
+              "distance_from_witness_mm": 250.09350329773306,
+              "element_id": 6001716,
               "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
               },
               "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
+                "x": 434927.5963658781,
+                "y": 1732577.8486528592,
+                "z": 20676.899465836403
               }
             },
             {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 256.55785541546413,
+              "element_id": 6778054,
               "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
+                "x": -3.200552831398666,
+                "y": -300.15240371544826,
+                "z": 52.9276015459985
               },
               "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+                "x": 434927.03779404674,
+                "y": 1732584.2206798594,
+                "z": 20675.76995613528
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 260.9892502126465,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
+              },
+              "projected_point": {
+                "x": 434929.92736771994,
+                "y": 1732588.5668051094,
+                "z": 20675.161468666658
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 561.5773564363793,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -215.76764948733444,
+                "y": -215.2843734104052,
+                "z": -6.995811127322545e-13
+              },
+              "projected_point": {
+                "x": 435321.8839201394,
+                "y": 1732728.2245260105,
+                "z": 20720.320454642228
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 600.9412306658019,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": 3.0508861971889973,
+                "y": 304.7847307418989,
+                "z": 1.0941194564934032e-12
+              },
+              "projected_point": {
+                "x": 434930.3589106327,
+                "y": 1732932.4859494958,
+                "z": 20720.320454642228
               }
             }
           ]
         },
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 435259.3270303206,
+            "y": 1732328.2221064607,
+            "z": 20732.36958365632
           },
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
+              }
+            }
+          ],
           "faces": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 403.7231178632095,
+              "element_id": 7517328,
               "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
+                "x": -49.696844102618364,
+                "y": -300.721239167173,
+                "z": -1.5289977714394414e-13
               },
               "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
+                "x": 435325.1530304816,
+                "y": 1732726.5426979444,
+                "z": 20732.36958365632
               }
             },
             {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 427.0759623280621,
+              "element_id": 7517328,
               "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
+                "x": -111.01247591863448,
+                "y": -283.8648801638107,
+                "z": -3.5426061715468505e-13
+              },
+              "projected_point": {
+                "x": 435414.87414312694,
+                "y": 1732725.964451825,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 489.59887719039705,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -69.5312613600448,
+                "y": -296.7632788834918,
+                "z": -2.1798710716032293e-13
+              },
+              "projected_point": {
+                "x": 435371.0147845578,
+                "y": 1732804.911634455,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "Floor",
+              "distance_from_witness_mm": 585.033571299576,
+              "element_id": 7516667,
+              "face_normal": {
+                "x": 3.0504721698477315,
+                "y": 304.7847348860192,
                 "z": -0.0
               },
               "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
+                "x": 435265.18211112,
+                "y": 1732913.2263778779,
+                "z": 20732.36958365632
               }
             },
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
+              "category": "Conduits",
+              "class_name": "Conduit",
+              "distance_from_witness_mm": 1741.4118611236793,
+              "element_id": 7472450,
               "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
+                "x": -0.19972731763835494,
+                "y": 95.2198592174271,
+                "z": 289.54477809073325
               },
               "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
-              "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+                "x": 435260.4681311078,
+                "y": 1731784.2031029968,
+                "z": 19078.115282824212
               }
             }
           ]
@@ -2212,228 +1072,244 @@
       ]
     },
     {
-      "anchor_separation_mm": 0.0,
-      "delta_vs_measured_mm": 222.16814895052272,
-      "dimension_id": 6935638,
-      "model_distance_between_nearest_faces_mm": 0.0,
+      "anchor_separation_mm": 0.03741788674758482,
+      "delta_vs_measured_mm": 699.0392755626259,
+      "dimension_id": 7322449,
+      "model_distance_between_nearest_faces_mm": 0.03741788674597046,
       "reference_count": 2,
       "references": [
         {
           "anchor_from": "filled_region_boundary",
           "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 435259.3270303204,
+            "y": 1732328.2221064412,
+            "z": 20733.76385861827
           },
-          "boundary_candidate_count": 24,
+          "boundary_candidate_count": 9,
           "class_name": "FilledRegion",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 5492529,
+          "element_id": 7161899,
           "view_specific": true
         },
         {
           "anchor_from": "filled_region_boundary",
           "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 435259.3270303204,
+            "y": 1732328.2221064407,
+            "z": 20733.726440731523
           },
-          "boundary_candidate_count": 24,
+          "boundary_candidate_count": 4,
           "class_name": "FilledRegion",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 5492529,
+          "element_id": 6376172,
           "view_specific": true
         }
       ],
       "segments": [
         {
-          "measured_mm": 222.16814895052272,
-          "override": "\u200e225"
+          "measured_mm": 699.0766934493719,
+          "override": "700\u200e"
         }
       ],
       "witness_probes": [
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 435259.3270303204,
+            "y": 1732328.2221064412,
+            "z": 20733.76385861827
           },
           "anchor_from": "filled_region_boundary",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
+              }
+            }
+          ],
           "faces": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 403.7231178823887,
+              "element_id": 7517328,
               "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
+                "x": -49.696844100446874,
+                "y": -300.72123916753185,
+                "z": -1.528997771368208e-13
               },
               "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
+                "x": 435325.1530304816,
+                "y": 1732726.5426979444,
+                "z": 20733.76385861827
               }
             },
             {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 427.0759623462352,
+              "element_id": 7517328,
               "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
+                "x": -111.01247591412904,
+                "y": -283.8648801655727,
+                "z": -3.5426061713987204e-13
+              },
+              "projected_point": {
+                "x": 435414.874143127,
+                "y": 1732725.964451825,
+                "z": 20733.76385861827
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 489.5988772093536,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -69.53126135751523,
+                "y": -296.7632788840845,
+                "z": -2.1798710715201919e-13
+              },
+              "projected_point": {
+                "x": 435371.01478455786,
+                "y": 1732804.911634455,
+                "z": 20733.76385861827
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "Floor",
+              "distance_from_witness_mm": 585.0335713189821,
+              "element_id": 7516667,
+              "face_normal": {
+                "x": 3.0504721698477315,
+                "y": 304.7847348860192,
                 "z": -0.0
               },
               "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
+                "x": 435265.18211112,
+                "y": 1732913.2263778779,
+                "z": 20733.76385861827
               }
             },
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
+              "category": "Conduits",
+              "class_name": "Conduit",
+              "distance_from_witness_mm": 1742.7364057800685,
+              "element_id": 7472450,
               "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
+                "x": -0.20052601732412875,
+                "y": 95.1492859665215,
+                "z": 289.5679767677661
               },
               "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
-              "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+                "x": 435260.47356572293,
+                "y": 1731784.1928261332,
+                "z": 19078.118664847738
               }
             }
           ]
         },
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 435259.3270303204,
+            "y": 1732328.2221064407,
+            "z": 20733.726440731523
           },
           "anchor_from": "filled_region_boundary",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
+              }
+            }
+          ],
           "faces": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 403.72311788293564,
+              "element_id": 7517328,
               "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
+                "x": -49.69684410038038,
+                "y": -300.7212391675429,
+                "z": -1.5289977713660263e-13
               },
               "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
+                "x": 435325.1530304816,
+                "y": 1732726.5426979444,
+                "z": 20733.726440731523
               }
             },
             {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 427.0759623467515,
+              "element_id": 7517328,
               "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
+                "x": -111.01247591399643,
+                "y": -283.8648801656245,
+                "z": -3.5426061713943603e-13
+              },
+              "projected_point": {
+                "x": 435414.874143127,
+                "y": 1732725.964451825,
+                "z": 20733.726440731523
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 489.5988772096235,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -69.53126135743958,
+                "y": -296.76327888410225,
+                "z": -2.1798710715177087e-13
+              },
+              "projected_point": {
+                "x": 435371.01478455786,
+                "y": 1732804.9116344547,
+                "z": 20733.726440731523
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "Floor",
+              "distance_from_witness_mm": 585.0335713195365,
+              "element_id": 7516667,
+              "face_normal": {
+                "x": 3.0504721698477315,
+                "y": 304.7847348860192,
                 "z": -0.0
               },
               "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
+                "x": 435265.18211112,
+                "y": 1732913.2263778779,
+                "z": 20733.726440731523
               }
             },
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
+              "category": "Conduits",
+              "class_name": "Conduit",
+              "distance_from_witness_mm": 1742.7008578464513,
+              "element_id": 7472450,
               "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
+                "x": -0.20050459839498344,
+                "y": 95.15117863453523,
+                "z": 289.56735486301767
               },
               "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
-              "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+                "x": 435260.473419873,
+                "y": 1731784.1931017442,
+                "z": 19078.118574182594
               }
             }
           ]
@@ -2441,682 +1317,242 @@
       ]
     },
     {
-      "anchor_separation_mm": 140.00000000000065,
-      "delta_vs_measured_mm": 6.536993168992922e-13,
-      "dimension_id": 6935671,
-      "model_distance_between_nearest_faces_mm": 140.0,
+      "anchor_separation_mm": 1550.010651710152,
+      "delta_vs_measured_mm": 18.05168370546494,
+      "dimension_id": 7366978,
+      "model_distance_between_nearest_faces_mm": 1531.9483162945335,
       "reference_count": 2,
       "references": [
         {
           "anchor_from": "location_point",
           "anchor_point": {
-            "x": 445712.26259229716,
-            "y": 1701360.4562075636,
-            "z": 17891.39997061085
+            "x": 430402.84458870883,
+            "y": 1732376.8287551196,
+            "z": 18815.00479793328
           },
           "class_name": "AnnotationSymbol",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 6935646,
+          "element_id": 7366971,
           "view_specific": true
         },
         {
           "anchor_from": "location_point",
           "anchor_point": {
-            "x": 445712.26259229716,
-            "y": 1701360.4562075636,
-            "z": 18031.39997061085
+            "x": 430397.0985372354,
+            "y": 1732376.8862651195,
+            "z": 20365.00479793328
           },
           "class_name": "AnnotationSymbol",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 6935662,
+          "element_id": 7366953,
           "view_specific": true
         }
       ],
       "segments": [
         {
-          "measured_mm": 140.00000000000065,
+          "measured_mm": 1549.9999999999984,
           "override": null
         }
       ],
       "witness_probes": [
         {
           "anchor": {
-            "x": 445712.26259229716,
-            "y": 1701360.4562075636,
-            "z": 17891.39997061085
+            "x": 430402.84458870883,
+            "y": 1732376.8287551196,
+            "z": 18815.00479793328
           },
           "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 4373,
+              "outcomes": {
+                "no_out_parameter": 4373,
+                "null_array": 4373
+              }
+            }
+          ],
           "faces": [
             {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 442.52145359042515,
-              "element_id": 5906735,
+              "category": "Structural Foundations",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 3.3636934672189085,
+              "element_id": 7328580,
               "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
+                "x": -1.855901949906655,
+                "y": 0.018577523974251896,
+                "z": 304.7943491648557
               },
               "projected_point": {
-                "x": 445274.8954138806,
-                "y": 1701293.1124021192,
-                "z": 17891.39997061085
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 573.0962713254412,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445141.0274040846,
-                "y": 1701314.307578603,
-                "z": 17891.39997061085
+                "x": 430402.8650699597,
+                "y": 1732376.828550103,
+                "z": 18811.64116682721
               }
             },
             {
               "category": "Structural Framing",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 983.403389252693,
-              "element_id": 5407826,
+              "distance_from_witness_mm": 50.14584225997668,
+              "element_id": 6001716,
               "face_normal": {
-                "x": -0.6779956544487906,
-                "y": 2.9825411806384436,
-                "z": -304.78465310772845
+                "x": -3.040373090697469,
+                "y": -304.7848357964506,
+                "z": 4.263781059991867e-12
               },
               "projected_point": {
-                "x": 445714.4500700677,
-                "y": 1701350.8333692907,
-                "z": 18874.753844818024
+                "x": 430403.3447923487,
+                "y": 1732426.9721025575,
+                "z": 18815.00479793328
               }
             },
             {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 1023.0962713254341,
-              "element_id": 4999821,
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 50.94737311387919,
+              "element_id": 6778054,
               "face_normal": {
-                "x": -303.8101870118493,
-                "y": -24.544047502911667,
-                "z": 0.0
+                "x": -3.050886197188669,
+                "y": -304.7847307418989,
+                "z": -1.6327626588003714e-12
               },
               "projected_point": {
-                "x": 444692.4887421577,
-                "y": 1701278.0712879985,
-                "z": 17891.39997061085
-              }
-            },
-            {
-              "category": "Floors",
-              "class_name": "Floor",
-              "distance_from_witness_mm": 1029.3672020749666,
-              "element_id": 5274793,
-              "face_normal": {
-                "x": 0.0749033730067341,
-                "y": 9.435818267603134,
-                "z": -304.6539015392803
-              },
-              "projected_point": {
-                "x": 445712.00962945103,
-                "y": 1701328.589666063,
-                "z": 18920.273770573815
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 445712.26259229716,
-            "y": 1701360.4562075636,
-            "z": 18031.39997061085
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 442.52145359042515,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445274.8954138806,
-                "y": 1701293.1124021192,
-                "z": 18031.39997061085
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 573.0962713254412,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445141.0274040846,
-                "y": 1701314.307578603,
-                "z": 18031.39997061085
+                "x": 430403.35454486834,
+                "y": 1732427.7735759742,
+                "z": 18815.00479793328
               }
             },
             {
               "category": "Structural Framing",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 843.4104383501917,
-              "element_id": 5407826,
+              "distance_from_witness_mm": 599.7456293349467,
+              "element_id": 6001716,
               "face_normal": {
-                "x": -0.6779956544487906,
-                "y": 2.9825411806384436,
-                "z": -304.78465310772845
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
               },
               "projected_point": {
-                "x": 445714.13867042086,
-                "y": 1701352.2032339266,
-                "z": 18874.767942658098
+                "x": 430408.8270377662,
+                "y": 1732976.5445463154,
+                "z": 18815.004797933274
               }
             },
             {
-              "category": "Floors",
-              "class_name": "Floor",
-              "distance_from_witness_mm": 889.4343076671576,
-              "element_id": 5274793,
-              "face_normal": {
-                "x": 0.0749033730067341,
-                "y": 9.435818267603134,
-                "z": -304.6539015392803
-              },
-              "projected_point": {
-                "x": 445712.0440173965,
-                "y": 1701332.9216259099,
-                "z": 18920.40794959277
-              }
-            },
-            {
-              "category": "Floors",
-              "class_name": "Floor",
-              "distance_from_witness_mm": 976.2221198466912,
-              "element_id": 5315651,
-              "face_normal": {
-                "x": 0.6515659157006013,
-                "y": 3.13210898853673,
-                "z": -304.78321042200054
-              },
-              "projected_point": {
-                "x": 445710.17573842756,
-                "y": 1701350.4245997015,
-                "z": 19007.568316319004
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 0.0,
-      "delta_vs_measured_mm": 222.74806642419605,
-      "dimension_id": 6935679,
-      "model_distance_between_nearest_faces_mm": 0.0,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "filled_region_boundary",
-          "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 5492529,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "filled_region_boundary",
-          "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 5492529,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 222.74806642419605,
-          "override": "\u200e150 TYP"
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
-          },
-          "anchor_from": "filled_region_boundary",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
+              "category": "Generic Models",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
+              "distance_from_witness_mm": 600.9473731139647,
+              "element_id": 6778054,
               "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
+                "x": 3.0508861971889694,
+                "y": 304.78473074189895,
+                "z": 1.752415709288871e-12
               },
               "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+                "x": 430408.85975290136,
+                "y": 1732977.7460231793,
+                "z": 18815.00479793329
               }
             }
           ]
         },
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 430397.0985372354,
+            "y": 1732376.8862651195,
+            "z": 20365.00479793328
           },
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
-          "faces": [
+          "errors": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
-              "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
-              "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+              "faces_tried": 4369,
+              "outcomes": {
+                "no_out_parameter": 4369,
+                "null_array": 4369
               }
             }
-          ]
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 1540.0000000000007,
-      "delta_vs_measured_mm": 121.74445064158908,
-      "dimension_id": 6935759,
-      "model_distance_between_nearest_faces_mm": 1661.7444506415898,
-      "reference_count": 2,
-      "references": [
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 445499.952814048,
-            "y": 1703853.4042024561,
-            "z": 16300.649597395091
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6935740,
-          "view_specific": true
-        },
-        {
-          "anchor_from": "location_point",
-          "anchor_point": {
-            "x": 445499.952814048,
-            "y": 1703853.4042024561,
-            "z": 17840.64959739509
-          },
-          "class_name": "AnnotationSymbol",
-          "curve_end": null,
-          "curve_start": null,
-          "element_id": 6935752,
-          "view_specific": true
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": 1540.0000000000007,
-          "override": null
-        }
-      ],
-      "witness_probes": [
-        {
-          "anchor": {
-            "x": 445499.952814048,
-            "y": 1703853.4042024561,
-            "z": 16300.649597395091
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
+          ],
           "faces": [
             {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 488.6847166269586,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 303.8513301329429,
-                "y": 24.02933990856513,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445012.78909632243,
-                "y": 1703814.8780503434,
-                "z": 16300.649597395091
-              }
-            },
-            {
-              "category": "Structural Foundations",
+              "category": "Generic Models",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1188.583795672671,
-              "element_id": 5507833,
+              "distance_from_witness_mm": 196.08068630722883,
+              "element_id": 6778054,
               "face_normal": {
-                "x": -156.36644345473212,
-                "y": 261.6344307642212,
-                "z": -0.0
+                "x": -3.0371508536837624,
+                "y": -300.2616963658442,
+                "z": 52.31375928183279
               },
               "projected_point": {
-                "x": 446109.71206889465,
-                "y": 1702833.1468376385,
-                "z": 16300.649597395091
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 1188.5837978941463,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -156.36644319609763,
-                "y": 261.6344309187947,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 446109.7120690258,
-                "y": 1702833.146835129,
-                "z": 16300.649597395093
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 1434.6297712134913,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -91.19495495578144,
-                "y": -290.83761825220085,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445929.1883697043,
-                "y": 1705222.3159666734,
-                "z": 16300.649597395091
-              }
-            },
-            {
-              "category": "Structural Foundations",
-              "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 1434.6297734035406,
-              "element_id": 5507802,
-              "face_normal": {
-                "x": -91.19495487546047,
-                "y": -290.83761827738647,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 445929.1883699814,
-                "y": 1705222.3159688816,
-                "z": 16300.649597395091
-              }
-            }
-          ]
-        },
-        {
-          "anchor": {
-            "x": 445499.952814048,
-            "y": 1703853.4042024561,
-            "z": 17840.64959739509
-          },
-          "anchor_from": "location_point",
-          "cut_line_hits": [],
-          "errors": [],
-          "faces": [
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.6524293894696,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445635.11839581234,
-                "y": 1703864.8866719452,
-                "z": 17840.64959739509
+                "x": 430399.0523647414,
+                "y": 1732570.047418319,
+                "z": 20331.350868066853
               }
             },
             {
               "category": "Structural Framing",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 135.652429859152,
-              "element_id": 5328892,
+              "distance_from_witness_mm": 202.66303591391622,
+              "element_id": 6001716,
               "face_normal": {
-                "x": -303.7060928963562,
-                "y": -25.80017708524216,
-                "z": 1.50758051875588e-12
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
               },
               "projected_point": {
-                "x": 445635.11839628033,
-                "y": 1703864.8866719848,
-                "z": 17840.64959739509
+                "x": 430399.7342445249,
+                "y": 1732576.4540317766,
+                "z": 20329.81864036526
               }
             },
             {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 488.6847166269586,
-              "element_id": 5906735,
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 251.7466196452371,
+              "element_id": 5895462,
               "face_normal": {
-                "x": 303.8513301329429,
-                "y": 24.02933990856513,
-                "z": -0.0
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
               },
               "projected_point": {
-                "x": 445012.78909632243,
-                "y": 1703814.8780503434,
-                "z": 17840.64959739509
+                "x": 430402.48436176014,
+                "y": 1732624.7771747035,
+                "z": 20321.445064891817
               }
             },
             {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 562.2208138930383,
-              "element_id": 4999821,
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.7454389293647,
+              "element_id": 6001716,
               "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
               },
               "projected_point": {
-                "x": 444939.55776611227,
-                "y": 1703808.1313206868,
-                "z": 17840.64959739509
+                "x": 430403.08098439354,
+                "y": 1732976.6018659193,
+                "z": 20365.004797933274
               }
             },
             {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 1012.2208138930534,
-              "element_id": 4999821,
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.8722998038779,
+              "element_id": 5895462,
               "face_normal": {
-                "x": -303.8101870118493,
-                "y": -24.544047502911667,
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
                 "z": 0.0
               },
               "projected_point": {
-                "x": 444491.01910418534,
-                "y": 1703771.895030082,
-                "z": 17840.64959739509
+                "x": 430403.08224982605,
+                "y": 1732976.7287204822,
+                "z": 20365.00479793328
               }
             }
           ]
@@ -3124,327 +1560,242 @@
       ]
     },
     {
-      "dimension_id": 6975118,
-      "reference_count": 1,
-      "references": [
-        {
-          "anchor_from": "location_curve",
-          "anchor_point": {
-            "x": 444257.1589514197,
-            "y": 1726583.1291565918,
-            "z": 18929.15000000105
-          },
-          "class_name": "FamilyInstance",
-          "curve_end": {
-            "x": 443725.32886150805,
-            "y": 1732843.5528024512,
-            "z": 18866.00000000105
-          },
-          "curve_start": {
-            "x": 444788.9890413314,
-            "y": 1720322.7055107327,
-            "z": 18992.30000000105
-          },
-          "element_id": 5506300,
-          "view_specific": false
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": null,
-          "override": null
-        }
-      ]
-    },
-    {
-      "dimension_id": 6975137,
-      "reference_count": 1,
-      "references": [
-        {
-          "anchor_from": "location_curve",
-          "anchor_point": {
-            "x": 446179.12534464,
-            "y": 1703958.753283722,
-            "z": 19037.01650000105
-          },
-          "class_name": "FamilyInstance",
-          "curve_end": {
-            "x": 445674.0000075541,
-            "y": 1709904.8226476058,
-            "z": 19096.950000001052
-          },
-          "curve_start": {
-            "x": 446684.250681726,
-            "y": 1698012.6839198384,
-            "z": 18977.083000001046
-          },
-          "element_id": 5328892,
-          "view_specific": false
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": null,
-          "override": null
-        }
-      ]
-    },
-    {
-      "dimension_id": 7369745,
-      "reference_count": 1,
-      "references": [
-        {
-          "anchor_from": "location_curve",
-          "anchor_point": {
-            "x": 446179.12534464,
-            "y": 1703958.753283722,
-            "z": 19037.01650000105
-          },
-          "class_name": "FamilyInstance",
-          "curve_end": {
-            "x": 445674.0000075541,
-            "y": 1709904.8226476058,
-            "z": 19096.950000001052
-          },
-          "curve_start": {
-            "x": 446684.250681726,
-            "y": 1698012.6839198384,
-            "z": 18977.083000001046
-          },
-          "element_id": 5328892,
-          "view_specific": false
-        }
-      ],
-      "segments": [
-        {
-          "measured_mm": null,
-          "override": null
-        }
-      ]
-    },
-    {
-      "anchor_separation_mm": 0.0,
-      "delta_vs_measured_mm": 100.77054076506202,
-      "dimension_id": 7388250,
-      "model_distance_between_nearest_faces_mm": 0.0,
+      "anchor_separation_mm": 850.0106489519903,
+      "delta_vs_measured_mm": 21.35159763185743,
+      "dimension_id": 7367019,
+      "model_distance_between_nearest_faces_mm": 828.6532003003807,
       "reference_count": 2,
       "references": [
         {
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 430400.2522378652,
+            "y": 1732376.8547009532,
+            "z": 19515.000000001044
           },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
+          "class_name": "AnnotationSymbol",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 5492529,
+          "element_id": 7367003,
           "view_specific": true
         },
         {
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "anchor_point": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 430397.0985372354,
+            "y": 1732376.8862651195,
+            "z": 20365.00479793328
           },
-          "boundary_candidate_count": 24,
-          "class_name": "FilledRegion",
+          "class_name": "AnnotationSymbol",
           "curve_end": null,
           "curve_start": null,
-          "element_id": 5492529,
+          "element_id": 7366953,
           "view_specific": true
         }
       ],
       "segments": [
         {
-          "measured_mm": 100.77054076506202,
-          "override": "100\u200e"
+          "measured_mm": 850.0047979322381,
+          "override": null
         }
       ],
       "witness_probes": [
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 430400.2522378652,
+            "y": 1732376.8547009532,
+            "z": 19515.000000001044
           },
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 4373,
+              "outcomes": {
+                "no_out_parameter": 4373,
+                "null_array": 4373
+              }
+            }
+          ],
           "faces": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
+              "category": "Generic Models",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
+              "distance_from_witness_mm": 50.94737663550512,
+              "element_id": 6778054,
               "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
+                "x": -3.050886197188669,
+                "y": -304.7847307418989,
+                "z": -1.6327626588003714e-12
               },
               "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
+                "x": 430400.76219405996,
+                "y": 1732427.7995253294,
+                "z": 19515.000000001044
               }
             },
             {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 55.076103446004645,
+              "element_id": 6001716,
               "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
               },
               "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+                "x": 430400.9685228388,
+                "y": 1732431.0896279656,
+                "z": 19505.437740927286
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 104.63384831025,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
+              },
+              "projected_point": {
+                "x": 430402.4907566868,
+                "y": 1732479.8859943524,
+                "z": 19496.895198808797
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.7455434331474,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 430406.2346860657,
+                "y": 1732976.5704062516,
+                "z": 19515.000000001033
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.8724043076606,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
+                "z": 0.0
+              },
+              "projected_point": {
+                "x": 430406.2359514982,
+                "y": 1732976.6972608147,
+                "z": 19515.000000001044
               }
             }
           ]
         },
         {
           "anchor": {
-            "x": 445663.7691765783,
-            "y": 1701929.8673975666,
-            "z": 17818.34314173184
+            "x": 430397.0985372354,
+            "y": 1732376.8862651195,
+            "z": 20365.00479793328
           },
-          "anchor_from": "filled_region_boundary",
+          "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 4369,
+              "outcomes": {
+                "no_out_parameter": 4369,
+                "null_array": 4369
+              }
+            }
+          ],
           "faces": [
             {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 135.24417079222675,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -303.70609289635627,
-                "y": -25.800177085241625,
-                "z": 1.5075144257914453e-12
-              },
-              "projected_point": {
-                "x": 445798.5279649586,
-                "y": 1701941.3153094964,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "Toposolid",
-              "class_name": "Toposolid",
-              "distance_from_witness_mm": 481.24700656363245,
-              "element_id": 5906735,
-              "face_normal": {
-                "x": 301.2498374931662,
-                "y": 46.3850774532176,
-                "z": -0.0
-              },
-              "projected_point": {
-                "x": 445188.1275016394,
-                "y": 1701856.63025953,
-                "z": 17818.34314173184
-              }
-            },
-            {
-              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
-              "class_name": "ImportInstance",
-              "distance_from_witness_mm": 488.4040522841716,
-              "element_id": 5895462,
-              "face_normal": {
-                "x": -225.34155277796887,
-                "y": -205.24186851520778,
-                "z": 0.0
-              },
-              "projected_point": {
-                "x": 446024.8509597961,
-                "y": 1702258.7419391715,
-                "z": 17818.343141731846
-              }
-            },
-            {
-              "category": "Structural Foundations",
+              "category": "Generic Models",
               "class_name": "FamilyInstance",
-              "distance_from_witness_mm": 488.4040542404445,
-              "element_id": 5507833,
+              "distance_from_witness_mm": 196.08068630722883,
+              "element_id": 6778054,
               "face_normal": {
-                "x": -225.34155233345174,
-                "y": -205.2418690032573,
-                "z": 0.0
+                "x": -3.0371508536837624,
+                "y": -300.2616963658442,
+                "z": 52.31375928183279
               },
               "projected_point": {
-                "x": 446024.8509605301,
-                "y": 1702258.741941271,
-                "z": 17818.34314173184
+                "x": 430399.0523647414,
+                "y": 1732570.047418319,
+                "z": 20331.350868066853
               }
             },
             {
-              "category": "Walls",
-              "class_name": "Wall",
-              "distance_from_witness_mm": 570.6122214492727,
-              "element_id": 4999821,
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 202.66303591391622,
+              "element_id": 6001716,
               "face_normal": {
-                "x": 303.8101870118493,
-                "y": 24.544047502911667,
-                "z": -0.0
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
               },
               "projected_point": {
-                "x": 445095.0099714938,
-                "y": 1701883.9187969465,
-                "z": 17818.34314173184
+                "x": 430399.7342445249,
+                "y": 1732576.4540317766,
+                "z": 20329.81864036526
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 251.7466196452371,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
+              },
+              "projected_point": {
+                "x": 430402.48436176014,
+                "y": 1732624.7771747035,
+                "z": 20321.445064891817
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.7454389293647,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 430403.08098439354,
+                "y": 1732976.6018659193,
+                "z": 20365.004797933274
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.8722998038779,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
+                "z": 0.0
+              },
+              "projected_point": {
+                "x": 430403.08224982605,
+                "y": 1732976.7287204822,
+                "z": 20365.00479793328
               }
             }
           ]
@@ -3452,42 +1803,489 @@
       ]
     },
     {
-      "dimension_id": 7455278,
+      "anchor_separation_mm": 700.0000027671198,
+      "delta_vs_measured_mm": 5.2112291325291835,
+      "dimension_id": 7368292,
+      "model_distance_between_nearest_faces_mm": 705.2064312002896,
       "reference_count": 2,
       "references": [
         {
-          "anchor_from": "location_curve",
+          "anchor_from": "location_point",
           "anchor_point": {
-            "x": 445231.5127439262,
-            "y": 1715113.5496090068,
-            "z": 19044.62493733137
+            "x": 430402.84458870883,
+            "y": 1732376.8287551196,
+            "z": 18815.00479793328
           },
-          "class_name": "FamilyInstance",
-          "curve_end": {
-            "x": 444789.0254802981,
-            "y": 1720322.27657041,
-            "z": 18992.300000001047
-          },
-          "curve_start": {
-            "x": 445674.00000755425,
-            "y": 1709904.822647604,
-            "z": 19096.949874661692
-          },
-          "element_id": 5329368,
-          "view_specific": false
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 7366971,
+          "view_specific": true
         },
         {
-          "anchor_from": null,
-          "anchor_point": null,
-          "class_name": "DetailArc",
-          "element_id": 6209759,
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 430400.2522378652,
+            "y": 1732376.8547009532,
+            "z": 19515.000000001044
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 7367003,
           "view_specific": true
         }
       ],
       "segments": [
         {
-          "measured_mm": 172.58206684064228,
-          "override": "170\u200e"
+          "measured_mm": 699.9952020677604,
+          "override": null
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 430402.84458870883,
+            "y": 1732376.8287551196,
+            "z": 18815.00479793328
+          },
+          "anchor_from": "location_point",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 4373,
+              "outcomes": {
+                "no_out_parameter": 4373,
+                "null_array": 4373
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Structural Foundations",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 3.3636934672189085,
+              "element_id": 7328580,
+              "face_normal": {
+                "x": -1.855901949906655,
+                "y": 0.018577523974251896,
+                "z": 304.7943491648557
+              },
+              "projected_point": {
+                "x": 430402.8650699597,
+                "y": 1732376.828550103,
+                "z": 18811.64116682721
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 50.14584225997668,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": -3.040373090697469,
+                "y": -304.7848357964506,
+                "z": 4.263781059991867e-12
+              },
+              "projected_point": {
+                "x": 430403.3447923487,
+                "y": 1732426.9721025575,
+                "z": 18815.00479793328
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 50.94737311387919,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": -3.050886197188669,
+                "y": -304.7847307418989,
+                "z": -1.6327626588003714e-12
+              },
+              "projected_point": {
+                "x": 430403.35454486834,
+                "y": 1732427.7735759742,
+                "z": 18815.00479793328
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.7456293349467,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 430408.8270377662,
+                "y": 1732976.5445463154,
+                "z": 18815.004797933274
+              }
+            },
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 600.9473731139647,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": 3.0508861971889694,
+                "y": 304.78473074189895,
+                "z": 1.752415709288871e-12
+              },
+              "projected_point": {
+                "x": 430408.85975290136,
+                "y": 1732977.7460231793,
+                "z": 18815.00479793329
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 430400.2522378652,
+            "y": 1732376.8547009532,
+            "z": 19515.000000001044
+          },
+          "anchor_from": "location_point",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 4373,
+              "outcomes": {
+                "no_out_parameter": 4373,
+                "null_array": 4373
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Generic Models",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 50.94737663550512,
+              "element_id": 6778054,
+              "face_normal": {
+                "x": -3.050886197188669,
+                "y": -304.7847307418989,
+                "z": -1.6327626588003714e-12
+              },
+              "projected_point": {
+                "x": 430400.76219405996,
+                "y": 1732427.7995253294,
+                "z": 19515.000000001044
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 55.076103446004645,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": -3.9640360572602154,
+                "y": -300.144794549222,
+                "z": 52.9190771191457
+              },
+              "projected_point": {
+                "x": 430400.9685228388,
+                "y": 1732431.0896279656,
+                "z": 19505.437740927286
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 104.63384831025,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": -6.520839554677712,
+                "y": -300.1317330403791,
+                "z": 52.739562698990824
+              },
+              "projected_point": {
+                "x": 430402.4907566868,
+                "y": 1732479.8859943524,
+                "z": 19496.895198808797
+              }
+            },
+            {
+              "category": "Structural Framing",
+              "class_name": "FamilyInstance",
+              "distance_from_witness_mm": 599.7455434331474,
+              "element_id": 6001716,
+              "face_normal": {
+                "x": 3.040373090697467,
+                "y": 304.7848357964506,
+                "z": -4.257683984022764e-12
+              },
+              "projected_point": {
+                "x": 430406.2346860657,
+                "y": 1732976.5704062516,
+                "z": 19515.000000001033
+              }
+            },
+            {
+              "category": "T2DPAA-T2D-PWA-SU-M3D-000002_channel.dwg",
+              "class_name": "ImportInstance",
+              "distance_from_witness_mm": 599.8724043076606,
+              "element_id": 5895462,
+              "face_normal": {
+                "x": 3.0403730897565886,
+                "y": 304.7848357964601,
+                "z": 0.0
+              },
+              "projected_point": {
+                "x": 430406.2359514982,
+                "y": 1732976.6972608147,
+                "z": 19515.000000001044
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anchor_separation_mm": 1.3942749619484403,
+      "delta_vs_measured_mm": 1897.6824184874229,
+      "dimension_id": 7373971,
+      "model_distance_between_nearest_faces_mm": 1.3942749619491224,
+      "reference_count": 2,
+      "references": [
+        {
+          "anchor_from": "filled_region_boundary",
+          "anchor_point": {
+            "x": 435259.3270303204,
+            "y": 1732328.2221064412,
+            "z": 20733.76385861827
+          },
+          "boundary_candidate_count": 9,
+          "class_name": "FilledRegion",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 7161899,
+          "view_specific": true
+        },
+        {
+          "anchor_from": "location_point",
+          "anchor_point": {
+            "x": 435259.3270303206,
+            "y": 1732328.2221064607,
+            "z": 20732.36958365632
+          },
+          "class_name": "AnnotationSymbol",
+          "curve_end": null,
+          "curve_start": null,
+          "element_id": 6979919,
+          "view_specific": true
+        }
+      ],
+      "segments": [
+        {
+          "measured_mm": 1899.076693449372,
+          "override": "1900\u200e"
+        }
+      ],
+      "witness_probes": [
+        {
+          "anchor": {
+            "x": 435259.3270303204,
+            "y": 1732328.2221064412,
+            "z": 20733.76385861827
+          },
+          "anchor_from": "filled_region_boundary",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 403.7231178823887,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -49.696844100446874,
+                "y": -300.72123916753185,
+                "z": -1.528997771368208e-13
+              },
+              "projected_point": {
+                "x": 435325.1530304816,
+                "y": 1732726.5426979444,
+                "z": 20733.76385861827
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 427.0759623462352,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -111.01247591412904,
+                "y": -283.8648801655727,
+                "z": -3.5426061713987204e-13
+              },
+              "projected_point": {
+                "x": 435414.874143127,
+                "y": 1732725.964451825,
+                "z": 20733.76385861827
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 489.5988772093536,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -69.53126135751523,
+                "y": -296.7632788840845,
+                "z": -2.1798710715201919e-13
+              },
+              "projected_point": {
+                "x": 435371.01478455786,
+                "y": 1732804.911634455,
+                "z": 20733.76385861827
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "Floor",
+              "distance_from_witness_mm": 585.0335713189821,
+              "element_id": 7516667,
+              "face_normal": {
+                "x": 3.0504721698477315,
+                "y": 304.7847348860192,
+                "z": -0.0
+              },
+              "projected_point": {
+                "x": 435265.18211112,
+                "y": 1732913.2263778779,
+                "z": 20733.76385861827
+              }
+            },
+            {
+              "category": "Conduits",
+              "class_name": "Conduit",
+              "distance_from_witness_mm": 1742.7364057800685,
+              "element_id": 7472450,
+              "face_normal": {
+                "x": -0.20052601732412875,
+                "y": 95.1492859665215,
+                "z": 289.5679767677661
+              },
+              "projected_point": {
+                "x": 435260.47356572293,
+                "y": 1731784.1928261332,
+                "z": 19078.118664847738
+              }
+            }
+          ]
+        },
+        {
+          "anchor": {
+            "x": 435259.3270303206,
+            "y": 1732328.2221064607,
+            "z": 20732.36958365632
+          },
+          "anchor_from": "location_point",
+          "cut_line_hits": [],
+          "errors": [
+            {
+              "faces_tried": 5693,
+              "outcomes": {
+                "no_out_parameter": 5693,
+                "null_array": 5693
+              }
+            }
+          ],
+          "faces": [
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 403.7231178632095,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -49.696844102618364,
+                "y": -300.721239167173,
+                "z": -1.5289977714394414e-13
+              },
+              "projected_point": {
+                "x": 435325.1530304816,
+                "y": 1732726.5426979444,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 427.0759623280621,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -111.01247591863448,
+                "y": -283.8648801638107,
+                "z": -3.5426061715468505e-13
+              },
+              "projected_point": {
+                "x": 435414.87414312694,
+                "y": 1732725.964451825,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Railings",
+              "class_name": "Railing",
+              "distance_from_witness_mm": 489.59887719039705,
+              "element_id": 7517328,
+              "face_normal": {
+                "x": -69.5312613600448,
+                "y": -296.7632788834918,
+                "z": -2.1798710716032293e-13
+              },
+              "projected_point": {
+                "x": 435371.0147845578,
+                "y": 1732804.911634455,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Floors",
+              "class_name": "Floor",
+              "distance_from_witness_mm": 585.033571299576,
+              "element_id": 7516667,
+              "face_normal": {
+                "x": 3.0504721698477315,
+                "y": 304.7847348860192,
+                "z": -0.0
+              },
+              "projected_point": {
+                "x": 435265.18211112,
+                "y": 1732913.2263778779,
+                "z": 20732.36958365632
+              }
+            },
+            {
+              "category": "Conduits",
+              "class_name": "Conduit",
+              "distance_from_witness_mm": 1741.4118611236793,
+              "element_id": 7472450,
+              "face_normal": {
+                "x": -0.19972731763835494,
+                "y": 95.2198592174271,
+                "z": 289.54477809073325
+              },
+              "projected_point": {
+                "x": 435260.4681311078,
+                "y": 1731784.2031029968,
+                "z": 19078.115282824212
+              }
+            }
+          ]
         }
       ]
     }

@@ -74,7 +74,15 @@
           },
           "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 2680,
+              "outcomes": {
+                "no_out_parameter": 2680,
+                "null_array": 2680
+              }
+            }
+          ],
           "faces": [
             {
               "category": "Floors",
@@ -166,7 +174,15 @@
           },
           "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 2680,
+              "outcomes": {
+                "no_out_parameter": 2680,
+                "null_array": 2680
+              }
+            }
+          ],
           "faces": [
             {
               "category": "Floors",
@@ -301,7 +317,15 @@
           },
           "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 2680,
+              "outcomes": {
+                "no_out_parameter": 2680,
+                "null_array": 2680
+              }
+            }
+          ],
           "faces": [
             {
               "category": "Floors",
@@ -393,7 +417,15 @@
           },
           "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 2680,
+              "outcomes": {
+                "no_out_parameter": 2680,
+                "null_array": 2680
+              }
+            }
+          ],
           "faces": [
             {
               "category": "Floors",
@@ -591,7 +623,15 @@
           },
           "anchor_from": "location_curve",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 2403,
+              "outcomes": {
+                "no_out_parameter": 2403,
+                "null_array": 2403
+              }
+            }
+          ],
           "faces": [
             {
               "category": "Roofs",
@@ -683,7 +723,15 @@
           },
           "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 2680,
+              "outcomes": {
+                "no_out_parameter": 2680,
+                "null_array": 2680
+              }
+            }
+          ],
           "faces": [
             {
               "category": "Floors",
@@ -817,7 +865,12 @@
           },
           "anchor_from": "filled_region_boundary",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 0,
+              "outcomes": {}
+            }
+          ],
           "faces": []
         },
         {
@@ -828,7 +881,12 @@
           },
           "anchor_from": "location_point",
           "cut_line_hits": [],
-          "errors": [],
+          "errors": [
+            {
+              "faces_tried": 0,
+              "outcomes": {}
+            }
+          ],
           "faces": []
         }
       ]
