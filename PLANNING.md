@@ -1521,3 +1521,18 @@ Built into the probe: `in_plane()` and `in_plane_distance_mm()`, face candidates
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
 
 **Next run should confirm it on a real Section**, where both the in-plane number and the cut-line intersection have something to say, and on more elevation dimensions than six.
+
+**The check is built (2026-09-11): `revitcheck.drawn_dimension_consistency`.** Everything above turned into one rule, and the design is the accumulated result of five probe runs rather than a guess.
+
+- **Anchors come from the referenced element's own geometry** — `Location.Point` for a detail component, the midpoint of `Location.Curve` for a detail line, exposed as `ReferenceInfo.Anchor`. Not the dimension's witness points, which §14 established over seven runs are not obtainable.
+- **Candidate model points come from the adapter and are chosen by the check.** `WitnessPointInfo` carries the point, its source element and the face normal; `RevitDimensionSource.WitnessPointsNear` projects the anchor onto every face of the elements **the view itself shows**, bounded by a configurable radius. The adapter judges nothing — which face a dimension means, and which faces are even the right orientation, are decisions that belong in `Checks/`.
+- **Faces are restricted to those seen edge-on**, since a face turned towards the viewer is background nobody dimensions to. Roughly 59 of every 70 candidates on real data.
+- **The comparison is in the view plane** (`InPlaneGeometry`), which is the §28 correction and the difference between 21.09mm and 1.44mm of mean error.
+- **A view with no recorded direction is refused, not answered weakly.** The 3D fallback exists but a check that used it would be reporting the 21mm-error answer, so captures predating `ViewInfo.ViewDirection` get a coverage note telling the reviewer to re-capture.
+- **Filled-region and same-element dimensions are reported as out of reach**, both because real data killed every rule tried for them, and the same-element case because picking the vertex pair whose separation matches the stated value would be fitting to the answer.
+
+`DrawnDimensionToleranceMm` defaults to 10mm and is — unusually for this file — **calibrated**: against seven real dimensions whose in-plane comparison reproduced the drawing's own value with a 1.44mm mean and 2.65mm worst case, leaving roughly 4x headroom while staying far below the 50mm the negative control plants.
+
+423 Core tests passing (414 + 9); `dotnet build` clean including the net48 Addin. **Four of the new tests were confirmed to fail with the in-plane projection disabled** — the check genuinely rests on it. Registered in `CheckRegistry` and available in the CheckRunner via `--rule`.
+
+**Unrun inside Revit**, and it needs a fresh capture: `ViewInfo.ViewDirection`, `ReferenceInfo.Anchor` and the witness-point search are all new, so every existing capture returns coverage notes rather than findings. No ribbon button yet — the check and its adapter path exist, the command does not.

@@ -337,6 +337,58 @@ public sealed record RuleConfig
     /// </remarks>
     public double PileDimensionToleranceMm { get; init; } = 10.0;
 
+    // --- revitcheck.drawn_dimension_consistency ---
+
+    /// <summary>
+    /// How far a drafted dimension's stated value may sit from what the
+    /// model measures, as the view sees it, before
+    /// <see cref="DrawnDimensionConsistencyCheck"/> reports it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Calibrated, unusually for this file</b> - against seven real
+    /// dimensions across two real views (PLANNING.md §28), where the
+    /// in-plane comparison reproduced the drawing's own stated value with a
+    /// mean error of 1.44mm and a worst case of 2.65mm on elevations. 10mm
+    /// leaves roughly 4x headroom over that worst case while staying far
+    /// below the 50mm the negative control plants, which is the gap that
+    /// matters: §20's rule is to calibrate against the noise rather than
+    /// against what you hope to catch, and here the noise is genuinely
+    /// small enough to leave room.
+    /// </remarks>
+    public double DrawnDimensionToleranceMm { get; init; } = 10.0;
+
+    /// <summary>
+    /// How far a face's normal may tilt out of perpendicular to the view
+    /// direction and still count as seen edge-on, as a sine.
+    /// </summary>
+    /// <remarks>
+    /// A face seen edge-on draws as a line, and that line is what a drafter
+    /// dimensions to; one turned towards the viewer is background. On real
+    /// probe data this excludes roughly 59 of every 70 candidates.
+    /// sin(20°) is deliberately generous - a civil profile's faces are
+    /// rarely exactly perpendicular to a section placed by eye, and being
+    /// too tight discards the right face entirely.
+    /// </remarks>
+    public double DrawnDimensionEdgeOnToleranceSine { get; init; } = 0.342;
+
+    /// <summary>
+    /// How far around each witness anchor the adapter looks for model
+    /// geometry, in millimetres.
+    /// </summary>
+    /// <remarks>
+    /// A placeholder, not calibrated: it decides whether the check finds
+    /// anything at all, so it fails safe (reporting "nothing near this
+    /// witness") rather than wrong. Named here rather than buried in the
+    /// adapter for the reason
+    /// <see cref="SpotElevationShelfSearchRadiusMm"/> had to be, after the
+    /// same number sat hardcoded there with a comment calling it
+    /// "generous but not calibrated".
+    /// </remarks>
+    public double DrawnDimensionSearchRadiusMm { get; init; } = 1500.0;
+
+    /// <summary>How many candidate points the adapter keeps per witness - the check chooses between them, never the adapter.</summary>
+    public int DrawnDimensionMaxCandidates { get; init; } = 24;
+
     // --- revitcheck.spot_elevation_consistency ---
     //
     // Compares a Spot Elevation's own drafted value (DimensionInfo.Origin.Z -

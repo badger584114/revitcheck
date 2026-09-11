@@ -29,6 +29,8 @@ if (args.Length < 1 || args[0] is "-h" or "--help")
     Console.Error.WriteLine("                which is when element positions started being captured):");
     Console.Error.WriteLine($"                  {PileChainBearingConsistencyCheck.RuleId}");
     Console.Error.WriteLine($"                  {PileDimensionConsistencyCheck.RuleId}");
+    Console.Error.WriteLine($"                  {DrawnDimensionConsistencyCheck.RuleId} (needs a capture whose");
+    Console.Error.WriteLine("                    references carry witness points - see PLANNING.md §28)");
     Console.Error.WriteLine($"                  {SpotElevationConsistencyCheck.RuleId}");
     Console.Error.WriteLine($"                  {PileModelScheduleConsistencyCheck.RuleId} (needs schedule rows,");
     Console.Error.WriteLine("                    which a capture cannot carry - see PLANNING.md §16)");
@@ -94,6 +96,11 @@ if (enabled.Contains(DimensionOverrideConsistencyCheck.RuleId))
 if (enabled.Contains(PileChainBearingConsistencyCheck.RuleId))
 {
     issues.AddRange(PileChainBearingConsistencyCheck.Run(model, config));
+}
+
+if (enabled.Contains(DrawnDimensionConsistencyCheck.RuleId))
+{
+    issues.AddRange(DrawnDimensionConsistencyCheck.Run(model, config));
 }
 
 if (enabled.Contains(PileDimensionConsistencyCheck.RuleId))

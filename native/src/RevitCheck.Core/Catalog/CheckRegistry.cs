@@ -44,5 +44,6 @@ public static class CheckRegistry
         catalog.Register(PileChainBearingConsistencyCheck.RuleId, model => PileChainBearingConsistencyCheck.Run(model, ruleConfig));
         catalog.Register(SpotElevationConsistencyCheck.RuleId, model => SpotElevationConsistencyCheck.Run(model, ruleConfig));
         catalog.Register(PileDimensionConsistencyCheck.RuleId, model => PileDimensionConsistencyCheck.Run(model, ruleConfig));
+        catalog.Register(DrawnDimensionConsistencyCheck.RuleId, model => DrawnDimensionConsistencyCheck.Run(model, ruleConfig));
     }
 }

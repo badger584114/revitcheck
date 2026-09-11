@@ -30,4 +30,20 @@ public sealed class ViewInfo
     /// <summary>A drafting view has no model behind it at all - every line in one is 2D by construction. Not necessarily an error (a standard detail is legitimately drafted), so rules treat it as a different case.</summary>
     [JsonIgnore]
     public bool IsDraftingView => ViewType is "DraftingView" or "Drafting" or "Legend";
+
+    /// <summary>
+    /// The direction this view looks along, as a unit vector in local
+    /// project coordinates. Null for a view that has none (a schedule) and
+    /// on any capture taken before 2026-09-11.
+    /// </summary>
+    /// <remarks>
+    /// The plane's normal, and what lets a check measure <b>what the
+    /// drawing sees</b> rather than the true 3D distance between two points
+    /// at different depths. On real elevation dimensions that distinction
+    /// is the difference between 21.09mm and 1.44mm of mean error
+    /// (PLANNING.md §28) - and for an elevation, whose plane sits outside
+    /// the geometry entirely, a depth difference is guaranteed, so
+    /// measuring in 3D is guaranteed wrong.
+    /// </remarks>
+    public Point3D? ViewDirection { get; init; }
 }

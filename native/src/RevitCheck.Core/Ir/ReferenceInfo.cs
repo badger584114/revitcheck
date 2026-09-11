@@ -84,4 +84,40 @@ public sealed class ReferenceInfo
 
     /// <summary>The other end of <see cref="CurveStart"/>'s curve - see its remarks.</summary>
     public Point3D? CurveEnd { get; init; }
+
+    /// <summary>
+    /// Real points on model geometry near this witness, for a check to
+    /// choose between - see <see cref="WitnessPointInfo"/>.
+    /// </summary>
+    /// <remarks>
+    /// Empty either because nothing was found or because the search never
+    /// ran: <see cref="WitnessSearchPerformed"/> is the only way to tell
+    /// those apart, and an empty list must never be read as "checked,
+    /// clean" on its own. Exactly the null-vs-empty discipline
+    /// <see cref="DimensionInfo.ShelfSearchPerformed"/> already enforces
+    /// for Spot Elevation, for the reason this project has been bitten by
+    /// most often.
+    /// </remarks>
+    public List<WitnessPointInfo> NearbyModelPoints { get; init; } = new();
+
+    /// <summary>Whether the geometry search actually ran for this reference - see <see cref="NearbyModelPoints"/>.</summary>
+    public bool WitnessSearchPerformed { get; init; }
+
+    /// <summary>
+    /// This reference's single anchor point: its element's own
+    /// <c>Location.Point</c>, or the midpoint of its
+    /// <c>Location.Curve</c>. Null when the element has neither.
+    /// </summary>
+    /// <remarks>
+    /// Real data decides which populations this covers: across four probe
+    /// runs, anchors from a point or a curve reproduced the dimension's own
+    /// measured value to a median of 0.13mm (7 of 9 within 5mm), while a
+    /// filled region's - by centroid or by nearest boundary vertex, both
+    /// tried - managed 0 of 4 and a median of 1897.68mm. A filled region
+    /// therefore has no anchor here at all rather than a bad one.
+    /// </remarks>
+    public Point3D? Anchor =>
+        LocalPoint ?? (CurveStart is { } a && CurveEnd is { } b
+            ? new Point3D { X = (a.X + b.X) / 2.0, Y = (a.Y + b.Y) / 2.0, Z = (a.Z + b.Z) / 2.0 }
+            : null);
 }

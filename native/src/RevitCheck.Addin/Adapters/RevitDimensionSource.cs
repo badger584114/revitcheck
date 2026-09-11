@@ -94,7 +94,10 @@ public static class RevitDimensionSource
         ISet<string>? includeWorksets = null,
         View? scopeView = null,
         bool populateNearbyShelfFaces = false,
-        double? shelfSearchRadiusMm = null)
+        double? shelfSearchRadiusMm = null,
+        bool populateWitnessPoints = false,
+        double? witnessSearchRadiusMm = null,
+        int witnessMaxCandidates = 24)
     {
         var errors = new List<string>();
         var (sheets, views) = CollectSheetsAndViews(doc, errors);
@@ -113,7 +116,14 @@ public static class RevitDimensionSource
         // matching populateLivePosition's own opt-in-cost discipline in
         // RevitMetadataElementSource.
         var effectivePopulateNearbyShelfFaces = populateNearbyShelfFaces && scopeView is not null;
-        var dimensions = CollectDimensions(doc, errors, scannedViews, includeWorksets, effectiveSheetedViewsOnly, effectivePopulateNearbyShelfFaces ? scopeView : null, shelfSearchRadiusMm);
+        // Same opt-in-cost discipline as the shelf search: a real
+        // per-face projection walk is worth paying for only when a caller
+        // actually needs it, and it needs a real View to scope to.
+        var effectivePopulateWitnessPoints = populateWitnessPoints && scopeView is not null;
+        var dimensions = CollectDimensions(
+            doc, errors, scannedViews, includeWorksets, effectiveSheetedViewsOnly,
+            effectivePopulateNearbyShelfFaces ? scopeView : null, shelfSearchRadiusMm,
+            effectivePopulateWitnessPoints ? scopeView : null, witnessSearchRadiusMm, witnessMaxCandidates);
         var textNotes = CollectTextNotes(doc, errors, scannedViews, effectiveSheetedViewsOnly);
 
         var excludedWorksets = new List<string>();
@@ -258,6 +268,10 @@ public static class RevitDimensionSource
                     SheetUniqueId = sheet?.UniqueId,
                     WorksetName = worksetName,
                     LinkedToModelSection = referencedDraftingViews.Contains(viewId),
+                    // The plane's normal - what lets a check measure what
+                    // the drawing SEES rather than a 3D distance between
+                    // points at different depths (PLANNING.md §28).
+                    ViewDirection = ViewDirectionOf(view),
                     UniqueId = TextOrNone(view.UniqueId),
                 });
             }
@@ -313,7 +327,10 @@ public static class RevitDimensionSource
         ISet<string>? includeWorksets,
         bool sheetedViewsOnly,
         View? shelfSearchView = null,
-        double? shelfSearchRadiusMm = null)
+        double? shelfSearchRadiusMm = null,
+        View? witnessSearchView = null,
+        double? witnessSearchRadiusMm = null,
+        int witnessMaxCandidates = 24)
     {
         var seen = new Dictionary<long, Core.Ir.DimensionInfo>();
 
@@ -367,11 +384,17 @@ public static class RevitDimensionSource
                     try
                     {
                         var references = new List<Core.Ir.ReferenceInfo>();
+                        // Only for ordinary dimensions - a spot has its own
+                        // shelf search, and looking for a second witness on
+                        // something with one reference answers nothing.
+                        var witnessView = element is SpotDimension ? null : witnessSearchView;
                         if (element.References is not null)
                         {
                             foreach (Reference reference in element.References)
                             {
-                                references.Add(ReadReference(doc, reference, errors));
+                                references.Add(ReadReference(
+                                    doc, reference, errors, witnessView,
+                                    witnessSearchRadiusMm ?? WitnessSearchRadiusMm, witnessMaxCandidates));
                             }
                         }
 
@@ -551,7 +574,25 @@ public static class RevitDimensionSource
     /// link document so the facts describe the real element - otherwise
     /// every dimension to a linked beam looks like a dimension to a link.
     /// </summary>
-    private static Core.Ir.ReferenceInfo ReadReference(Document doc, Reference reference, List<string> errors)
+    private static Core.Ir.Point3D? Midpoint(Core.Ir.Point3D? a, Core.Ir.Point3D? b) =>
+        a is null || b is null
+            ? null
+            : new Core.Ir.Point3D { X = (a.X + b.X) / 2.0, Y = (a.Y + b.Y) / 2.0, Z = (a.Z + b.Z) / 2.0 };
+
+    /// <summary>Back to Revit's own units - the IR is millimetres, the API is decimal feet.</summary>
+    private static XYZ XyzOf(Core.Ir.Point3D point) =>
+        new(point.X / MmPerFoot, point.Y / MmPerFoot, point.Z / MmPerFoot);
+
+    /// <summary>Default witness search radius, mirrored by <c>RuleConfig.DrawnDimensionSearchRadiusMm</c> - a caller normally passes the configured one.</summary>
+    private const double WitnessSearchRadiusMm = 1500.0;
+
+    private static Core.Ir.ReferenceInfo ReadReference(
+        Document doc,
+        Reference reference,
+        List<string> errors,
+        View? witnessSearchView = null,
+        double witnessSearchRadiusMm = WitnessSearchRadiusMm,
+        int witnessMaxCandidates = 24)
     {
         var rawId = reference.ElementId?.Value ?? -1L;
         var elementId = rawId;
@@ -565,6 +606,8 @@ public static class RevitDimensionSource
         Core.Ir.Point3D? localPoint = null;
         Core.Ir.Point3D? curveStart = null;
         Core.Ir.Point3D? curveEnd = null;
+        var witnessPoints = new List<Core.Ir.WitnessPointInfo>();
+        var witnessSearchPerformed = false;
 
         try
         {
@@ -642,6 +685,27 @@ public static class RevitDimensionSource
             errors.Add($"reference on element {rawId}: {ex.Message}");
         }
 
+        // The anchor this reference offers, which is what the geometry
+        // search centres on - a detail component's own point, or the
+        // midpoint of a detail line's curve.
+        if (witnessSearchView is not null)
+        {
+            var anchor = localPoint ?? Midpoint(curveStart, curveEnd);
+            if (anchor is not null)
+            {
+                witnessSearchPerformed = true;
+                try
+                {
+                    witnessPoints = WitnessPointsNear(
+                        doc, witnessSearchView, XyzOf(anchor), witnessSearchRadiusMm, witnessMaxCandidates);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"reference on element {rawId}: witness point search: {ex.Message}");
+                }
+            }
+        }
+
         return new Core.Ir.ReferenceInfo
         {
             ElementId = elementId,
@@ -655,6 +719,8 @@ public static class RevitDimensionSource
             LocalPoint = localPoint,
             CurveStart = curveStart,
             CurveEnd = curveEnd,
+            NearbyModelPoints = witnessPoints,
+            WitnessSearchPerformed = witnessSearchPerformed,
         };
     }
 
@@ -804,6 +870,22 @@ public static class RevitDimensionSource
         }
     }
 
+    /// <summary>
+    /// A view's own look direction, or null where it has none (a schedule,
+    /// a legend). Soft-fail: costs an in-plane measurement, not the run.
+    /// </summary>
+    private static Core.Ir.Point3D? ViewDirectionOf(View view)
+    {
+        try
+        {
+            return PointOf(view.ViewDirection);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static Core.Ir.Point3D? PointOf(XYZ? xyz) =>
         xyz is null ? null : new Core.Ir.Point3D { X = xyz.X * MmPerFoot, Y = xyz.Y * MmPerFoot, Z = xyz.Z * MmPerFoot };
 
@@ -848,6 +930,188 @@ public static class RevitDimensionSource
     /// bounding box, not document-wide - real data already justified a
     /// small radius (see this method's own remarks above).
     /// </summary>
+    /// <summary>
+    /// Real points on model geometry near a dimension's witness anchor -
+    /// candidates for what that end actually measures to.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Scoped to the elements the <b>view itself shows</b>, which is the
+    /// geometry the drawing is about, then narrowed by a bounding box
+    /// around the anchor. CLAUDE.md's standing rule is to collect
+    /// view-scoped rather than document-wide; the throwaway probe that
+    /// preceded this check broke it and walked 105,981 faces in one run.
+    /// </para>
+    /// <para>
+    /// <b>Every face is offered and none is judged.</b> Deciding which
+    /// candidate a dimension means - and which faces are even the right
+    /// orientation - is a judgement, and judgement lives in
+    /// <c>Checks/</c>. The face's normal comes along so
+    /// <see cref="Core.Checks.InPlaneGeometry.IsEdgeOn"/> can make that
+    /// call without a second trip to Revit.
+    /// </para>
+    /// </remarks>
+    private static List<Core.Ir.WitnessPointInfo> WitnessPointsNear(
+        Document doc, View view, XYZ anchor, double radiusMm, int maxCandidates)
+    {
+        var points = new List<Core.Ir.WitnessPointInfo>();
+
+        IEnumerable<Element> candidates;
+        try
+        {
+            var radiusFt = radiusMm / MmPerFoot;
+            var minPt = new XYZ(anchor.X - radiusFt, anchor.Y - radiusFt, anchor.Z - radiusFt);
+            var maxPt = new XYZ(anchor.X + radiusFt, anchor.Y + radiusFt, anchor.Z + radiusFt);
+            candidates = new FilteredElementCollector(doc, view.Id)
+                .WherePasses(new BoundingBoxIntersectsFilter(new Outline(minPt, maxPt)))
+                .WhereElementIsNotElementType();
+        }
+        catch
+        {
+            return points;
+        }
+
+        foreach (var element in candidates)
+        {
+            if (points.Count >= maxCandidates)
+            {
+                break;
+            }
+
+            // View-specific elements are the drafted linework itself - the
+            // thing being checked, never the thing to check it against.
+            try
+            {
+                if (element.ViewSpecific)
+                {
+                    continue;
+                }
+            }
+            catch
+            {
+                continue;
+            }
+
+            AppendWitnessPoints(element, anchor, points, maxCandidates);
+        }
+
+        return points;
+    }
+
+    private static void AppendWitnessPoints(
+        Element element, XYZ anchor, List<Core.Ir.WitnessPointInfo> points, int maxCandidates)
+    {
+        GeometryElement? geomElement;
+        try
+        {
+            var options = new Options
+            {
+                ComputeReferences = false,
+                IncludeNonVisibleObjects = false,
+                // Same real reason as AppendHorizontalFaces: Coarse
+                // collapses a parametric civil profile to a bounding block
+                // (PLANNING.md §18).
+                DetailLevel = ViewDetailLevel.Fine,
+            };
+            geomElement = element.get_Geometry(options);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (geomElement is null)
+        {
+            return;
+        }
+
+        string? categoryName = null;
+        try
+        {
+            categoryName = element.Category?.Name;
+        }
+        catch
+        {
+            // best effort, same as every other describe path here
+        }
+
+        foreach (var geomObj in geomElement)
+        {
+            WalkWitnessGeometry(geomObj, element.Id.Value, categoryName, anchor, points, maxCandidates);
+        }
+    }
+
+    /// <summary>
+    /// Projects the anchor onto every face of a geometry object, following
+    /// nested family geometry - the witness-point counterpart of
+    /// <see cref="WalkGeometry"/>.
+    /// </summary>
+    private static void WalkWitnessGeometry(
+        GeometryObject geomObj,
+        long sourceElementId,
+        string? categoryName,
+        XYZ anchor,
+        List<Core.Ir.WitnessPointInfo> points,
+        int maxCandidates)
+    {
+        if (points.Count >= maxCandidates)
+        {
+            return;
+        }
+
+        switch (geomObj)
+        {
+            case Solid solid when solid.Faces is not null && solid.Volume > 0:
+                foreach (Face face in solid.Faces)
+                {
+                    if (points.Count >= maxCandidates)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        var projection = face.Project(anchor);
+                        if (projection?.XYZPoint is not { } hit)
+                        {
+                            continue;
+                        }
+
+                        points.Add(new Core.Ir.WitnessPointInfo
+                        {
+                            Point = PointOf(hit)!,
+                            SourceElementId = sourceElementId,
+                            SourceCategory = categoryName,
+                            FaceNormal = PointOf(face.ComputeNormal(projection.UVPoint)),
+                        });
+                    }
+                    catch
+                    {
+                        // One unprojectable face costs a candidate, not the run.
+                    }
+                }
+
+                break;
+
+            case GeometryInstance instance:
+                // Nested FamilyInstance geometry - GetInstanceGeometry()
+                // returns it already in project space.
+                try
+                {
+                    foreach (var sub in instance.GetInstanceGeometry())
+                    {
+                        WalkWitnessGeometry(sub, sourceElementId, categoryName, anchor, points, maxCandidates);
+                    }
+                }
+                catch
+                {
+                    // best effort, same as WalkGeometry
+                }
+
+                break;
+        }
+    }
+
     private static List<Core.Ir.NearbyFaceInfo> NearbyHorizontalFaces(Document doc, View view, XYZ nearXyz, double radiusMm)
     {
         var faces = new List<Core.Ir.NearbyFaceInfo>();
