@@ -104,6 +104,21 @@ public class RevitCheckApplication : IExternalApplication
 
         capturePanel.AddItem(ruleConfigButton);
 
+        var checkDimensionsButton = new PushButtonData(
+            "RevitCheck.CheckDimensions",
+            "Check\nDimensions",
+            assemblyPath,
+            typeof(CheckDimensionsCommand).FullName)
+        {
+            ToolTip = "Open a view, run this, settle it, move on. Runs every dimension check that applies to " +
+                      "the active view - drafted dimensions against the model geometry the view shows, spot " +
+                      "elevations, pile chain bearings - and reconciles them against that view's triage in one " +
+                      "pass. Says which dimension types the view actually contains, so you don't need to know " +
+                      "which check applies before running it.",
+        };
+
+        SetIcons(checkDimensionsButton, "DimensionProvenance");
+
         var dimensionTriageButton = new PushButtonData(
             "RevitCheck.DimensionTriage",
             "Dimension\nTriage",
@@ -122,6 +137,8 @@ public class RevitCheckApplication : IExternalApplication
         SetIcons(dimensionTriageButton, "DimensionProvenance");
 
         dimensionPanel.AddItem(dimensionTriageButton);
+        // Straight after triage: triage raises a view, this settles it.
+        dimensionPanel.AddItem(checkDimensionsButton);
 
         var pileModelScheduleButton = new PushButtonData(
             "RevitCheck.PileModelScheduleConsistency",

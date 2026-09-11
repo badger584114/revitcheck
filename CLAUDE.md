@@ -215,7 +215,7 @@ Dated history for each is in PLANNING.md.
 | Panel | Buttons | What they are |
 | --- | --- | --- |
 | **Capture** | Capture Model, Rule Config | The snapshot + starter config for a model, and the config's own show/export/import/reset. |
-| **Dimension Checking** | Dimension Triage, Pile Chain Bearing, Spot Elevation | The button that raises triage, and exactly the checks that can resolve it. |
+| **Dimension Checking** | Dimension Triage, **Check Dimensions**, Pile Chain Bearing, Spot Elevation | The button that raises triage, and exactly the checks that can resolve it. **Check Dimensions is the one to reach for**: open a view, run it, settle it, move on — it runs every check that applies to that view and says which dimension types the view contains, so a reviewer needn't know which check applies first. The two single-purpose buttons stay while it proves itself. |
 | **Model Checks** | Pile Model/Schedule, Metadata Reconciliation | Report independently. They flag real problems but resolve nothing triage raised — see §21. |
 
 **The interactive checking workflow** (triage → per-view investigation →

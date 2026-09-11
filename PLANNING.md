@@ -1536,3 +1536,15 @@ Built into the probe: `in_plane()` and `in_plane_distance_mm()`, face candidates
 423 Core tests passing (414 + 9); `dotnet build` clean including the net48 Addin. **Four of the new tests were confirmed to fail with the in-plane projection disabled** — the check genuinely rests on it. Registered in `CheckRegistry` and available in the CheckRunner via `--rule`.
 
 **Unrun inside Revit**, and it needs a fresh capture: `ViewInfo.ViewDirection`, `ReferenceInfo.Anchor` and the witness-point search are all new, so every existing capture returns coverage notes rather than findings. No ribbon button yet — the check and its adapter path exist, the command does not.
+
+**One button for a view, per the user's own account of the workflow (2026-09-11).** *"The intention was for the user to open the views and run the button anyway so that they can do manual verification if needed and clear a view before moving to the next view."*
+
+`CheckDimensionsCommand` ("Check Dimensions", in the Dimension Checking panel, directly after Dimension Triage) runs **every check that can settle a dimension** against the active view in one pass — `drawn_dimension_consistency`, `spot_elevation_consistency`, `pile_chain_bearing_consistency` — and records them into the session as a single investigation, so the view reconciles once and is done.
+
+**Why one button rather than a fourth alongside the others.** The panel already had the problem §18 named: a reviewer had to know which dimension shapes a view contained before knowing which button to press, which is backwards — working that out is the tool's job. `DimensionResolution` now knows which check settles which dimension, so the summary opens with *"By dimension type: 27 pile tag-to-tag, 2 spot elevation, 5 unreachable"* and the button simply runs what applies. Each check reports its own coverage when nothing in the view is its shape, so running all three costs a note rather than a wrong answer. Pile Chain Bearing and Spot Elevation stay exactly as they are — nothing anyone depends on changes while this proves itself.
+
+**Per-view by necessity as much as by design**: the drafted-dimension check needs a witness-geometry search (projecting each anchor onto every face of the elements the view shows), which is real per-face cost and needs a `View` to scope to, precisely like Spot Elevation's shelf walk. Both searches now run from one collection call rather than two.
+
+The one non-obvious step it has to perform: `PileChainBearingConsistencyCheck`'s findings are **chain-keyed**, carrying a pile's ElementId rather than a dimension's, so they are expanded per-dimension before recording — otherwise a flagged chain would reconcile its own dimensions as clean, which is the trap `ExpandByElementIdList` exists for.
+
+423 Core tests passing; `dotnet build` clean including the net48 Addin, 0 warnings. **Unrun inside Revit**, and the drafted-dimension half needs the new adapter fields, so a stale deployment will report coverage rather than findings.
