@@ -1459,3 +1459,24 @@ Filled-region anchors now return **every boundary vertex**, resolved against the
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
 
 **Next run: check the printed line "N face(s) were actually intersected with a cut line" before reading anything else.** If that is zero again the fault is still in the probe, not in the idea, and no distance in the file means anything.
+
+**Fourth run: the tally worked, `Face.Intersect` is unreachable from this binding, and the anchor question is now settled (2026-09-11).**
+
+**The cut-line probe ran properly this time and said so: 105,981 faces intersected, 0 hits, every one recorded as `no_out_parameter` then `null_array`.** Both binding strategies failed — the `clr.Reference` form raised, the tuple form came back without the out parameter. That is a real answer rather than silence, which is the whole reason the tally was added after the previous run produced zero of both.
+
+**`Face.Intersect(Curve, out IntersectionResultArray)` is simply not reachable here, so it is abandoned.** `Solid.IntersectWithCurve(Curve, SolidCurveIntersectionOptions)` answers the same question with a plain return value — verified against the real `RevitAPI.dll` — and answers it better: the segments it returns are the parts of the measurement line lying *inside* the solid, so their endpoints are exactly where it crosses the real surface, at the cut plane by construction since the line lies in it. It is also one call per solid instead of one per face, roughly four thousand fewer calls per probe.
+
+**The anchor question is now answered across four runs, and it splits cleanly:**
+
+| Anchor kind | Result |
+| --- | --- |
+| `point` / `curve` only | **7 of 9 within 5mm, median 0.13mm** |
+| involves a filled region | **0 of 4 within 5mm, median 1897.68mm** |
+
+**Two rules for a filled region have now been falsified on real data.** Its centroid was out by 270mm to 1.27km. The boundary vertex nearest the other end — the "measures to the near edge" rule that looked obviously right — is *worse*: it drags both anchors together, turning a real measured 1200mm into 1.36mm of separation, and did the same to 699mm and 1899mm. Marked unreliable in the output so no distance built on one is read as meaningful.
+
+**What that implies for the eventual check**: cover `point` and `curve` anchors, where the drafted separation reproduces the stated value to a median of 0.13mm, and report filled-region and same-element dimensions as out of reach until a rule exists that real data supports. On these views that is roughly half the population — worth having, and honest about the rest.
+
+414 Core tests passing; `dotnet build` clean including the net48 Addin.
+
+**Next run, in order: the printed "N solid(s) were actually intersected with a cut line", then the `crossed` / `no_crossing` outcome tally, then `delta_cut_line_vs_measured_mm` on the point/curve dimensions only.** The cut-plane idea has still never executed — four runs in, every failure so far has been in reaching the geometry, not in the idea itself.

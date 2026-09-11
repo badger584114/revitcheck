@@ -70,20 +70,18 @@ rather than from whether the idea sounded right.
 import json
 import os
 
-import clr
-
 from pyrevit import revit, script
 
 from Autodesk.Revit.DB import (
     BoundingBoxIntersectsFilter,
     Dimension,
-    IntersectionResultArray,
     Line,
     FilteredElementCollector,
     GeometryInstance,
     Options,
     Outline,
     Solid,
+    SolidCurveIntersectionOptions,
     ViewDetailLevel,
     ViewSection,
     XYZ,
@@ -234,77 +232,70 @@ def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=3000.0):
             category = None
 
         for solid in solids:
-            for face in solid.Faces:
-                faces_tried += 1
-                results = clr_out_intersect(face, probe_line, tally)
-
-                for hit in results:
-                    hits.append(
-                        {
-                            "element_id": eid(element.Id),
-                            "category": category,
-                            "point": point(hit),
-                            "distance_from_anchor_mm": distance_mm(anchor_xyz, hit),
-                        }
-                    )
+            faces_tried += 1
+            for hit in solid_line_crossings(solid, probe_line, tally):
+                hits.append(
+                    {
+                        "element_id": eid(element.Id),
+                        "category": category,
+                        "point": point(hit),
+                        "distance_from_anchor_mm": distance_mm(anchor_xyz, hit),
+                    }
+                )
 
     hits.sort(key=lambda h: h["distance_from_anchor_mm"])
     # Always reported, hit or miss: "0 hits from 84 faces, all Disjoint" is
     # a real answer and "0 hits, nothing attempted" is a bug, and the last
     # run could not tell them apart.
-    errors.append({"faces_tried": faces_tried, "outcomes": tally})
+    errors.append({"solids_tried": faces_tried, "outcomes": tally})
     return hits[:FACE_CANDIDATES], errors
 
 
-def clr_out_intersect(face, curve, tally):
-    """Face.Intersect(Curve, out IntersectionResultArray) - the real overload.
+def solid_line_crossings(solid, curve, tally):
+    """Where a line enters and leaves a solid - no `out` parameter involved.
 
-    **Fixed 2026-09-11, after a whole run produced zero hits and zero
-    errors.** The previous version called ``face.Intersect(curve)`` and
-    hoped the binding would hand the ``out`` parameter back as a tuple.
-    ``Face.Intersect`` has *two* overloads, and a one-argument call
-    resolves to the one that returns a bare ``SetComparisonResult`` - not
-    iterable, so every face fell into a ``TypeError`` branch that returned
-    empty. 170 nearest-face candidates were found on the same run, so the
-    geometry walk was never the problem; the intersection simply never
-    happened, and said nothing about it.
+    **Rewritten 2026-09-11, after the previous attempt reported 105,981
+    faces intersected and zero hits.** `Face.Intersect(Curve, out
+    IntersectionResultArray)` could not be reached from this binding at
+    all: the `clr.Reference` form raised, and the tuple form came back
+    without the out parameter - both recorded, on every one of those
+    105,981 calls. That was the tally earning its place, but it is a wall.
 
-    That is this project's own most-repeated failure - a confident empty
-    answer - committed inside the probe built to avoid guessing. Hence
-    ``tally``: every outcome is counted, so a zero can never again be
-    indistinguishable from "not attempted".
+    `Solid.IntersectWithCurve` answers the same question with a plain
+    return value, and answers it better: the segments it gives are the
+    parts of the measurement line that lie *inside* the solid, so their
+    endpoints are exactly where the line crosses the real surface - at the
+    cut plane by construction, since the line lies in it. It is also one
+    call per solid rather than one per face, which is roughly four
+    thousand fewer calls per probe.
     """
-    array = None
     try:
-        holder = clr.Reference[IntersectionResultArray]()
-        outcome = face.Intersect(curve, holder)
-        array = holder.Value
-        tally[str(outcome)] = tally.get(str(outcome), 0) + 1
+        options = SolidCurveIntersectionOptions()
+        result = solid.IntersectWithCurve(curve, options)
     except Exception as exc:  # noqa: BLE001
-        # Older/IronPython bindings return the out parameter as a tuple.
-        try:
-            outcome = face.Intersect(curve)
-            if isinstance(outcome, tuple) and len(outcome) > 1:
-                array = outcome[1]
-                tally[str(outcome[0])] = tally.get(str(outcome[0]), 0) + 1
-            else:
-                tally["no_out_parameter"] = tally.get("no_out_parameter", 0) + 1
-        except Exception as inner:  # noqa: BLE001
-            key = "error: {0}".format(inner)[:120]
-            tally[key] = tally.get(key, 0) + 1
-            return []
+        key = "error: {0}".format(exc)[:120]
+        tally[key] = tally.get(key, 0) + 1
+        return []
+
+    if result is None:
+        tally["null_result"] = tally.get("null_result", 0) + 1
+        return []
+
+    count = result.SegmentCount
+    if count == 0:
+        tally["no_crossing"] = tally.get("no_crossing", 0) + 1
+        return []
+
+    tally["crossed"] = tally.get("crossed", 0) + 1
 
     points = []
-    if array is None:
-        tally["null_array"] = tally.get("null_array", 0) + 1
-        return points
-
-    try:
-        for item in array:
-            points.append(item.XYZPoint)
-    except Exception as exc:  # noqa: BLE001
-        key = "unreadable array: {0}".format(exc)[:120]
-        tally[key] = tally.get(key, 0) + 1
+    for index in range(count):
+        try:
+            segment = result.GetCurveSegment(index)
+        except Exception:  # noqa: BLE001
+            continue
+        points.append(segment.GetEndPoint(0))
+        points.append(segment.GetEndPoint(1))
 
     return points
 
@@ -566,9 +557,27 @@ for dimension in dimensions:
         continue
 
     if len(witnesses) == 2:
-        # A filled region has no single anchor - resolve it against the
-        # other end, since a dimension measures to the near edge. Done
-        # here rather than in witness_anchor because it needs both ends.
+        # A filled region has no single anchor, and TWO rules for picking
+        # one have now been falsified on real data (2026-09-11): its
+        # centroid was out by 270mm-1.27km, and the boundary vertex
+        # nearest the other end drags both anchors together, collapsing a
+        # real 1200mm to 1.36mm. Split cleanly by anchor kind across every
+        # run so far:
+        #
+        #     point/curve only        7/9 within 5mm, median   0.13mm
+        #     involves filled region  0/4 within 5mm, median 1897.68mm
+        #
+        # So the near-edge rule below is kept only to keep producing a
+        # number to compare against - the entry is marked so nothing reads
+        # a filled-region result as trustworthy, and a check built from
+        # this should cover point/curve anchors and report the rest as out
+        # of reach until a rule exists that real data supports.
+        if any("filled_region" in (w.get("from") or "") for w in witnesses):
+            entry["anchor_unreliable"] = (
+                "a filled region is one end - neither its centroid nor its nearest boundary "
+                "vertex has matched a real measured value on any run so far"
+            )
+
         for index, witness in enumerate(witnesses):
             candidates = witness.get("candidates")
             if not candidates:
@@ -686,8 +695,8 @@ faces_tried = 0
 for r in results:
     for probe in r.get("witness_probes") or []:
         for e in probe.get("errors") or []:
-            faces_tried += e.get("faces_tried", 0) if isinstance(e, dict) else 0
-output.print_md("- {0} face(s) were actually intersected with a cut line".format(faces_tried))
+            faces_tried += e.get("solids_tried", 0) if isinstance(e, dict) else 0
+output.print_md("- {0} solid(s) were actually intersected with a cut line".format(faces_tried))
 output.print_md("")
 output.print_md(
     "**Compare `delta_cut_line_vs_measured_mm` against `delta_vs_measured_mm`** "
