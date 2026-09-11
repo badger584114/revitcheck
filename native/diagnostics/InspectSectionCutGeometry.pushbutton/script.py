@@ -73,13 +73,11 @@ import os
 from pyrevit import revit, script
 
 from Autodesk.Revit.DB import (
-    BoundingBoxIntersectsFilter,
     Dimension,
     Line,
     FilteredElementCollector,
     GeometryInstance,
     Options,
-    Outline,
     Solid,
     SolidCurveIntersectionOptions,
     ViewDetailLevel,
@@ -89,10 +87,16 @@ from Autodesk.Revit.DB import (
 
 MM_PER_FOOT = 304.8
 
-# How far around a witness line to look for model geometry. Generous on
-# purpose: this is a diagnostic, and reporting "nothing within 2m" is a
-# real answer worth having. A real check would make this configurable.
-SEARCH_RADIUS_MM = 2000.0
+# How far along the measurement direction to cast the cut line. It only
+# has to reach past the geometry either side of a witness; the elements
+# themselves are scoped by the view, not by distance.
+CUT_LINE_REACH_MM = 3000.0
+
+# How far a face's normal may tilt out of the section plane and still
+# count as seen edge-on. sin(20deg) - generous, since a real civil
+# profile's faces are rarely exactly perpendicular to a section a drafter
+# placed by eye.
+FACE_NORMAL_TOLERANCE = 0.342
 
 # How many candidate faces to keep per witness line. More than one, so the
 # output shows whether the nearest face wins clearly or by a hair - a
@@ -159,26 +163,65 @@ def solids_of(element):
     return found, None
 
 
-def nearby_elements(anchor_xyz):
-    """Model elements whose bounding box is within SEARCH_RADIUS of a point."""
-    radius_ft = SEARCH_RADIUS_MM / MM_PER_FOOT
-    low = XYZ(anchor_xyz.X - radius_ft, anchor_xyz.Y - radius_ft, anchor_xyz.Z - radius_ft)
-    high = XYZ(anchor_xyz.X + radius_ft, anchor_xyz.Y + radius_ft, anchor_xyz.Z + radius_ft)
+def elements_in_view():
+    """Every model element the section actually shows.
 
+    **Rewritten 2026-09-11, per the user: "we know the elements, they can
+    be grabbed from the view."** This previously swept the whole document
+    with a bounding-box filter around each anchor, which is both the wrong
+    scope and expensive - 105,981 faces walked on one run. A section's own
+    visible elements are exactly the geometry it cuts, so the view is the
+    scope, by construction.
+
+    It is also CLAUDE.md's own standing rule - *collect view-scoped, never
+    document-wide* - which that file already records as having been broken
+    three times. This was the fourth, in the probe written to avoid
+    guessing.
+
+    Cached once per run: the same set serves every dimension in the view,
+    where the old code re-swept the document per anchor.
+    """
     try:
-        collector = (
-            FilteredElementCollector(doc)
-            .WhereElementIsNotElementType()
-            .WherePasses(BoundingBoxIntersectsFilter(Outline(low, high)))
-        )
+        collector = FilteredElementCollector(doc, view.Id).WhereElementIsNotElementType()
         # View-specific elements are the drafted linework itself - the
         # thing being checked, never the thing to check it against.
         return [e for e in collector if not e.ViewSpecific]
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         return []
 
 
-def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=3000.0):
+def faces_facing_the_section(face, tally):
+    """True for a face seen edge-on in this section.
+
+    Per the user: filter faces by their normal against the section plane.
+    A face whose normal is perpendicular to the view direction is seen
+    edge-on - it draws as a line in the section, and that line is what a
+    drafter dimensions to. A face whose normal points along the view
+    direction is seen face-on: the background surface behind the cut, not
+    something anyone dimensions to.
+
+    On the existing dumps this drops roughly 59 of every 70 candidate
+    faces, which is the point - the previous runs picked the nearest face
+    out of everything, including surfaces that could never be a witness.
+    """
+    try:
+        normal = face.ComputeNormal(face.GetBoundingBox().Min)
+    except Exception:  # noqa: BLE001
+        tally["normal_unreadable"] = tally.get("normal_unreadable", 0) + 1
+        return True  # Fail open - a face we cannot judge still gets a look.
+
+    try:
+        alignment = abs(normal.DotProduct(view.ViewDirection))
+    except Exception:  # noqa: BLE001
+        return True
+
+    edge_on = alignment < FACE_NORMAL_TOLERANCE
+    key = "edge_on" if edge_on else "face_on_skipped"
+    tally[key] = tally.get(key, 0) + 1
+    return edge_on
+
+
+def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=CUT_LINE_REACH_MM):
     """Where real model faces cross a line lying IN the cut plane.
 
     **This is what the user actually described** — "get faces points on the
@@ -220,7 +263,7 @@ def cut_line_hits(anchor_xyz, axis_xyz, reach_mm=3000.0):
     tally = {}
     faces_tried = 0
 
-    for element in nearby_elements(anchor_xyz):
+    for element in VIEW_ELEMENTS:
         solids, error = solids_of(element)
         if error:
             errors.append({"element_id": eid(element.Id), "error": error})
@@ -309,8 +352,9 @@ def project_faces(anchor_xyz):
     """
     candidates = []
     errors = []
+    face_tally = {}
 
-    for element in nearby_elements(anchor_xyz):
+    for element in VIEW_ELEMENTS:
         solids, error = solids_of(element)
         if error:
             errors.append({"element_id": eid(element.Id), "error": error})
@@ -324,6 +368,9 @@ def project_faces(anchor_xyz):
 
         for solid in solids:
             for face in solid.Faces:
+                if not faces_facing_the_section(face, face_tally):
+                    continue
+
                 try:
                     result = face.Project(anchor_xyz)
                 except Exception:  # noqa: BLE001
@@ -345,6 +392,7 @@ def project_faces(anchor_xyz):
                 )
 
     candidates.sort(key=lambda c: c["distance_from_witness_mm"])
+    errors.append({"face_normals": face_tally})
     return candidates[:FACE_CANDIDATES], errors
 
 
@@ -465,6 +513,9 @@ cut_plane = {
     "origin": point(view.Origin),
     "crop_box_active": view.CropBoxActive,
 }
+
+# Resolved once - every dimension in this view shares the same scope.
+VIEW_ELEMENTS = elements_in_view()
 
 # --- the dimensions to look at ------------------------------------------
 
@@ -697,6 +748,20 @@ for r in results:
         for e in probe.get("errors") or []:
             faces_tried += e.get("solids_tried", 0) if isinstance(e, dict) else 0
 output.print_md("- {0} solid(s) were actually intersected with a cut line".format(faces_tried))
+output.print_md("- {0} model element(s) visible in this view were searched".format(len(VIEW_ELEMENTS)))
+
+normals = {}
+for r in results:
+    for probe in r.get("witness_probes") or []:
+        for e in probe.get("errors") or []:
+            for k, v in ((e.get("face_normals") or {}) if isinstance(e, dict) else {}).items():
+                normals[k] = normals.get(k, 0) + v
+if normals:
+    output.print_md(
+        "- faces by orientation: {0}".format(
+            ", ".join("{0} {1}".format(v, k) for k, v in sorted(normals.items()))
+        )
+    )
 output.print_md("")
 output.print_md(
     "**Compare `delta_cut_line_vs_measured_mm` against `delta_vs_measured_mm`** "

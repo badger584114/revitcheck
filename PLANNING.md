@@ -1480,3 +1480,17 @@ Filled-region anchors now return **every boundary vertex**, resolved against the
 414 Core tests passing; `dotnet build` clean including the net48 Addin.
 
 **Next run, in order: the printed "N solid(s) were actually intersected with a cut line", then the `crossed` / `no_crossing` outcome tally, then `delta_cut_line_vs_measured_mm` on the point/curve dimensions only.** The cut-plane idea has still never executed — four runs in, every failure so far has been in reaching the geometry, not in the idea itself.
+
+**Reaching the geometry was never the hard part — the probe was doing it wrong (2026-09-11).** Per the user, on being told four runs had failed to reach it: *"why is reaching the geometry a problem? we know the elements, they can be grabbed from the view, for the faces can we filter them by normal vector and the alignment of the section plane?"*
+
+Both halves of that are right, and the first is a rule this file already carries.
+
+**The element search was document-wide.** `nearby_elements` swept the whole document with a bounding-box filter around each anchor, re-running per anchor, which is what produced 105,981 faces on one run. A section's own visible elements are exactly the geometry it cuts, so `FilteredElementCollector(doc, view.Id)` is the correct scope by construction — resolved once and shared by every dimension in the view. **CLAUDE.md already states this as a standing rule** ("collect view-scoped, never document-wide") and already records it as having been broken three times. This was the fourth, inside the probe written to stop guessing.
+
+**The face search had no orientation filter at all.** A face seen edge-on in a section — normal perpendicular to the view direction — draws as a line, and that line is what a drafter dimensions to. A face whose normal points *along* the view direction is seen face-on: the background behind the cut, which nobody dimensions to. Every previous run picked the nearest face out of all of them, background included, which is a large part of why the nearest-face answer averaged 21mm error with points landing 50-400mm out of plane. Tested against the existing dumps: the filter drops roughly **59 of every 70** candidate faces. Only one dimension survived the full chain on that data, so it is not yet validated for accuracy — but the reduction is real and the reasoning does not depend on the sample.
+
+Implemented at `sin(20°)`, deliberately generous: a real civil profile's faces are rarely exactly perpendicular to a section a drafter placed by eye, and the failure direction of being too tight is dropping the right face entirely. Faces are tallied `edge_on` / `face_on_skipped`, so the next run says how the population actually splits rather than leaving the filter's effect invisible.
+
+**This is worth being blunt about.** "Reaching the geometry" was framed across four runs as the obstacle, and it was not: it was a document-wide sweep where a view-scoped one was called for, plus an unfiltered face set. Both were mine, both contradict rules already written down here, and the user identified both from the described symptoms without seeing the code.
+
+414 Core tests passing; `dotnet build` clean including the net48 Addin.
