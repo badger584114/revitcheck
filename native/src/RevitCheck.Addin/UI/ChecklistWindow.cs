@@ -221,7 +221,12 @@ internal sealed class ChecklistWindow : Window
         gridView.Columns.Add(Column("Rule", nameof(DetailRow.RuleId), 220));
         gridView.Columns.Add(Column("Severity", nameof(DetailRow.Severity), 70));
         gridView.Columns.Add(Column("Element", nameof(DetailRow.ElementIdText), 80));
-        gridView.Columns.Add(Column("Description", nameof(DetailRow.Description), 340));
+        // Bound to Summary, not Description: a GridViewColumn renders one
+        // unwrapped line, and a real finding's own description runs to a
+        // median of 244 characters (a view rollup's to 389), so the column
+        // showed a truncated fragment of every row. DetailRow.Description
+        // stays full for the audit trail - see its own remarks.
+        gridView.Columns.Add(Column("Description", nameof(DetailRow.Summary), 340));
 
         return new ListView
         {
@@ -508,13 +513,21 @@ internal sealed class ChecklistWindow : Window
 
         if (entry.ManualResolutionReason is not null)
         {
+            var reason = entry.ManualResolutionReason.Length == 0
+                ? "(no reason given)"
+                : entry.ManualResolutionReason;
+
             rows.Add(new DetailRow
             {
                 Section = "Manually Dismissed",
                 RuleId = "",
                 Severity = "",
                 ElementId = null,
-                Description = entry.ManualResolutionReason.Length == 0 ? "(no reason given)" : entry.ManualResolutionReason,
+                Description = reason,
+                // A reviewer's own words, already short - shown as written
+                // rather than put through IssueDigest, which reads an
+                // Issue's structured data and this row has none.
+                Summary = reason,
             });
         }
 
@@ -532,6 +545,7 @@ internal sealed class ChecklistWindow : Window
                 Severity = issue.Severity,
                 ElementId = issue.ElementId,
                 Description = issue.Description,
+                Summary = IssueDigest.ShortLine(issue),
             });
         }
     }
@@ -802,6 +816,22 @@ internal sealed class ChecklistWindow : Window
         public string Severity { get; init; } = "";
         public long? ElementId { get; init; }
         public string ElementIdText => ElementId?.ToString() ?? "";
+
+        /// <summary>
+        /// The finding's own full text. <b>Not what the grid shows</b> - see
+        /// <see cref="Summary"/> - but kept in full because
+        /// <see cref="OnMarkDetailVerdictClick"/> embeds it verbatim in the
+        /// verdict it records ("Original finding: ..."), which is a permanent
+        /// audit record and feeds that new Issue's own identity hash.
+        /// Shortening this field would quietly degrade both.
+        /// </summary>
         public string Description { get; init; } = "";
+
+        /// <summary>
+        /// The one line the Description column actually displays - see
+        /// <see cref="IssueDigest"/>. Built from the finding's structured
+        /// data rather than by cutting <see cref="Description"/> down.
+        /// </summary>
+        public string Summary { get; init; } = "";
     }
 }

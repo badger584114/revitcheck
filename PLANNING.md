@@ -1577,3 +1577,31 @@ Fixed by counting them into `chained`/`tooFewReferences` and reporting one combi
 **One consequence for the run:** `RUN_CHECKLIST.md` §4 lists the coverage notes to expect (filled regions, both ends on one element, no edge-on face within 1500mm). There will now be a fourth kind, and on a section carrying chained dimensions it may be the largest. That is the intended outcome rather than a surprise, but the checklist does not yet say so.
 
 **The lesson, and it is this project's oldest one arriving somewhere new.** §22 named the dangerous form of the confident empty answer as a fabricated defect rather than silence. This is the other form, and it survived in a check written the same week that rule was restated: four exclusion paths were carefully reported and the fifth, added as an ordinary guard clause, was not. **A guard clause is where this failure hides**, precisely because it reads as obviously correct — the dimension genuinely cannot be compared. What it must also do is say so.
+
+## 29. The checklist's details pane was unreadable, and the fix had to leave every description alone (2026-09-23)
+
+**Per the user: "in the dimension triage dialogue box can you make the description more concise. it is way too long and unable to be read."** This is §24's dialog-cutting one layer over — that one trimmed the *run* dialogs, this is the checklist window a reviewer actually works from, and it had never been looked at.
+
+**The measurement, from the committed capture rather than an impression.** The details pane rendered each finding's full `Description` into a `GridViewColumn`, which draws one unwrapped line 340px wide. Real description lengths: a median of **244** characters for the commonest finding (a drafted dimension, 734 of them), **389** for a view rollup, and **523** for the override coverage note. Every row was a truncated fragment.
+
+**Most of the length is repetition, and that is what made this cheap.** Nearly every description opens by naming its view and sheet — *"Dimension in engineering plan view 'DRG-2873251 - SERVICE SUPPORT GENERAL ARRANGEMENT PLAN' (sheet 2873251)..."* — but the pane only ever shows one selected view's findings, and the grid already carries Section, Rule, Severity and Element as their own columns. So the new line says only what those do not:
+
+| Shape | Was | Now |
+| --- | --- | --- |
+| view rollup | 389 | `430 of 430 drafted - 430 unreachable` |
+| drafted dimension | 244 | `Drafted - measures detail linework` |
+| mixed | 196 | `Mixed - model one end, linework the other` |
+| override | 194 | `Seg 2/2: typed 1200mm, measures 1096.9mm (+103.1mm)` |
+| override coverage | 523 | `183 of 10671 segments overridden, 62 compared, 121 not a number` |
+
+**Built from each finding's own structured data, never by shortening its prose** (`Reporting/IssueDigest.cs`, Core so it is testable — the `DimensionInvestigation` precedent). Truncating a rendered description is the move this project forbids everywhere else, and it would come apart the moment a description was reworded. Reading `SuggestedFix` instead is also what makes the change free: **`IssueId` hashes the description**, so leaving all of them untouched renames nothing and leaves the 928-id parity fixture alone — the cost §26 paid once, for 56 findings, when it added a sentence to a rollup. `SuggestedFix` is excluded from that hash by design and pinned by its own test.
+
+**The trap, and it was found by grepping every consumer before editing rather than by any test.** `DetailRow.Description` is not display-only: `OnMarkDetailVerdictClick` embeds it verbatim into the verdict a reviewer records — *"Manually confirmed as a real problem by a reviewer... Original finding: ..."* — which is a permanent audit record **and** feeds that new Issue's own identity hash. Overwriting the field with a short form would have silently degraded both, and nothing would have failed. So `Description` stays full and the column binds to a new `Summary` property. **A field that looks like presentation may be load-bearing somewhere else; the cheap way to find out is to look at who reads it.**
+
+**What keeps its prose, deliberately:** a coverage note carrying no structured counts, and any rule `IssueDigest` has never heard of. The line is whether the finding is about an element or about the run — *"this dimension is 103mm out"* has an exact structured form, while *"121 overrides were not a number and were skipped"* is the explanation itself. An unrecognised rule falling back to its full text means a future check renders in full rather than blank, which is the failure this document names most often.
+
+**One test earns its place ahead of the others.** A resumed session's `SuggestedFix` values come back as `JsonElement`, not their original CLR types — the round-trip that silently emptied two readers in §16 — and this pane reads a deserialized session every time someone resumes one. The readers use `ToString()` plus a parse (matching `RunSummary`'s own approach) rather than a cast, and `Values_reloaded_from_a_session_file_still_read` pins it. It is the one case that would have failed on a real machine and nowhere else.
+
+440 Core tests passing (430 + 10); `dotnet build` clean including the net48 Addin, 0 warnings. **Unrun on a machine**, like every Addin-side change — the Core half is fully covered, the four lines of window wiring are not and cannot be.
+
+**Not done, and free if wanted:** spot-vs-linear is not in the provenance check's structured data, so all 734 drafted rows read identically apart from their Element column. Adding an `is_spot` key would separate them and costs nothing in identity terms, since `SuggestedFix` is not hashed.
