@@ -97,8 +97,14 @@ Reading the dialog:
   the check), not a result.
 - **Mismatches**: each one is stated vs model, with the delta in mm.
 - **Coverage count**: the notes themselves are in the JSON. Expect some for
-  filled regions, for both ends on one element, and for no edge-on face
-  within 1500mm.
+  filled regions, for both ends on one element, for no edge-on face within
+  1500mm, and for a dimension whose reference count is not two — a chain
+  across three or more, or one carrying a single reference. **On a section
+  carrying chained dimensions that last kind may well be the largest**, and
+  it is the check stating what it did not compare rather than a fault: 840
+  of the committed capture's 16,770 non-spot dimensions are that shape
+  (§28, 2026-09-23). A view reporting no findings *and* no coverage is the
+  thing to distrust.
 
 **Stop and send it back** if you see any of these:
 
