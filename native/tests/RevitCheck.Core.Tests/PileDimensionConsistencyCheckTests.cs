@@ -196,4 +196,27 @@ public class PileDimensionConsistencyCheckTests
         var issue = Assert.Single(issues);
         Assert.Equal("coverage", issue.Category);
     }
+
+    /// <summary>
+    /// A blanked override - the drafter hides the value and covers it with a
+    /// TextNote, the convention §17 confirmed on real drawings - means the
+    /// printed value is not this number, so there is nothing here to
+    /// compare. Testing the override text for emptiness instead reads it as
+    /// unoverridden, substitutes the measurement as the stated value, and
+    /// reports a disagreement over a figure the drawing never carried.
+    /// Reported from a real run, 2026-09-23.
+    /// </summary>
+    [Fact]
+    public void A_blanked_override_is_skipped_rather_than_compared_against_the_measurement()
+    {
+        var issues = PileDimensionConsistencyCheck.Run(
+            Model(3805.0, 3755.0, overrideText: ""), new RuleConfig());
+
+        Assert.Empty(issues.Where(i => i.Category == "geometry"));
+        Assert.Contains(issues, i => i.Category == "coverage" && i.Description.Contains("Not compared"));
+
+        var scope = PileDimensionConsistencyCheck.RunWithScope(
+            Model(3805.0, 3755.0, overrideText: ""), new RuleConfig());
+        Assert.Empty(scope.InvestigatedElementIds);
+    }
 }

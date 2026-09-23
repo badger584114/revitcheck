@@ -287,4 +287,31 @@ public class DrawnDimensionConsistencyCheckTests
             i.Category == "coverage" && i.Description.Contains("fewer than two references"));
         Assert.Empty(result.InvestigatedElementIds);
     }
+
+    /// <summary>
+    /// The defect a real run surfaced (2026-09-23): a dimension whose value
+    /// the drafter blanked and covered with a TextNote was being compared
+    /// anyway. A blanked override is an empty string, distinct from null,
+    /// and means the printed value is not this number - so substituting the
+    /// measurement reports a disagreement over a figure the drawing never
+    /// carried. The model here really is 50mm from the measured value, so
+    /// the finding would look entirely plausible.
+    /// </summary>
+    [Fact]
+    public void A_blanked_override_is_skipped_rather_than_compared_against_the_measurement()
+    {
+        var model = Model(Dimension(
+            100,
+            Witness(1, P(0, 0, 0), P(0, -200, 0)),
+            Witness(2, P(1550, 0, 0), P(1600, -900, 0)),
+            statedMm: 1550.0,
+            overrideText: ""));
+
+        var result = DrawnDimensionConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        Assert.Empty(result.Issues.Where(i => i.Category == "geometry"));
+        Assert.Contains(result.Issues, i =>
+            i.Category == "coverage" && i.Description.Contains("no numeric stated value"));
+        Assert.Empty(result.InvestigatedElementIds);
+    }
 }

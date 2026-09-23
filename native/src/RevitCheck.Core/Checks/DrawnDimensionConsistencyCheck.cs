@@ -238,10 +238,22 @@ public static class DrawnDimensionConsistencyCheck
 
     /// <summary>
     /// What the drawing says: the typed override where there is one, since
-    /// that is what a reader acts on, otherwise the measured value. Null for
-    /// an override that is not a number - a bar mark or "500 MIN." states
-    /// something this comparison cannot use.
+    /// that is what a reader acts on, otherwise the measured value. Null
+    /// whenever the printed value is not a number this comparison can use -
+    /// a bar mark, "500 MIN.", or a blanked override.
     /// </summary>
+    /// <remarks>
+    /// <b>Keyed on <see cref="DimensionSegmentInfo.IsOverridden"/>, not on
+    /// the override being blank</b>, and the difference is a real defect a
+    /// first real run surfaced. A drafter who blanks a dimension's value and
+    /// covers it with a <see cref="TextNoteInfo"/> leaves an <i>empty</i>
+    /// override, which Revit keeps distinct from null and which means "what
+    /// is printed here is not this number" - the convention §17 confirmed on
+    /// real drawings, and the reason that property exists at all. Testing
+    /// the text for emptiness reads it as unoverridden, substitutes the
+    /// model's own measured value as the stated one, and reports a
+    /// disagreement over a figure the drawing never carried.
+    /// </remarks>
     private static double? StatedMm(DimensionInfo dimension)
     {
         if (dimension.Segments.Count != 1)
@@ -250,9 +262,9 @@ public static class DrawnDimensionConsistencyCheck
         }
 
         var segment = dimension.Segments[0];
-        return string.IsNullOrWhiteSpace(segment.ValueOverride)
-            ? segment.ValueMm
-            : DimensionOverrideConsistencyCheck.ParseOverrideMm(segment.ValueOverride);
+        return segment.IsOverridden
+            ? DimensionOverrideConsistencyCheck.ParseOverrideMm(segment.ValueOverride)
+            : segment.ValueMm;
     }
 
     private static bool AnySearchRan(DimensionInfo dimension) =>

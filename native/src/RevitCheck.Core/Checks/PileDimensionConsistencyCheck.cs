@@ -236,12 +236,16 @@ public static class PileDimensionConsistencyCheck
             return null;
         }
 
-        if (!string.IsNullOrWhiteSpace(segment.ValueOverride))
-        {
-            return DimensionOverrideConsistencyCheck.ParseOverrideMm(segment.ValueOverride);
-        }
-
-        return segment.ValueMm;
+        // IsOverridden, not an emptiness test on the text: a blanked
+        // override is an empty string, distinct from null, and means the
+        // printed value is not this number - see
+        // DimensionSegmentInfo.IsOverridden and the same correction made in
+        // DrawnDimensionConsistencyCheck.StatedMm. Reading it as
+        // unoverridden compares the model against itself and reports a
+        // figure the drawing never showed.
+        return segment.IsOverridden
+            ? DimensionOverrideConsistencyCheck.ParseOverrideMm(segment.ValueOverride)
+            : segment.ValueMm;
     }
 
     /// <summary>
