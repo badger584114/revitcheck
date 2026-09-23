@@ -50,6 +50,14 @@ namespace RevitCheck.Core.Checks;
 /// element - measuring between two features of one object, 5 of 23 on a
 /// real view. Nothing here can say which two, and picking the pair whose
 /// separation matches the stated value would be fitting to the answer.</item>
+/// <item>A dimension that is not a simple two-reference measurement: a
+/// chain across three or more references, or one carrying a single
+/// reference. On the one real capture committed here that is 840 of
+/// 16,770 non-spot dimensions - 338 chains and 500 single-reference -
+/// so it is a real population, not an edge case. Taking a chain apart
+/// (which segment measures between which pair) is plausible and has
+/// never been tested against real data, so it is reported rather than
+/// guessed at.</item>
 /// </list>
 /// <para>
 /// Both are reported as coverage rather than skipped silently, so a
@@ -86,6 +94,8 @@ public static class DrawnDimensionConsistencyCheck
         var noGeometry = new List<long>();
         var sameElement = new List<long>();
         var noViewDirection = new List<long>();
+        var chained = new List<long>();
+        var tooFewReferences = new List<long>();
 
         foreach (var dimension in searched)
         {
@@ -93,6 +103,13 @@ public static class DrawnDimensionConsistencyCheck
 
             if (dimension.References.Count != 2)
             {
+                // Counted, never silently dropped. A chain is one Revit
+                // element carrying many references, and a view of chained
+                // dimensions would otherwise report no findings and no
+                // coverage - reading as "compared and clean" having
+                // compared nothing, which is this project's most repeated
+                // failure.
+                (dimension.References.Count > 2 ? chained : tooFewReferences).Add(dimension.ElementId);
                 continue;
             }
 
@@ -172,7 +189,14 @@ public static class DrawnDimensionConsistencyCheck
             });
         }
 
-        issues.AddRange(CoverageNotes(sameElement, noGeometry, unanchored, noViewDirection, config));
+        issues.AddRange(CoverageNotes(
+            sameElement: sameElement,
+            noGeometry: noGeometry,
+            unanchored: unanchored,
+            noViewDirection: noViewDirection,
+            chained: chained,
+            tooFewReferences: tooFewReferences,
+            config: config));
         return (issues, investigated.Distinct().ToList());
     }
 
@@ -239,6 +263,8 @@ public static class DrawnDimensionConsistencyCheck
         List<long> noGeometry,
         List<long> unanchored,
         List<long> noViewDirection,
+        List<long> chained,
+        List<long> tooFewReferences,
         RuleConfig config)
     {
         var notes = new List<Issue>();
@@ -249,6 +275,30 @@ public static class DrawnDimensionConsistencyCheck
                 $"{sameElement.Count} dimension(s) measure between two features of a single element, which " +
                 "nothing here can resolve - picking the pair whose separation matches the stated value would " +
                 "be fitting to the answer. A reviewer's: " + List(sameElement)));
+        }
+
+        if (chained.Count > 0 || tooFewReferences.Count > 0)
+        {
+            var reasons = new List<string>();
+            if (chained.Count > 0)
+            {
+                reasons.Add(
+                    $"{chained.Count} measure across three or more references - a chain is one Revit element " +
+                    "carrying many segments, and which segment measures between which pair of references is a " +
+                    "rule no real probe run has tested");
+            }
+
+            if (tooFewReferences.Count > 0)
+            {
+                reasons.Add(
+                    $"{tooFewReferences.Count} carry fewer than two references, leaving nothing to measure " +
+                    "between");
+            }
+
+            notes.Add(Coverage(
+                $"{chained.Count + tooFewReferences.Count} dimension(s) were not compared because of their " +
+                $"reference shape: {string.Join("; ", reasons)}. A reviewer's: " +
+                List(chained.Concat(tooFewReferences).ToList())));
         }
 
         if (unanchored.Count > 0)

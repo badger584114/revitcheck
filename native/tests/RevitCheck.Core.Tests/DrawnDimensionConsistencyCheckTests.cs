@@ -232,4 +232,59 @@ public class DrawnDimensionConsistencyCheckTests
             new RuleConfig());
         Assert.Empty(noGeometry.InvestigatedElementIds);
     }
+
+    /// <summary>
+    /// A chain is one Revit element carrying many references, and it is a
+    /// real population rather than an edge case: 338 of the committed real
+    /// capture's 16,770 non-spot dimensions measure across three or more.
+    /// Dropping one silently would let a view of chained dimensions report
+    /// no findings <i>and</i> no coverage - reading as "compared and clean"
+    /// having compared nothing, which is the failure this project has
+    /// repeated most.
+    /// </summary>
+    [Fact]
+    public void A_chain_across_more_than_two_references_is_coverage_not_silence()
+    {
+        var chain = RevitCheckTestBuilders.Chain(
+            100,
+            10,
+            new[]
+            {
+                Witness(1, P(0, 0, 0), P(0, -200, 0)),
+                Witness(2, P(1550, 0, 0), P(1550, -900, 0)),
+                Witness(3, P(3100, 0, 0), P(3100, -400, 0)),
+            },
+            new (double?, string?)[] { (1550.0, null), (1550.0, null) });
+
+        var result = DrawnDimensionConsistencyCheck.RunWithScope(Model(chain), new RuleConfig());
+
+        Assert.Empty(result.Issues.Where(i => i.Category == "geometry"));
+        Assert.Contains(result.Issues, i =>
+            i.Category == "coverage" &&
+            i.Description.Contains("three or more references") &&
+            i.Description.Contains("100"));
+        Assert.Empty(result.InvestigatedElementIds);
+    }
+
+    /// <summary>
+    /// The other half of the same shape, and the larger one on real data -
+    /// 500 of those 16,770. A single reference leaves nothing to measure
+    /// between, which is a fact about the dimension, not a clean result.
+    /// </summary>
+    [Fact]
+    public void A_dimension_with_a_single_reference_is_counted_rather_than_dropped()
+    {
+        var model = Model(RevitCheckTestBuilders.Dimension(
+            100,
+            10,
+            new[] { Witness(1, P(0, 0, 0), P(0, -200, 0)) },
+            valueMm: 1550.0));
+
+        var result = DrawnDimensionConsistencyCheck.RunWithScope(model, new RuleConfig());
+
+        Assert.Empty(result.Issues.Where(i => i.Category == "geometry"));
+        Assert.Contains(result.Issues, i =>
+            i.Category == "coverage" && i.Description.Contains("fewer than two references"));
+        Assert.Empty(result.InvestigatedElementIds);
+    }
 }
