@@ -63,7 +63,21 @@ internal static class IssueOutput
     /// not just the JSON. Returns the JSON path, or null if the user
     /// cancelled the dialog (results were computed but nothing was written).
     /// </summary>
-    public static string? WriteNextToModel(Document doc, List<Issue> issues, string kind, string dialogTitle, bool writeBcf = true)
+    /// <param name="bcfIssues">
+    /// What BCF should carry, when that is narrower than what JSON/CSV
+    /// record. Null (the default) means the two are the same, which is what
+    /// every check command wants. The checklist's export passes a narrower
+    /// list: JSON/CSV keep the full audit trail while Forma receives only
+    /// findings a reviewer has actually confirmed - see
+    /// <c>CheckingSession.ExportableForBcf</c>.
+    /// </param>
+    public static string? WriteNextToModel(
+        Document doc,
+        List<Issue> issues,
+        string kind,
+        string dialogTitle,
+        bool writeBcf = true,
+        List<Issue>? bcfIssues = null)
     {
         var suggestedName = DocumentPaths.SafeBaseName(doc);
         var dialog = new SaveFileDialog
@@ -100,7 +114,7 @@ internal static class IssueOutput
             // see DocumentPaths' remarks on why doc.Title/doc.PathName can
             // throw.
             var modelTitle = TryReadTitle(doc) ?? stem;
-            foreach (var (fileName, bytes) in IssueBcfWriter.ToBcfFiles(issues, modelTitle))
+            foreach (var (fileName, bytes) in IssueBcfWriter.ToBcfFiles(bcfIssues ?? issues, modelTitle))
             {
                 File.WriteAllBytes(Path.Combine(directory, $"{stem}.{fileName}"), bytes);
             }

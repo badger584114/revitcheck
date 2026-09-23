@@ -114,6 +114,68 @@ public sealed class ViewChecklistEntry
             return ViewInvestigationStatus.Resolved;
         }
     }
+
+    /// <summary>
+    /// Every dimension triage raised in this view - the denominator the
+    /// checklist counts against.
+    /// </summary>
+    /// <remarks>
+    /// Counted in dimensions, never issues. A wholly-drafted view is one
+    /// rollup issue covering thirty dimensions, so an issue count says
+    /// nothing about how much work is waiting.
+    /// </remarks>
+    public List<long> TriagedDimensionIds() =>
+        TriageIssues
+            .SelectMany(InvestigationReconciliation.TriagedDimensionIds)
+            .Distinct()
+            .ToList();
+
+    /// <summary>
+    /// The dimensions in this view that still need a person's eyes - what
+    /// the checklist's "To check" column reports, and exactly what its
+    /// details pane lists.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A dimension is settled when it has been investigated and nothing
+    /// an automated check said about it is still outstanding.</b> So an
+    /// automated "confirmed problem" does <i>not</i> settle a dimension -
+    /// per the user, 2026-09-23: "confirmed problems still need to be
+    /// checked, a lot of them have not been problems on investigation". A
+    /// geometry disagreement is a candidate for a reviewer, and only that
+    /// reviewer's own verdict (<see cref="InvestigationReconciliation.ManualVerdictRuleId"/>)
+    /// closes it - whether they call it a real problem, clean, or parked.
+    /// </para>
+    /// <para>
+    /// This is the single definition behind both the count and the list, so
+    /// the number on a row and the rows beneath it agree by construction.
+    /// Before this they could not: the columns counted issues, the progress
+    /// figure counted dimensions, and the pane counted expanded-and-filtered
+    /// dimensions - three denominators on one screen, which is why a real
+    /// row read "2 still open, 5/7, 3 confirmed" above four listed findings.
+    /// </para>
+    /// </remarks>
+    public List<long> UnsettledDimensionIds()
+    {
+        var investigated = new HashSet<long>(InvestigatedElementIds);
+
+        // Anything an automated check is still saying about a dimension
+        // keeps it open - a human verdict is what closes it.
+        var automatedlyFlagged = new HashSet<long>(
+            LastReconciliation.ConfirmedProblems
+                .Concat(LastReconciliation.NeedsManualReview)
+                .Where(i => !string.Equals(
+                    i.RuleId, InvestigationReconciliation.ManualVerdictRuleId, StringComparison.Ordinal))
+                .Where(i => i.ElementId is not null)
+                .Select(i => i.ElementId!.Value));
+
+        return TriagedDimensionIds()
+            .Where(id => !investigated.Contains(id) || automatedlyFlagged.Contains(id))
+            .ToList();
+    }
+
+    /// <summary>How many of this view's triaged dimensions are settled - the "5" in "5 / 7".</summary>
+    public int SettledDimensionCount() => TriagedDimensionIds().Count - UnsettledDimensionIds().Count;
 }
 
 /// <summary>A manually-dismissed view, kept for the export-time audit trail - see <see cref="CheckingSession.ExportableManualResolutions"/>.</summary>
@@ -392,6 +454,63 @@ public sealed class CheckingSession
         IssueSorting.SortIssues(
             Views.SelectMany(v => v.LastReconciliation.ConfirmedProblems
                 .Concat(v.OtherInvestigationFindings.Where(IsRealProblem))));
+
+    /// <summary>
+    /// What actually ships to Forma: a reviewer's own confirmed verdicts,
+    /// plus standalone findings that are verdicts by their nature.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Narrower than <see cref="ExportableConfirmedProblems"/>, per the
+    /// user, 2026-09-23: "a lot of them have not been problems on
+    /// investigation and we don't want to clutter up the BCF with non
+    /// issues".</b> A dimension check reporting that the drawing and the
+    /// model disagree has found a <i>candidate</i> - real often enough to be
+    /// worth opening the view for, and wrong often enough that shipping it
+    /// to a coordination platform as a defect is the same mistake §14
+    /// stopped the triage buttons making. The reviewer's own verdict
+    /// (<see cref="InvestigationReconciliation.ManualVerdictRuleId"/>) is
+    /// what turns one into a finding.
+    /// </para>
+    /// <para>
+    /// <b><c>revitcheck.pile_model_schedule_consistency</c> still exports
+    /// automatically</b>, and the distinction is not arbitrary: it compares
+    /// a pile's own live position against the schedule row for that same
+    /// pile: two independent records of one fact, with no geometry guess in
+    /// between. It is also the only check in this project ever shown to
+    /// detect a planted defect (§24). Its findings are verdicts on arrival.
+    /// </para>
+    /// <para>
+    /// <see cref="ExportableConfirmedProblems"/> is unchanged and still
+    /// carries everything - it remains the JSON/CSV audit record, so nothing
+    /// is lost, only held back from BCF until a person agrees with it.
+    /// </para>
+    /// </remarks>
+    public List<Issue> ExportableForBcf() =>
+        IssueSorting.SortIssues(
+            Views.SelectMany(v => v.LastReconciliation.ConfirmedProblems.Where(IsHumanVerdict)
+                .Concat(v.OtherInvestigationFindings.Where(IsRealProblem))));
+
+    /// <summary>
+    /// Automated findings nobody has ruled on yet - reported at export time
+    /// so an empty BCF is never read as a clean model.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart risk to the change above, and this project's oldest
+    /// failure in a new place: if a reviewer never records a verdict, BCF is
+    /// empty and looks identical to "nothing was wrong". Counting these is
+    /// what keeps "nobody has decided yet" distinguishable from "there was
+    /// nothing to decide".
+    /// </remarks>
+    public List<Issue> ExportableUnconfirmedCandidates() =>
+        IssueSorting.SortIssues(
+            Views.Where(v => v.Status != ViewInvestigationStatus.ResolvedManually)
+                .SelectMany(v => v.LastReconciliation.ConfirmedProblems.Where(i => !IsHumanVerdict(i))));
+
+    /// <summary>A verdict a person recorded themselves, as opposed to a check's own candidate.</summary>
+    private static bool IsHumanVerdict(Issue issue) =>
+        string.Equals(
+            issue.RuleId, InvestigationReconciliation.ManualVerdictRuleId, StringComparison.Ordinal);
 
     /// <summary>A standalone finding that states a defect rather than a gap in what could be checked.</summary>
     private static bool IsRealProblem(Issue issue) =>

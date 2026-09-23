@@ -305,6 +305,32 @@ public static class InvestigationReconciliation
         };
     }
 
+    /// <summary>
+    /// The dimensions one triage finding actually covers: a rollup's whole
+    /// <c>drafted_dimension_ids</c> list, or the single dimension an
+    /// ordinary finding names.
+    /// </summary>
+    /// <remarks>
+    /// Public because the checklist has to count <i>dimensions</i>, not
+    /// issues. A wholly-drafted view is deliberately one issue covering
+    /// thirty dimensions, so an issue count is not a workload and cannot be
+    /// reconciled against anything else on the row - the mismatch a real
+    /// reviewer hit head-on (2026-09-23). One definition, here, rather than
+    /// the window re-deriving it.
+    /// </remarks>
+    public static List<long> TriagedDimensionIds(Issue issue)
+    {
+        var rolled = ElementIdList(issue.SuggestedFix, "drafted_dimension_ids");
+        if (rolled.Count > 0)
+        {
+            return rolled;
+        }
+
+        return issue.ElementId is { } id && !IsRolledUpDraftedView(issue)
+            ? new List<long> { id }
+            : new List<long>();
+    }
+
     private static bool IsRolledUpDraftedView(Issue issue) =>
         issue.RuleId == "revit.dimension_provenance" &&
         issue.SuggestedFix is { } fix &&

@@ -185,11 +185,20 @@ internal sealed class ChecklistWindow : Window
         gridView.Columns.Add(Column("Sheet No", nameof(ChecklistRow.SheetNo), 90));
         gridView.Columns.Add(Column("View Name", nameof(ChecklistRow.ViewName), 280));
         gridView.Columns.Add(Column("Status", nameof(ChecklistRow.StatusText), 110));
-        gridView.Columns.Add(Column("Still Open", nameof(ChecklistRow.StillOpenCount), 75));
-        gridView.Columns.Add(Column("Dimensions", nameof(ChecklistRow.DimensionProgress), 90));
-        gridView.Columns.Add(Column("Confirmed", nameof(ChecklistRow.ConfirmedCount), 80));
-        gridView.Columns.Add(Column("Manual Review", nameof(ChecklistRow.ManualReviewCount), 100));
-        gridView.Columns.Add(Column("Other Findings", nameof(ChecklistRow.OtherFindingsCount), 100));
+        // Two columns, one unit - dimensions - and the same definition the
+        // details pane lists below (CheckingSession.UnsettledDimensionIds),
+        // so the number on a row and the rows beneath it agree by
+        // construction rather than by coincidence.
+        //
+        // The five counts these replace mixed three denominators: Still
+        // Open/Confirmed/Manual Review/Other counted ISSUES, Dimensions
+        // counted DIMENSIONS, and the pane counted expanded-and-filtered
+        // dimensions. A real row read "2 still open, 5 / 7, 3 confirmed"
+        // above four listed findings and none of it reconciled, because
+        // those numbers were never counting the same kind of thing
+        // (2026-09-23).
+        gridView.Columns.Add(Column("To check", nameof(ChecklistRow.ToCheck), 80));
+        gridView.Columns.Add(Column("Checked", nameof(ChecklistRow.CheckedProgress), 90));
 
         return new ListView
         {
@@ -384,33 +393,16 @@ internal sealed class ChecklistWindow : Window
                 SheetNo = v.SheetNo ?? "(no sheet)",
                 ViewName = v.ViewName ?? "",
                 Status = v.Status,
-                // The current, still-outstanding count - not the original
-                // triage count from before any investigation. Real user
-                // feedback, 2026-08-31: showing the frozen original count
-                // here (unlike the Confirmed/Manual Review columns, which
-                // already read the live reconciled state) made a row look
-                // unchanged after real investigation work had actually
-                // resolved most of it.
-                StillOpenCount = v.LastReconciliation.StillOpenTriage.Count,
-                // Dimension-level progress, because the issue count above
-                // cannot move for the commonest case: a wholly-drafted
-                // view is deliberately ONE rollup issue however many
-                // dimensions it covers, so verifying 18 of 29 left this row
-                // reading exactly as it did before (real feedback,
-                // 2026-09-07 - "when I run them against the dimension
-                // triage they do not resolve any raised issues").
-                DimensionProgress = FormatProgress(
-                    v.LastReconciliation.ResolvedDimensionCount,
-                    v.LastReconciliation.OpenDimensionCount),
-                // Kept apart from OtherFindings deliberately: these are
-                // verdicts ON TRIAGED DIMENSIONS. A standalone check's
-                // findings are real, and flag the view, but they resolve
-                // nothing that triage raised - conflating the two made it
-                // look as though running any pile tool was making progress
-                // against the triage list (PLANNING.md §21).
-                ConfirmedCount = v.LastReconciliation.ConfirmedProblems.Count,
-                OtherFindingsCount = v.OtherInvestigationFindings.Count,
-                ManualReviewCount = v.LastReconciliation.NeedsManualReview.Count,
+                // Both read from CheckingSession's single definition of
+                // "settled", so they cannot drift from each other or from
+                // the pane. An automated confirmed problem deliberately
+                // still counts as work: per the user, a lot of them turn out
+                // not to be problems once the view is open, so the tool
+                // treats one as a candidate until a reviewer rules on it.
+                ToCheck = v.UnsettledDimensionIds().Count,
+                CheckedProgress = FormatProgress(
+                    v.SettledDimensionCount(),
+                    v.UnsettledDimensionIds().Count),
             })
             .ToList();
 
@@ -506,8 +498,13 @@ internal sealed class ChecklistWindow : Window
         // makes this list actually shrink as verdicts come in, matching
         // Reconcile's own "examined" definition rather than only reflecting
         // the containing rollup's all-or-nothing clearing.
+        // Filtered against the same "still needs eyes" definition the To
+        // check column counts, rather than against InvestigatedElementIds
+        // directly - one definition, so the number above and the rows here
+        // can never disagree.
+        var unsettled = new HashSet<long>(entry.UnsettledDimensionIds());
         var stillOpen = InvestigationReconciliation.ExpandByElementIdList(entry.LastReconciliation.StillOpenTriage, "drafted_dimension_ids")
-            .Where(i => i.ElementId is not { } id || !entry.InvestigatedElementIds.Contains(id))
+            .Where(i => i.ElementId is not { } id || unsettled.Contains(id))
             .ToList();
         AppendSection(rows, "Still Open Triage", stillOpen);
 
@@ -799,13 +796,14 @@ internal sealed class ChecklistWindow : Window
         public string ViewName { get; init; } = "";
         public ViewInvestigationStatus Status { get; init; }
         public string StatusText => Status.ToString();
-        public int StillOpenCount { get; init; }
-        public string DimensionProgress { get; init; } = "";
-        public int ConfirmedCount { get; init; }
-        public int ManualReviewCount { get; init; }
+        /// <summary>
+        /// Dimensions in this view still needing a person's eyes - the
+        /// workload, and exactly what the details pane lists.
+        /// </summary>
+        public int ToCheck { get; init; }
 
-        /// <summary>Findings from a standalone check that reports on this view without resolving its dimension triage - see the Confirmed column's own remarks.</summary>
-        public int OtherFindingsCount { get; init; }
+        /// <summary>"5 / 7" - settled against everything triage raised here.</summary>
+        public string CheckedProgress { get; init; } = "";
     }
 
     /// <summary>One row in <see cref="_detailsListView"/> - a single, real, individually-actionable finding (never an opaque rollup - see <see cref="UpdateDetails"/>'s own remarks).</summary>

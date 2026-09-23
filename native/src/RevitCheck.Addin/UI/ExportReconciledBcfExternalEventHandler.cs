@@ -33,6 +33,14 @@ internal sealed class ExportReconciledBcfExternalEventHandler : IExternalEventHa
         }
 
         var confirmed = session.ExportableConfirmedProblems();
+        // What Forma actually receives: verdicts a reviewer recorded, plus
+        // the pile/schedule check's own findings. An automated dimension
+        // disagreement stays out until a person agrees with it - per the
+        // user, "a lot of them have not been problems on investigation and
+        // we don't want to clutter up the BCF with non issues". The full
+        // list above still writes to JSON/CSV, so nothing is lost.
+        var forBcf = session.ExportableForBcf();
+        var unconfirmed = session.ExportableUnconfirmedCandidates();
         var manualReview = session.ExportableManualReview();
         var stillOpen = session.ExportableStillOpenTriage();
         var manualResolutions = session.ExportableManualResolutions();
@@ -40,7 +48,8 @@ internal sealed class ExportReconciledBcfExternalEventHandler : IExternalEventHa
         string? jsonPath;
         try
         {
-            jsonPath = IssueOutput.WriteNextToModel(doc, confirmed, "reconciled", "RevitCheck - Reconciled Problems");
+            jsonPath = IssueOutput.WriteNextToModel(
+                doc, confirmed, "reconciled", "RevitCheck - Reconciled Problems", bcfIssues: forBcf);
         }
         catch (Exception ex)
         {
@@ -73,7 +82,14 @@ internal sealed class ExportReconciledBcfExternalEventHandler : IExternalEventHa
         }
 
         TaskDialog.Show("RevitCheck - Reconciled Problems",
-            $"{confirmed.Count} confirmed problem(s) written to BCF/JSON/CSV.\n" +
+            $"{forBcf.Count} confirmed finding(s) written to BCF for Forma.\n" +
+            // Never silent: an empty BCF because nobody has ruled yet must
+            // not read as an empty BCF because nothing was wrong.
+            (unconfirmed.Count > 0
+                ? $"{unconfirmed.Count} finding(s) are still waiting on your verdict and were NOT sent to " +
+                  "Forma - open the view, decide, and export again.\n"
+                : "") +
+            $"{confirmed.Count} finding(s) recorded in JSON/CSV (the full audit trail).\n" +
             $"{manualReview.Count} item(s) need manual review (JSON/CSV only).\n" +
             $"{stillOpen.Count} triage item(s) still open (JSON/CSV only).\n" +
             $"{manualResolutions.Count} view(s) manually dismissed (JSON only, audit trail).\n\n" +

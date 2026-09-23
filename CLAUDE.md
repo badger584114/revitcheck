@@ -224,7 +224,15 @@ is built and validated end to end (§16), including on a second real model
 2026-09-09, where a real pile view moved from `0 / 29` dimensions to
 **28 / 30** and reached a terminal state for the first time (§22). `InvestigationReconciliation`
 splits into three outcomes — `ConfirmedProblems` / `NeedsManualReview` /
-`StillOpenTriage` — and only the first auto-exports to BCF. The design
+`StillOpenTriage`. **Only a reviewer's own verdict reaches BCF**
+(`ExportableForBcf`, 2026-09-23): an automated geometry disagreement is a
+candidate, and per the user "a lot of them have not been problems on
+investigation" — so it is recorded in JSON/CSV and shown on the checklist,
+but Forma hears about it only once a person agrees. The one exception is
+`pile_model_schedule_consistency`, which compares two independent records of
+one fact and is the only check ever shown to detect a planted defect (§24).
+The export dialog names how many candidates are still waiting on a verdict,
+so an empty BCF never reads as a clean model. The design
 exists precisely to stop "not yet checked" being silently promoted to
 "confirmed clean" — and, since §22, its mirror: a `coverage` finding from
 an investigation check means "not checkable", so it routes to

@@ -618,4 +618,157 @@ public class CheckingSessionTests
         Assert.NotEqual(ViewInvestigationStatus.Flagged, entry.Status);
         Assert.Empty(session.ExportableConfirmedProblems());
     }
+
+    // ----- "To check": one unit, so a row's number and its list agree -----
+
+    /// <summary>
+    /// The denominator is dimensions, never issues. A wholly-drafted view is
+    /// deliberately ONE rollup issue covering many dimensions, which is why
+    /// an issue count could read "2 still open" beside "5 / 7" and four
+    /// listed findings, adding up to nothing (real feedback, 2026-09-23).
+    /// </summary>
+    [Fact]
+    public void A_rollup_counts_as_the_dimensions_it_covers_not_as_one_issue()
+    {
+        var session = CheckingSession.Start(
+            new[] { RollupTriage(100, draftedDimensionIds: new long[] { 10, 20, 30 }) }, new RuleConfig());
+
+        var view = session.FindView(100)!;
+        Assert.Equal(3, view.TriagedDimensionIds().Count);
+        Assert.Equal(3, view.UnsettledDimensionIds().Count);
+        Assert.Equal(0, view.SettledDimensionCount());
+    }
+
+    [Fact]
+    public void A_clean_automated_verdict_settles_a_dimension()
+    {
+        var session = CheckingSession.Start(
+            new[] { RollupTriage(100, draftedDimensionIds: new long[] { 10, 20, 30 }) }, new RuleConfig());
+
+        session.RecordInvestigation(100, new long[] { 10 }, Array.Empty<Issue>());
+
+        var view = session.FindView(100)!;
+        Assert.Equal(1, view.SettledDimensionCount());
+        Assert.Equal(new long[] { 20, 30 }, view.UnsettledDimensionIds());
+    }
+
+    /// <summary>
+    /// The correction this whole change turns on, per the user: "confirmed
+    /// problems still need to be checked, a lot of them have not been
+    /// problems on investigation". An automated disagreement is a candidate
+    /// for a reviewer, so it leaves the dimension needing eyes.
+    /// </summary>
+    [Fact]
+    public void An_automated_confirmed_problem_does_not_settle_a_dimension()
+    {
+        var session = CheckingSession.Start(
+            new[] { PerDimensionTriage(10, viewId: 100) }, new RuleConfig());
+
+        session.RecordInvestigation(100, new long[] { 10 }, new[] { InvestigationProblem(10) });
+
+        var view = session.FindView(100)!;
+        Assert.Equal(new long[] { 10 }, view.UnsettledDimensionIds());
+        Assert.Equal(0, view.SettledDimensionCount());
+    }
+
+    [Fact]
+    public void A_reviewers_own_verdict_settles_the_dimension_the_check_had_flagged()
+    {
+        var session = CheckingSession.Start(
+            new[] { PerDimensionTriage(10, viewId: 100) }, new RuleConfig());
+        session.RecordInvestigation(100, new long[] { 10 }, new[] { InvestigationProblem(10) });
+        Assert.Single(session.FindView(100)!.UnsettledDimensionIds());
+
+        session.RecordInvestigation(100, new long[] { 10 }, new[]
+        {
+            new Issue
+            {
+                RuleId = InvestigationReconciliation.ManualVerdictRuleId,
+                Category = "geometry",
+                Severity = "high",
+                ElementId = 10,
+                ViewId = 100,
+                Description = "Manually confirmed as a real problem by a reviewer.",
+            },
+        });
+
+        var view = session.FindView(100)!;
+        Assert.Empty(view.UnsettledDimensionIds());
+        Assert.Equal(1, view.SettledDimensionCount());
+    }
+
+    [Fact]
+    public void Settled_and_unsettled_always_account_for_every_triaged_dimension()
+    {
+        var session = CheckingSession.Start(
+            new[] { RollupTriage(100, draftedDimensionIds: new long[] { 10, 20, 30 }) }, new RuleConfig());
+        session.RecordInvestigation(100, new long[] { 10 }, Array.Empty<Issue>());
+        session.RecordInvestigation(100, new long[] { 20 }, new[] { InvestigationProblem(20) });
+
+        var view = session.FindView(100)!;
+        Assert.Equal(
+            view.TriagedDimensionIds().Count,
+            view.SettledDimensionCount() + view.UnsettledDimensionIds().Count);
+    }
+
+    // ----- What reaches Forma, as opposed to what is recorded -----
+
+    [Fact]
+    public void An_unconfirmed_automated_finding_is_recorded_but_never_reaches_bcf()
+    {
+        var session = CheckingSession.Start(
+            new[] { PerDimensionTriage(10, viewId: 100) }, new RuleConfig());
+
+        session.RecordInvestigation(100, new long[] { 10 }, new[] { InvestigationProblem(10) });
+
+        // Still a real finding in the audit record and on the checklist...
+        Assert.Single(session.ExportableConfirmedProblems());
+        Assert.Equal(ViewInvestigationStatus.Flagged, session.FindView(100)!.Status);
+        // ...but Forma only hears about it once a person agrees.
+        Assert.Empty(session.ExportableForBcf());
+        Assert.Single(session.ExportableUnconfirmedCandidates());
+    }
+
+    [Fact]
+    public void A_reviewers_confirmed_verdict_is_what_reaches_bcf()
+    {
+        var session = CheckingSession.Start(
+            new[] { PerDimensionTriage(10, viewId: 100) }, new RuleConfig());
+
+        session.RecordInvestigation(100, new long[] { 10 }, new[]
+        {
+            new Issue
+            {
+                RuleId = InvestigationReconciliation.ManualVerdictRuleId,
+                Category = "geometry",
+                Severity = "high",
+                ElementId = 10,
+                ViewId = 100,
+                Description = "Manually confirmed as a real problem by a reviewer.",
+            },
+        });
+
+        var exported = Assert.Single(session.ExportableForBcf());
+        Assert.Equal(10, exported.ElementId);
+        Assert.Empty(session.ExportableUnconfirmedCandidates());
+    }
+
+    /// <summary>
+    /// The pile model/schedule check keeps exporting on its own: it compares
+    /// two independent records of one fact with no geometry guess between
+    /// them, and it is the only check in this project ever shown to detect a
+    /// planted defect (§24).
+    /// </summary>
+    [Fact]
+    public void A_pile_schedule_finding_still_reaches_bcf_without_a_human_verdict()
+    {
+        var session = CheckingSession.Start(Array.Empty<Issue>(), new RuleConfig());
+        session.EnsureView(42, "PILE LAYOUT", "2871051");
+        session.RecordInvestigation(
+            42, new long[] { 900 }, new[] { PileScheduleFinding(900) },
+            otherFindingsRuleId: "revitcheck.pile_model_schedule_consistency");
+
+        var exported = Assert.Single(session.ExportableForBcf());
+        Assert.Equal(900, exported.ElementId);
+    }
 }
