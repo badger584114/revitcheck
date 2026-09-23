@@ -37,6 +37,26 @@ public class DimensionResolutionTests
                 RevitCheckTestBuilders.TagRef(202, RevitCheckTestBuilders.Pt(0, 1000)),
             });
 
+    private static ViewInfo PlanView(long id = 10) =>
+        RevitCheckTestBuilders.View(id, name: "DRG-2873041 - PILE LAYOUT", viewType: "EngineeringPlan");
+
+    /// <summary>
+    /// A dimension chain - one Revit element carrying three references. The
+    /// drafted-dimension check compares one pair of anchors, so this is the
+    /// shape nothing can now reach, and it is what "unreachable" means since
+    /// 2026-09-23. On the committed capture, 338 of 16,770 non-spot
+    /// dimensions are chains.
+    /// </summary>
+    private static DimensionInfo ChainOfThree(long id, long viewId = 10) =>
+        RevitCheckTestBuilders.Dimension(
+            id, viewId,
+            new[]
+            {
+                RevitCheckTestBuilders.DraftedRef(201),
+                RevitCheckTestBuilders.DraftedRef(202),
+                RevitCheckTestBuilders.DraftedRef(203),
+            });
+
     /// <summary>
     /// Named as the dimension check, not the bearing one. Both reconcile a
     /// triaged pile dimension, but only this one compares the dimension's
@@ -44,30 +64,71 @@ public class DimensionResolutionTests
     /// chain topology and never reads its value.
     /// </summary>
     [Fact]
-    public void A_pile_tag_to_tag_dimension_is_reachable_by_the_dimension_check()
+    public void A_pile_tag_to_tag_dimension_in_a_plan_is_reachable_by_the_dimension_check()
     {
-        var path = DimensionResolution.For(PileTagToTag(1), RevitCheckTestBuilders.View(10));
+        var path = DimensionResolution.For(PileTagToTag(1), PlanView());
 
         Assert.True(path.Reachable);
         Assert.Equal(PileDimensionConsistencyCheck.RuleId, path.RuleId);
     }
 
     /// <summary>
-    /// The 25 detail-linework dimensions on the real model. PLANNING.md §14
-    /// went at this seven times: GlobalPoint null on all 17 references
-    /// tested, Location returning (0,0,0) for real model geometry,
-    /// Dimension.Curve throwing on 41 of 46, and the one reliable anchor
-    /// being where the text sits - 527m from its own witness lines on a
-    /// real dimension. This is a statement of reach, not of difficulty.
+    /// The misroute a real run surfaced (2026-09-23): a detail component is
+    /// also an AnnotationSymbol, so the class test alone called every
+    /// drafted component-to-component dimension on a section a pile chain -
+    /// reachable by a check that finds no piles there and investigates none
+    /// of them, so it never cleared and never reached manual review. 49
+    /// Section and 6 Detail views on the committed capture. Pile setout is
+    /// drawn in plan.
     /// </summary>
     [Fact]
-    public void A_detail_linework_dimension_is_reachable_by_nothing_and_says_why()
+    public void A_tag_to_tag_dimension_in_a_section_is_not_a_pile_chain()
+    {
+        var path = DimensionResolution.For(
+            PileTagToTag(1), RevitCheckTestBuilders.View(10, viewType: "Section"));
+
+        Assert.NotEqual(PileDimensionConsistencyCheck.RuleId, path.RuleId);
+        Assert.Equal(DrawnDimensionConsistencyCheck.RuleId, path.RuleId);
+    }
+
+    /// <summary>
+    /// §14 established over seven runs that a dimension's own witness points
+    /// are not obtainable, and §26 concluded from that these were reachable
+    /// by nothing. §28 got round it from the other side - anchoring on the
+    /// referenced element's own geometry and comparing in the view plane -
+    /// and the first real run of that check reported findings the user
+    /// called "mostly reasonable". So they route to it.
+    /// </summary>
+    [Fact]
+    public void A_detail_linework_dimension_is_reachable_by_the_drafted_dimension_check()
     {
         var path = DimensionResolution.For(DetailLinework(1), RevitCheckTestBuilders.View(10));
 
+        Assert.True(path.Reachable);
+        Assert.Equal(DrawnDimensionConsistencyCheck.RuleId, path.RuleId);
+    }
+
+    /// <summary>
+    /// That check compares one pair of anchors, so a chain across three or
+    /// more references is outside what it can answer - a different and newer
+    /// reason than §14's witness points.
+    /// </summary>
+    [Fact]
+    public void A_chain_across_more_than_two_references_is_reachable_by_nothing()
+    {
+        var chain = RevitCheckTestBuilders.Dimension(
+            1, 10,
+            new[]
+            {
+                RevitCheckTestBuilders.DraftedRef(201),
+                RevitCheckTestBuilders.DraftedRef(202),
+                RevitCheckTestBuilders.DraftedRef(203),
+            });
+
+        var path = DimensionResolution.For(chain, RevitCheckTestBuilders.View(10));
+
         Assert.False(path.Reachable);
-        Assert.Null(path.RuleId);
-        Assert.Contains("witness points", path.Reason);
+        Assert.Contains("exactly two references", path.Reason);
     }
 
     /// <summary>A drafting view has no model behind it - a harder no again, and a different reason.</summary>
@@ -89,11 +150,11 @@ public class DimensionResolutionTests
     [Fact]
     public void Describe_tallies_a_view_by_what_can_reach_it()
     {
-        var view = RevitCheckTestBuilders.View(10);
         var described = DimensionResolution.Describe(
-            new[] { PileTagToTag(1), PileTagToTag(2), DetailLinework(3) }, view);
+            new[] { PileTagToTag(1), PileTagToTag(2), DetailLinework(3), ChainOfThree(4) }, PlanView());
 
         Assert.Contains("2 pile tag-to-tag", described);
+        Assert.Contains("1 drafted dimension", described);
         Assert.Contains("1 unreachable", described);
     }
 
@@ -117,8 +178,11 @@ public class DimensionResolutionTests
     [Fact]
     public void An_unreachable_triaged_dimension_needs_a_person_rather_than_staying_open()
     {
+        // A chain, since 2026-09-23: detail linework is now reachable by the
+        // drafted-dimension check, so it is no longer the shape that
+        // demonstrates this. The behaviour under test is unchanged.
         var view = RevitCheckTestBuilders.View(10);
-        var triage = Triage(1, DetailLinework(1), view);
+        var triage = Triage(1, ChainOfThree(1), view);
 
         var result = InvestigationReconciliation.Reconcile(
             new[] { triage }, new long[0], new List<Issue>());
@@ -138,7 +202,7 @@ public class DimensionResolutionTests
     [Fact]
     public void A_reachable_triaged_dimension_still_stays_open_until_investigated()
     {
-        var view = RevitCheckTestBuilders.View(10);
+        var view = PlanView();
         var triage = Triage(1, PileTagToTag(1), view);
 
         var result = InvestigationReconciliation.Reconcile(
@@ -186,7 +250,7 @@ public class DimensionResolutionTests
     public void A_rollup_of_only_unreachable_dimensions_does_not_nag_forever()
     {
         var view = RevitCheckTestBuilders.View(10, name: "Datum 0 K.S", viewType: "EngineeringPlan");
-        var dimensions = Enumerable.Range(1, 7).Select(i => DetailLinework(i)).ToList();
+        var dimensions = Enumerable.Range(1, 7).Select(i => ChainOfThree(i)).ToList();
 
         var rollup = Assert.Single(
             DimensionProvenanceCheck.Run(

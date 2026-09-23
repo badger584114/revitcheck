@@ -93,6 +93,21 @@ public class RealCaptureParityTests
     [Fact]
     public void EveryIssueIdMatchesThePythonEngineExactly()
     {
+        // Re-verified 2026-09-23 after a third real, intentional change, and
+        // it is the §26 change below being undone by better information.
+        // DimensionResolution used to call a drafted dimension measuring
+        // detail linework unreachable; since the drafted-dimension check's
+        // first real run reported findings the user called "mostly
+        // reasonable", those dimensions route to it instead (PLANNING.md
+        // §30). Reachability decides whether a rollup's description carries
+        // the "No automated check can reach any of them" clause, and a
+        // description feeds the identity hash - so exactly the same 56 of
+        // 928 findings §26 renamed are renamed back. 872 ids unchanged,
+        // total unchanged at 928, and the counts test above (issue totals,
+        // per-rule split, severities, categories) passes untouched, which is
+        // what proves nothing was added or dropped - only re-described.
+        // Regenerated from this engine's own output, not hand-edited.
+        //
         // Re-verified 2026-09-10 after a second real, intentional change:
         // a view rollup none of the investigation checks can reach now says
         // so in its own description ("No automated check can reach any of

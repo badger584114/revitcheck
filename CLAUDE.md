@@ -318,8 +318,14 @@ Notes worth not rediscovering:
   coming. **Don't propose recovering a linear dimension's witness points
   without new API evidence** — that is the thing seven real runs already
   said no to. The drafted-dimension check (§27–§28) got round it by
-  anchoring on the *referenced element's* own geometry instead, and the
-  54 figure predates it.
+  anchoring on the *referenced element's* own geometry instead — and
+  **since 2026-09-23 those dimensions route to it** (§30), so the 54 figure
+  is history. **Unreachable now means exactly three things:** a drafting
+  view, a spot coordinate, or a dimension that does not measure between
+  exactly two references — a chain across three or more, or a single one
+  (338 and 500 respectively on the committed capture). A consequence worth
+  expecting: a view that used to clear itself as "nothing can reach these"
+  now stays open until Check Dimensions is actually run against it.
 - **Triage is not a verdict.** The provenance check says the file cannot
   answer whether a dimension is right, not that it is wrong. Per the
   user's standing position: *assume nothing is trustworthy or you will be
@@ -539,15 +545,21 @@ elevation dimensions; the one true section dimension sat at 7.16mm, and
 sections are the unconfirmed case.
 
 **Known before that run** (found 2026-09-11, writing the checklist):
-- **`DimensionResolution` predates the check.** It still labels every
-  dimension that is not a pile tag or a spot "unreachable", with §14's
-  witness-point reason. So triage pre-routes them to manual review, a
-  rollup clears without waiting for them, and Check Dimensions' own "By
-  dimension type" line calls them unreachable. The verdicts still land —
-  in `InvestigationReconciliation` an investigated dimension beats the
-  unreachable marker — but the checklist window will not prompt anyone to
-  run Check Dimensions on those views. Changing the routing is the
-  deferred decision below.
+- ~~**`DimensionResolution` predates the check.**~~ **Fixed 2026-09-23
+  (§30), and the deferred decision with it.** It used to label every
+  dimension that was not a pile tag or a spot "unreachable", so triage
+  pre-routed them to manual review and the checklist never prompted anyone
+  to run Check Dimensions on those views. The first real run answered the
+  question that was being deferred — the findings were "mostly reasonable"
+  — so a dimension measuring between exactly two references in a
+  model-backed view now routes to `revitcheck.drawn_dimension_consistency`.
+  A second, separate misroute was found at the same time: `IsPileTag`
+  tested only `ClassName == "AnnotationSymbol"`, and a **detail component
+  is one too**, so 49 Section and 6 Detail views were labelled reachable by
+  the pile check — which finds no piles there, investigates nothing, and so
+  left them never clearing and never reaching manual review. That was the
+  real cause of "Check Dimensions is not doing much". A pile chain now also
+  requires a plan view.
 - **Fixed 2026-09-11, unconfirmed: Check Dimensions now runs
   `pile_dimension_consistency`**, and no longer counts a dimension as
   investigated on Pile Chain Bearing's say-so. As first built it did, so a
