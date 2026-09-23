@@ -206,8 +206,8 @@ Dated history for each is in PLANNING.md.
 | `revitcheck.metadata_reconciliation` | Joins captured model elements to an external reference CSV via a per-run-chosen mapping file; flags missing/mismatched fields. | Validated, calibrated against two real reference tables (§13) |
 | `revitcheck.pile_model_schedule_consistency` | Compares each pile's own **live** position (`GetProjectPosition`, never the Dynamo-written `XYZ_Easting`/`XYZ_Northing` — those are the value being audited) against its live pile schedule row. Joined on the row's own backing element (`ScheduleRow.ElementId`), so it needs no id column, no key parameter and no category match. Rows from several schedules that agree are one answer stated twice; rows that disagree are a real finding. **Standalone — resolves no dimension triage, by design (§21).** | **Proven to detect**: found a planted 50mm move at exactly 50.00mm, one finding and no noise, 2026-09-09 (§24) — the only check in this project with that evidence |
 | `revitcheck.pile_chain_bearing_consistency` | Reconstructs each pile chain from live geometry by tag-to-pile proximity, splits it into geometrically straight runs (each edge against the run's **running mean**, never its predecessor — §20), and compares each run's bearing against its own call. Bearing calls are matched by **rotation first, distance second, ties refused** — a call is drawn parallel to its line, and distance alone provably mis-assigns them (§20). A corner is reported for manual review, never averaged across. | Resolved 28 of 30 triaged dimensions on a second model (§22). Its coverage note now names the piles no run reached, which showed the planted pile was **never in a chain** rather than missed (§24). **Detection itself still unproven** — needs a mid-chain control |
-| `revitcheck.drawn_dimension_consistency` | The general drafted-dimension check. Anchors on the **referenced element's own geometry** (`Location.Point`/`Location.Curve`), not the dimension's unrecoverable witness points; picks model faces seen **edge-on**; compares **in the view plane**, because a drawing measures what it sees. Filled-region and same-element dimensions reported as out of reach. | **Built 2026-09-11 (§28), unrun.** Runs only inside Revit, via Check Dimensions — no capture carries the witness search it needs. Run plan: `native/RUN_CHECKLIST.md` |
-| `revitcheck.pile_dimension_consistency` | Each pile-to-pile dimension's **stated distance** against the model's real pile spacing, and against every other dimension of the same pile pair (cross-view contradiction). Needs no witness points — the tag-to-tag join already resolves it to two real elements. A non-numeric override is skipped, counted and named. | **Built 2026-09-10 (§27), unrun.** Runs inside Check Dimensions (since 2026-09-11) and in the CheckRunner |
+| `revitcheck.drawn_dimension_consistency` | The general drafted-dimension check. Anchors on the **referenced element's own geometry** (`Location.Point`/`Location.Curve`), not the dimension's unrecoverable witness points; picks model faces seen **edge-on**; compares **in the view plane**, because a drawing measures what it sees. Filled-region and same-element dimensions reported as out of reach. | **Run for real 2026-09-23 (§30) — findings "mostly reasonable" per the user.** The first evidence any dimension check produces verdicts a reviewer agrees with, and what retired §28's "the whole thing is kind of redundant" risk. **Two things it does not settle:** accuracy on sections (the user also reported "some odd dimensions from the model" — needs the results/probe JSON to diagnose), and the negative controls, which have never been planted. Runs only inside Revit, via Check Dimensions — no capture carries the witness search it needs |
+| `revitcheck.pile_dimension_consistency` | Each pile-to-pile dimension's **stated distance** against the model's real pile spacing, and against every other dimension of the same pile pair (cross-view contradiction). Needs no witness points — the tag-to-tag join already resolves it to two real elements. A non-numeric override is skipped, counted and named. | **Has run, output unvalidated.** Check Dimensions ran for real 2026-09-23 and runs this check, so it executed — but nothing in that feedback was about pile dimensions specifically, so whether its findings are right is still unknown. Do not read the drafted-dimension check's "mostly reasonable" as covering this one. Also available in the CheckRunner |
 | `revitcheck.spot_elevation_consistency` | Compares a Spot Elevation's own drafted value (`DimensionInfo.Origin.Z` — `Value`/`ValueOverride` are unconditionally null for this family) against real horizontal `PlanarFace`s found near it via `Face.Project`, judged by 2D proximity, **never by Z agreement** (picking whichever face agrees would be circular). Deliberately not filtered by category anywhere, but **only Spot Elevations** — a spot coordinate states a plan position, so it is set aside with a coverage note (2026-09-09). | Validated standalone (§18); session path fixed but **not re-confirmed** |
 
 **The ribbon is three panels, and the split is the workflow, not tidying:**
@@ -524,8 +524,8 @@ paths in three different ways. That risk is partly retired, not measured
 — every fix from that day was calibrated against the second model, which
 is exactly the mistake the first round made.
 
-**4. The drafted-dimension check is built and unrun — its first run is
-load-bearing.** `DimensionResolution` maps every triaged dimension to the
+**4. The drafted-dimension check has run, and it works — what is left is
+accuracy, not viability.** `DimensionResolution` maps every triaged dimension to the
 check that can settle it or states why none can. On model 100302, of 133
 triaged: 59 pile tag-to-tag, 20 spots, and 54 that at the time nothing
 could reach (§26). §27–§28 reopened most of that 54:
@@ -540,9 +540,30 @@ reported as coverage.
 **Per the user, 2026-09-11:** if this cannot be made to work, *"the whole
 thing is kind of redundant"* — triage would be raising dimensions nothing
 can ever verify, on model-backed views, which is most of what it raises.
-The run plan is **`native/RUN_CHECKLIST.md`**. The 1.44mm rests on six
-elevation dimensions; the one true section dimension sat at 7.16mm, and
-sections are the unconfirmed case.
+
+**Answered 2026-09-23 (§30): it works.** The first real run's findings were
+*"mostly reasonable"* per the user — the first evidence any dimension check
+produces verdicts a reviewer agrees with. That retires the redundancy risk
+above, and it is why drafted dimensions now route to this check rather than
+to "unreachable" (the decision §28 deferred to exactly this run).
+
+**Three things the run did not settle, in the order they matter:**
+
+1. **"Some odd dimensions from the model"** — the check is picking geometry
+   it should not somewhere. Candidates: the uncalibrated 1500mm
+   `DrawnDimensionSearchRadiusMm`, the edge-on filter, or nearest-in-plane
+   choosing a face the dimension does not mean. Each implies a different
+   fix, so this needs the Check Dimensions results JSON (every finding
+   carries `measured_between_element_ids`) plus the probe JSON for the same
+   views. **Nothing has reached `samples/` since Sep 11** — this is blocked
+   on artefacts, not on analysis.
+2. **Sections are still the unconfirmed case.** The 1.44mm rests on six
+   elevation dimensions; the one true section dimension sat at 7.16mm.
+3. **The negative controls were never planted** (`RUN_CHECKLIST.md` §5).
+   Agreement on real data is the weakest possible evidence — §23 planted one
+   50mm move and falsified two checks that four clean runs had not. A and B
+   remain the cheapest way to learn whether this check can detect rather
+   than merely agree.
 
 **Known before that run** (found 2026-09-11, writing the checklist):
 - ~~**`DimensionResolution` predates the check.**~~ **Fixed 2026-09-23

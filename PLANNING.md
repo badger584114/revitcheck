@@ -1602,7 +1602,9 @@ Fixed by counting them into `chained`/`tooFewReferences` and reporting one combi
 
 **One test earns its place ahead of the others.** A resumed session's `SuggestedFix` values come back as `JsonElement`, not their original CLR types — the round-trip that silently emptied two readers in §16 — and this pane reads a deserialized session every time someone resumes one. The readers use `ToString()` plus a parse (matching `RunSummary`'s own approach) rather than a cast, and `Values_reloaded_from_a_session_file_still_read` pins it. It is the one case that would have failed on a real machine and nowhere else.
 
-440 Core tests passing (430 + 10); `dotnet build` clean including the net48 Addin, 0 warnings. **Unrun on a machine**, like every Addin-side change — the Core half is fully covered, the four lines of window wiring are not and cannot be.
+440 Core tests passing (430 + 10); `dotnet build` clean including the net48 Addin, 0 warnings.
+
+**Confirmed on a real machine, 2026-09-23** — per the user, *"this is better now, easier to read"*. Worth recording because this is the half no test can reach: the Core digest has ten tests, while the four lines of window wiring have only ever had `dotnet build` behind them. What that confirms is narrow and worth keeping narrow: the pane binds, renders and is legible. It says nothing about whether any individual finding is correct.
 
 **Not done, and free if wanted:** spot-vs-linear is not in the provenance check's structured data, so all 734 drafted rows read identically apart from their Element column. Adding an `is_spot` key would separate them and costs nothing in identity terms, since `SuggestedFix` is not hashed.
 
@@ -1636,7 +1638,9 @@ Made **additive** rather than by changing `ExportableConfirmedProblems`: fifteen
 
 **The counterpart risk, named and handled:** if a reviewer never records a verdict, the BCF is empty and looks exactly like a clean model — this project's oldest failure arriving somewhere new. The export dialog now states how many candidates are still waiting on a verdict, so "nobody has decided yet" stays distinguishable from "there was nothing to decide".
 
-450 Core tests passing (442 + 8); `dotnet build` clean including the net48 Addin, 0 warnings. **Unrun on a machine**, like every Addin-side change.
+450 Core tests passing (442 + 8); `dotnet build` clean including the net48 Addin, 0 warnings.
+
+**The columns are confirmed on a real machine, 2026-09-23** (*"this is better now, easier to read"*). **The BCF half is not** — nothing has been exported since the change, so `ExportableForBcf`, the unconfirmed-candidate line in the export dialog, and the claim that Forma stops receiving non-issues are all still unrun. Kept apart deliberately: one message confirming the checklist reads well is not evidence about what an export writes, and collapsing the two would be exactly the over-reading this document keeps warning about.
 
 **The lesson is about which question got asked.** I proposed action labels and was about to build them; one sentence from the user — that they open the view regardless — made the whole idea worthless before it cost anything. The thing actually broken was never the wording of a finding, it was that the summary above it counted three different things and so could not be read at all. **Asking what someone does next, rather than what they would like to see, is what separated those two.**
 
